@@ -228,6 +228,9 @@ IPINTEL_REJECT_BAD
 ## The default value assumes yt-dlp is in your system PATH
 # INVOKE_YOUTUBEDL yt-dlp
 
+## Path to text file containing browser cookies to bypass youtube captcha for yt-dlp
+# YTDL_COOKIES ~/cookies.txt
+
 ## Comment this out to disable users ability to use the request internet sounds to be played.
 REQUEST_INTERNET_SOUND
 
@@ -653,3 +656,6 @@ TGUI_MAX_CHUNK_COUNT 32
 ## While this is uncommented, server initialization will include some asset generation usually useful for development.
 ## It increases initialization time significantly so you'll want to disable this in live environments.
 GENERATE_ASSETS_IN_INIT
+
+## Etiketlenmesini istediğin discord rolünün id sini yaz.
+#SUSPICIOUS_LOG_DISCORD_ROLE_ID

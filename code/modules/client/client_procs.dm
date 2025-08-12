@@ -114,6 +114,7 @@ GLOBAL_LIST_INIT(blacklisted_builds, list(
 			list("id" = message_id, "player_key" = usr.ckey)
 		)
 		query_message_read.warn_execute()
+		QDEL_NULL(query_message_read)
 		return
 
 	// TGUIless adminhelp
@@ -365,7 +366,10 @@ GLOBAL_LIST_INIT(blacklisted_builds, list(
 				new /datum/admins(autoadmin_ranks, ckey)
 
 	if(CONFIG_GET(flag/enable_localhost_rank) && !connecting_admin && is_localhost())
-		var/datum/admin_rank/localhost_rank = new("!localhost!", R_EVERYTHING, R_DBRANKS, R_EVERYTHING) //+EVERYTHING -DBRANKS *EVERYTHING
+		var/datum/admin_rank/localhost_rank = new("!localhost!", RANK_SOURCE_LOCAL, R_EVERYTHING, R_DBRANKS, R_EVERYTHING) //+EVERYTHING -DBRANKS *EVERYTHING
+		if(QDELETED(localhost_rank))
+			to_chat(world, "Local admin rank creation failed, somehow?")
+			return
 		new /datum/admins(list(localhost_rank), ckey, 1, 1)
 
 	if (length(GLOB.stickybanadminexemptions))
@@ -378,6 +382,8 @@ GLOBAL_LIST_INIT(blacklisted_builds, list(
 			message_admins(span_adminnotice("[key_name(src)] has been detected as spoofing their byond version. Connection rejected."))
 			add_system_note("Spoofed-Byond-Version", "Detected as using a spoofed byond version.")
 			log_suspicious_login("Failed Login: [key] - Spoofed byond version")
+			var/sus_role_id = CONFIG_GET(string/suspicious_log_discord_role_id)
+			send2tgs_adminless_only("Suspicious Log | Failed Login: [key] - Spoofed byond version[sus_role_id ? " <@&[sus_role_id]>" : ""]")
 			qdel(src)
 
 		if (num2text(byond_build) in GLOB.blacklisted_builds)

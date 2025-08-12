@@ -133,6 +133,10 @@
 /// log emotes
 /datum/config_entry/flag/log_emote
 
+/// log ghost polling
+/datum/config_entry/flag/log_ghost_poll
+	default = TRUE
+
 /// log economy actions
 /datum/config_entry/flag/log_econ
 
@@ -403,6 +407,9 @@
 	return str_val != "byond://address:port" && ..()
 
 /datum/config_entry/string/invoke_youtubedl
+	protection = CONFIG_ENTRY_LOCKED | CONFIG_ENTRY_HIDDEN
+
+/datum/config_entry/string/ytdl_cookies
 	protection = CONFIG_ENTRY_LOCKED | CONFIG_ENTRY_HIDDEN
 
 /datum/config_entry/flag/request_internet_sound
@@ -818,3 +825,5 @@
 
 /datum/config_entry/flag/generate_assets_in_init
 	default = FALSE
+
+/datum/config_entry/string/suspicious_log_discord_role_id
