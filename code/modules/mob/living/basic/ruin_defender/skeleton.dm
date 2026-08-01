@@ -3,7 +3,7 @@
 	desc = "A real bonefied skeleton, doesn't seem like it wants to socialize."
 	gender = NEUTER
 	icon = 'icons/mob/simple/simple_human.dmi'
-	mob_biotypes = MOB_UNDEAD|MOB_HUMANOID
+	mob_biotypes = MOB_UNDEAD|MOB_HUMANOID|MOB_SKELETAL
 	speak_emote = list("rattles")
 	maxHealth = 40
 	health = 40
@@ -161,20 +161,11 @@
 
 /// Skeletons mostly just beat people to death, but they'll also find and drink milk.
 /datum/ai_controller/basic_controller/skeleton
+	behavior_tree_json = "code/modules/mob/living/basic/ruin_defender/skeleton.bt.json"
 	blackboard = list(
 		BB_TARGETING_STRATEGY = /datum/targeting_strategy/basic,
 		BB_TARGET_MINIMUM_STAT = HARD_CRIT,
-		BB_EMOTE_KEY = "rattles",
 		BB_EMOTE_CHANCE = 20,
 	)
 
 	ai_movement = /datum/ai_movement/basic_avoidance
-	idle_behavior = /datum/idle_behavior/idle_random_walk
-
-	planning_subtrees = list(
-		/datum/ai_planning_subtree/escape_captivity,
-		/datum/ai_planning_subtree/run_emote,
-		/datum/ai_planning_subtree/find_food,
-		/datum/ai_planning_subtree/simple_find_target,
-		/datum/ai_planning_subtree/basic_melee_attack_subtree,
-	)

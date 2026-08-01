@@ -6,6 +6,8 @@
 	earliest_start = 5 MINUTES
 	category = EVENT_CATEGORY_FRIENDLY
 	description = "A colourful display can be seen through select windows. And the kitchen."
+	track = EVENT_TRACK_MUNDANE
+	tags = list(TAG_COMMUNAL, TAG_POSITIVE, TAG_SPACE)
 
 /datum/round_event_control/aurora_caelus/can_spawn_event(players, allow_magic = FALSE)
 	if(!SSmapping.empty_space)
@@ -45,7 +47,7 @@
 			message_admins("Aurora Caelus event caused an oven to ignite at [ADMIN_VERBOSEJMP(ruined_roast)].")
 			log_game("Aurora Caelus event caused an oven to ignite at [loc_name(ruined_roast)].")
 			announce_to_ghosts(roast_ruiner)
-			for(var/mob/living/carbon/human/seymour in viewers(roast_ruiner, 7))
+			for(var/mob/living/carbon/human/seymour in viewers(7, roast_ruiner))
 				if (seymour in human_blacklist)
 					continue
 				human_blacklist += seymour

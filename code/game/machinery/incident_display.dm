@@ -111,13 +111,6 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/machinery/incident_display/singularity_death, 3
 /obj/machinery/incident_display/Initialize(mapload)
 	..()
 	register_context()
-	if(mapload && sign_features == DISPLAY_DELAM && SSmapping.picked_rooms["engine"])
-		var/datum/map_template/modular_room/random_engine/engine_template = SSmapping.picked_rooms["engine"]
-		if(engine_template.engine_type == "singularity")
-			name = NAME_SINGULARITY
-			desc = DESC_SINGULARITY
-			sign_features = DISPLAY_SINGULARITY_DEATH
-
 	return INITIALIZE_HINT_LATELOAD
 
 /obj/machinery/incident_display/post_machine_initialize()
@@ -134,15 +127,15 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/machinery/incident_display/singularity_death, 3
 	return ..()
 
 /obj/machinery/incident_display/process()
-	if(!isnull(configured_advert) && COOLDOWN_FINISHED(src, advert_cooldown))// time to show an advert
+	if(machine_stat & (NOPOWER|BROKEN|MAINT))
+		return
+
+	if(!isnull(configured_advert) && COOLDOWN_FINISHED(src, advert_cooldown)) // time to show an advert
 		show_advert(advert = configured_advert, duration = configured_advert_duration)
 		COOLDOWN_START(src, advert_cooldown, rand(advert_frequency - 5 SECONDS, advert_frequency + 5 SECONDS))
 		return
 
 	if(!live_display) // displaying static content, no processing required
-		return
-
-	if(machine_stat & (NOPOWER|BROKEN|MAINT))
 		return
 
 	if(COOLDOWN_FINISHED(src, active_advert)) // advert finished, revert to static content
@@ -301,6 +294,10 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/machinery/incident_display/singularity_death, 3
 	live_display = TRUE
 	update_appearance()
 	flick(advert, src)
+
+/obj/machinery/incident_display/on_set_machine_stat(old_value)
+	. = ..()
+	update_appearance()
 
 /obj/machinery/incident_display/update_appearance(updates = ALL)
 	. = ..()

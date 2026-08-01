@@ -2,7 +2,6 @@
 	title = JOB_BRIG_PHYSICIAN
 	description = "Brig'deki mahkumlarin veya is arkadaslarinin tibbi ihtiyaclarini karsilayacak olan kisisin. "
 	auto_deadmin_role_flags = DEADMIN_POSITION_SECURITY
-	department_head = list(JOB_HEAD_OF_SECURITY)
 	faction = FACTION_STATION
 	total_positions = 1
 	spawn_positions = 1
@@ -22,9 +21,10 @@
 	paycheck = PAYCHECK_CREW
 	paycheck_department = ACCOUNT_SEC
 
+	desensitized_base = DESENSITIZED_THRESHOLD
 	liver_traits = list(TRAIT_MEDICAL_METABOLISM)
 
-	display_order = JOB_DISPLAY_ORDER_SECURITY_OFFICER
+	display_order = JOB_DISPLAY_ORDER_BRIG_PHYSICIAN
 	bounty_types = CIV_JOB_SEC
 
 	family_heirlooms = list(/obj/item/book/manual/wiki/security_space_law, /obj/item/clothing/head/beret/sec)
@@ -77,6 +77,8 @@
 	skillchips = list(/obj/item/skillchip/entrails_reader)
 
 	implants = list(/obj/item/implant/mindshield)
+
+	pda_slot = ITEM_SLOT_LPOCKET
 
 /datum/outfit/job/brig_physician/mod
 	name = "Brig Physician (MODsuit)"

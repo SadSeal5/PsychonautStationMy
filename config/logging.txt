@@ -23,6 +23,9 @@ LOG_ADMINCHAT
 ## log attack messages
 LOG_ATTACK
 
+## log blood worm actions like entering/leaving hosts
+LOG_BLOOD_WORM
+
 ## log economy actions
 LOG_ECON
 
@@ -49,6 +52,9 @@ LOG_OOC
 
 ## log LOOC channel
 LOG_LOOC
+
+## log minimap drawing
+LOG_MINIMAP_DRAWING
 
 ## log pda messages
 LOG_PDA
@@ -110,3 +116,6 @@ LOG_ZONE_SWITCH
 
 ## log e-jukebox
 LOG_JUKEBOX
+
+## log player image creation
+LOG_IMAGE

@@ -553,8 +553,8 @@ world
 				)
 
 				flatX1 = addX1
-				flatX2 = addY1
-				flatY1 = addX2
+				flatX2 = addX2
+				flatY1 = addY1
 				flatY2 = addY2
 
 			// Blend the overlay into the flattened icon
@@ -753,7 +753,7 @@ GLOBAL_LIST_EMPTY(friendly_animal_types)
 
 /// # If you already have a human and need to get its flat icon, call `get_flat_existing_human_icon()` instead.
 /// For creating consistent icons for human looking simple animals.
-/proc/get_flat_human_icon(icon_id, datum/job/job, datum/preferences/prefs, dummy_key, showDirs = GLOB.cardinals, outfit_override = null)
+/proc/get_flat_human_icon(icon_id, datum/job/job, datum/preferences/prefs, dummy_key, showDirs = GLOB.cardinals, outfit_override = null, no_anim = FALSE)
 	var/static/list/humanoid_icon_cache = list()
 	if(icon_id && humanoid_icon_cache[icon_id])
 		return humanoid_icon_cache[icon_id]
@@ -771,7 +771,7 @@ GLOBAL_LIST_EMPTY(friendly_animal_types)
 
 	var/icon/out_icon = icon('icons/effects/effects.dmi', "nothing")
 	for(var/direction in showDirs)
-		var/icon/partial = getFlatIcon(body, defdir = direction)
+		var/icon/partial = getFlatIcon(body, defdir = direction, no_anim = no_anim)
 		out_icon.Insert(partial, dir = direction)
 
 	humanoid_icon_cache[icon_id] = out_icon
@@ -1335,23 +1335,28 @@ GLOBAL_LIST_EMPTY(transformation_animation_objects)
 
 /// Strips all underlays on a different plane from an appearance.
 /// Returns the stripped appearance.
-/proc/strip_appearance_underlays(mutable_appearance/appearance)
+/proc/strip_appearance_underlays(mutable_appearance/appearance) as /mutable_appearance
 	var/base_plane = PLANE_TO_TRUE(appearance.plane)
 	for(var/mutable_appearance/underlay as anything in appearance.underlays)
+		if(isnull(underlay))
+			continue
 		if(PLANE_TO_TRUE(underlay.plane) != base_plane)
 			appearance.underlays -= underlay
 	return appearance
 
 /// Renders a ckey's preferences appearance from their savefile
-/proc/render_offline_appearance(ckey, mob/living/carbon/human/dummy/our_human)
+/proc/render_offline_appearance(ckey, mob/living/carbon/human/dummy/our_human, character_slot = null, only_appearance = TRUE, outfit_job_override = null)
 	if(!ckey || is_guest_key(ckey) || (!isnull(our_human) && !istype(our_human)))
 		return FALSE
 	var/save_path = "data/player_saves/[ckey[1]]/[ckey]/preferences.json"
 	if(!fexists(save_path))
 		return FALSE
 	var/list/tree = json_decode(rustg_file_read(save_path))	// Reading savefile
-	var/default_slot = tree["default_slot"] || 1
-	var/selected_char = tree["character[default_slot]"] || tree["character1"]
+	if(isnull(character_slot))
+		character_slot = tree["default_slot"] || 1
+	var/selected_char = tree["character[character_slot]"] || tree["character1"]
+	if(!selected_char)
+		return FALSE
 
 	var/list/job_preferences = SANITIZE_LIST(selected_char?["job_preferences"])
 
@@ -1363,6 +1368,19 @@ GLOBAL_LIST_EMPTY(transformation_animation_objects)
 			selected_job = SSjob.get_job(job)
 			highest_pref = job_preferences[job]
 
+	var/mob_name = null
+
+	for (var/preference_type in GLOB.preference_entries)
+		var/datum/preference/name/name_preference = GLOB.preference_entries[preference_type]
+		if (!istype(name_preference))
+			continue
+
+		if (isnull(name_preference.relevant_job))
+			continue
+
+		if (istype(selected_job, name_preference.relevant_job))
+			mob_name = selected_char?[name_preference.savefile_key]
+
 	if(selected_job && !ispath(selected_job::spawn_type, /mob/living/carbon/human)) // If the selected job's spawn_type isnt human (AI, cyborg etc.) we just returning mutable_appearance
 		var/mob/living/spawn_type = selected_job::spawn_type
 		var/mutable_appearance/appearance = mutable_appearance(spawn_type::icon, spawn_type::icon_state)
@@ -1372,6 +1390,12 @@ GLOBAL_LIST_EMPTY(transformation_animation_objects)
 			appearance.icon_state = resolve_ai_icon_sync(ai_core_value)
 			if(GLOB.ai_core_display_screen_icons.Find(ai_core_value))
 				appearance.icon = GLOB.ai_core_display_screen_icons[ai_core_value]
+		if(!only_appearance)
+			return list(
+				"name" = mob_name,
+				"appearance" = appearance,
+				"job" = selected_job::title
+			)
 		return appearance
 
 	var/we_created = FALSE
@@ -1381,8 +1405,6 @@ GLOBAL_LIST_EMPTY(transformation_animation_objects)
 	else
 		our_human.wipe_state() // We're wiping the dummys overlays and outfit
 		our_human.set_species(/datum/species/human) // We're setting it to human beacuse if the savefile doesnt have species entry, it doesnt use previous icon's species
-		our_human.icon_render_keys = list()
-		our_human.update_body(is_creating = TRUE) // We're recreating bodyparts etc.
 
 	for (var/datum/preference/preference as anything in get_preferences_in_priority_order()) // Apply the preferences in priority order
 		if (preference.savefile_identifier != PREFERENCE_CHARACTER)
@@ -1394,14 +1416,25 @@ GLOBAL_LIST_EMPTY(transformation_animation_objects)
 
 		preference.apply_to_human(our_human, new_value)
 
+	our_human.icon_render_keys = list()
+	our_human.update_body(is_creating = TRUE)
+
+	if(!mob_name)
+		mob_name = our_human.real_name
+
 	var/datum/outfit/equipped_outfit
 
-	if(selected_job) // Selecting and creating outfit datum
+	var/datum/job/outfit_job = selected_job
+
+	if(outfit_job_override)
+		outfit_job = SSjob.get_job(outfit_job_override)
+
+	if(outfit_job) // Selecting and creating outfit datum
 		var/datum/outfit/outfit_type
-		if(selected_job::outfit)
-			outfit_type = selected_job::outfit
-		if(selected_char?["species"] == SPECIES_PLASMAMAN && selected_job::plasmaman_outfit) // If they are plasmaman, give them plasmaman outfit
-			outfit_type = selected_job::outfit
+		if(outfit_job::outfit)
+			outfit_type = outfit_job::outfit
+		if(selected_char?["species"] == SPECIES_PLASMAMAN && outfit_job::plasmaman_outfit) // If they are plasmaman, give them plasmaman outfit
+			outfit_type = outfit_job::plasmaman_outfit
 		if(outfit_type)
 			equipped_outfit = new outfit_type()
 	else
@@ -1420,7 +1453,7 @@ GLOBAL_LIST_EMPTY(transformation_animation_objects)
 	var/list/all_quirks = SANITIZE_LIST(selected_char?["all_quirks"])
 	if(SSquirks?.initialized)
 		our_human.cleanse_quirk_datums() // We need to clean all the quirk datums every time
-		for(var/quirk_name as anything in all_quirks)
+		for(var/quirk_name in all_quirks)
 			var/datum/quirk/quirk_type = SSquirks.quirks[quirk_name]
 			if(!(initial(quirk_type.quirk_flags) & QUIRK_CHANGES_APPEARANCE))
 				continue
@@ -1432,6 +1465,13 @@ GLOBAL_LIST_EMPTY(transformation_animation_objects)
 	if(we_created)
 		qdel(our_human)
 
+	if(!only_appearance)
+		return list(
+			"name" = mob_name,
+			"appearance" = appearance,
+			"job" = selected_job::title
+		)
+
 	return appearance
 
 /**
@@ -1440,13 +1480,15 @@ GLOBAL_LIST_EMPTY(transformation_animation_objects)
  * Filters out certain overlays from the copy, depending on their planes
  * Prevents stuff like lighting from being copied to the new appearance
  */
-/proc/copy_appearance_filter_overlays(appearance_to_copy)
+/proc/copy_appearance_filter_overlays(appearance_to_copy) as /mutable_appearance
 	var/mutable_appearance/copy = new(appearance_to_copy)
 	var/static/list/plane_whitelist = list(FLOAT_PLANE, GAME_PLANE, FLOOR_PLANE)
 
 	/// Ideally we'd have knowledge what we're removing but i'd have to be done on target appearance retrieval
 	var/list/overlays_to_keep = list()
 	for(var/mutable_appearance/special_overlay as anything in copy.overlays)
+		if(isnull(special_overlay))
+			continue
 		var/mutable_appearance/real = new()
 		real.appearance = special_overlay
 		if(PLANE_TO_TRUE(real.plane) in plane_whitelist)
@@ -1455,6 +1497,8 @@ GLOBAL_LIST_EMPTY(transformation_animation_objects)
 
 	var/list/underlays_to_keep = list()
 	for(var/mutable_appearance/special_underlay as anything in copy.underlays)
+		if(isnull(special_underlay))
+			continue
 		var/mutable_appearance/real = new()
 		real.appearance = special_underlay
 		if(PLANE_TO_TRUE(real.plane) in plane_whitelist)
@@ -1462,3 +1506,100 @@ GLOBAL_LIST_EMPTY(transformation_animation_objects)
 	copy.underlays = underlays_to_keep
 
 	return copy
+
+/// Returns the (isolated) security HUD icon for the given job.
+/proc/get_job_hud_icon(datum/job/job) as /icon
+	var/static/alist/icon_cache = alist()
+	if(isnull(job))
+		return
+
+	if(!is_job(job))
+		if(ispath(job, /datum/job))
+			job = SSjob.get_job_type(job)
+		else if(istext(job))
+			job = SSjob.get_job(job)
+		if(isnull(job))
+			return null
+
+	//add it to the cache if it isn't already
+	var/job_type = job.type
+	if(!icon_cache[job_type])
+		var/icon/sechud_icon = job.get_lobby_icon()
+		sechud_icon.Crop(1, 17, 8, 24)
+		icon_cache[job_type] = sechud_icon
+
+	return icon(icon_cache[job_type])
+
+/proc/get_flat_icon_for_all_directions(atom/thing, no_anim = TRUE)
+	var/icon/output = icon('icons/effects/effects.dmi', "nothing")
+
+	for (var/direction in GLOB.cardinals)
+		var/icon/partial = getFlatIcon(thing, defdir = direction, no_anim = no_anim)
+		output.Insert(partial, dir = direction)
+
+	return output
+
+/proc/save_player_character_icon(ckey, char_index)
+	if(!ckey || is_guest_key(ckey))
+		return FALSE
+
+	var/list/character_data = render_offline_appearance(ckey, null, char_index, FALSE, JOB_ASSISTANT) || list()
+	var/character_name = character_data?["name"]
+	var/mutable_appearance/appearance = character_data?["appearance"]
+	var/job = character_data?["job"]
+	if(isnull(character_name) || isnull(appearance) || job == JOB_AI || job == JOB_CYBORG)
+		return FALSE
+
+	var/icon_path = "data/player_saves/[ckey[1]]/[ckey]/character_images/[SANITIZE_FILENAME(character_name)].png"
+
+	var/icon/flat_icon = get_flat_icon_for_all_directions(appearance)
+	fcopy(flat_icon, icon_path)
+
+/**
+ * Copies the pixel colors from the passed in icon `I` to the 2d list `grid`
+ */
+/proc/fill_grid_from_icon(list/grid, icon/I)
+	var/width = I.Width()
+	var/height = I.Height()
+	for(var/x in 1 to width)
+		for(var/y in 1 to height)
+			var/pixel = I.GetPixel(x,height+1-y)
+			if(length(pixel) == 7)
+				pixel += "ff"
+			grid[y][x] = pixel
+
+// Given a number of frames for an icon state, and the dimensions of the icon, returns the ideal dimensions for a DMI file
+/proc/calculate_optimal_icon_grid_dimensions(width, height, count)
+	var/grid_width = 1
+	var/grid_height = 1
+	while(grid_width * grid_height < count)
+		if(height*grid_height < width*grid_width)
+			grid_height++
+		else
+			grid_width++
+	return list(grid_height, grid_width)
+
+// Reorder the 2d pixel data of the passed in frames into a data string that can be passed to rustg_dmi_create_png
+/proc/reorder_pixels(icon_width, icon_height, grid_width, grid_height, list/frames)
+	var/file_width = icon_width * grid_width
+
+	// This little trick right here reduces the total iteration of repeat_string from the product of the arguments to their sum.
+	// Can't be applied to the general case without a complex partitioning algorithm,
+	// since the count could either be a large prime or have large primes as factors
+	var/linear_pixels = COLOR_DMI_MASK
+	for(var/count in list(icon_width, icon_height, grid_width, grid_height))
+		if(count == 1)
+			continue
+		linear_pixels = repeat_string(count, linear_pixels)
+
+	for(var/i in 1 to length(frames))
+		var/list/frame = frames[i]
+		var/row_index = floor((i-1)/grid_width)
+		var/column = (i-1)%grid_width
+		for(var/y in 1 to length(frame))
+			var/list/row = jointext(frame[y], "")
+			var/splice_start = (row_index*icon_height+y-1)*file_width + column*icon_width + 1
+			linear_pixels = splicetext(linear_pixels, (splice_start-1)*9+1, (splice_start+icon_width-1)*9+1, row)
+	var/zero_alpha_regex = regex(@@#(?:(?!a0a0a0)([0-9]|[a-f]){6}00)@, "gi")
+	linear_pixels = replacetext(linear_pixels, zero_alpha_regex, COLOR_DMI_MASK)
+	return linear_pixels

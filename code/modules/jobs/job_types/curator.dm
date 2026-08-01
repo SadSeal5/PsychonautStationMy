@@ -2,7 +2,6 @@
 	title = JOB_CURATOR
 	description = "Read and write books and hand them to people, stock \
 		bookshelves, report on station news."
-	department_head = list(JOB_HEAD_OF_PERSONNEL)
 	faction = FACTION_STATION
 	total_positions = 1
 	spawn_positions = 1
@@ -40,7 +39,8 @@
 		"Librarian",
 		"Journalist",
 		"Archivist",
-		"Television Presenter"
+		"Television Presenter",
+		"Remembrancer"
 	)
 
 /datum/outfit/job/curator

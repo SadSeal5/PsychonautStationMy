@@ -24,6 +24,7 @@
 		"Cyborg",
 		"Robot",
 		"Android",
+		"Servitor"
 	)
 
 /datum/job/cyborg/after_spawn(mob/living/spawned, client/player_client)
@@ -42,3 +43,6 @@
 
 /datum/job/cyborg/on_respawn(mob/new_character)
 	new_character.Robotize(TRUE)
+
+/datum/job/cyborg/get_lobby_icon()
+	return icon('icons/mob/huds/hud.dmi', "hudcyborg")

@@ -5,10 +5,11 @@
 	base_icon_state = ""
 	state = FRAME_COMPUTER_STATE_EMPTY
 	board_type = /obj/item/circuitboard/computer
+	impact_sound = SFX_BULLET_IMPACT_METAL
 
 /obj/structure/frame/computer/Initialize(mapload)
 	. = ..()
-	AddComponent(/datum/component/simple_rotation)
+	AddElement(/datum/element/simple_rotation)
 	register_context()
 
 /obj/structure/frame/computer/atom_deconstruct(disassembled = TRUE)
@@ -31,7 +32,7 @@
 	switch(state)
 		if(FRAME_COMPUTER_STATE_EMPTY)
 			if(held_item.tool_behaviour == TOOL_WRENCH)
-				context[SCREENTIP_CONTEXT_LMB] = "[anchored ? "Un" : ""]anchor"
+				context[SCREENTIP_CONTEXT_LMB] = "[anchored ? "Unan" : "An"]chor"
 				return CONTEXTUAL_SCREENTIP_SET
 			else if(anchored && istype(held_item, /obj/item/circuitboard/computer))
 				context[SCREENTIP_CONTEXT_LMB] = "Install board"
@@ -105,9 +106,6 @@
 /obj/structure/frame/computer/install_board(mob/living/user, obj/item/circuitboard/computer/board, by_hand)
 	if(state != FRAME_COMPUTER_STATE_EMPTY)
 		balloon_alert(user, "circuit already installed!")
-		return FALSE
-	if(!anchored && istype(board))
-		balloon_alert(user, "frame must be anchored!")
 		return FALSE
 	. = ..()
 	if(. && !by_hand) // Installing via RPED auto-secures it
@@ -194,8 +192,6 @@
 		if(FRAME_COMPUTER_STATE_GLASSED)
 			if(finalize_construction(user, tool))
 				return ITEM_INTERACT_SUCCESS
-
-			balloon_alert(user, "missing components!")
 			return ITEM_INTERACT_BLOCKING
 
 /obj/structure/frame/computer/crowbar_act(mob/living/user, obj/item/tool)
@@ -295,6 +291,10 @@
 	return TRUE
 
 /obj/structure/frame/computer/finalize_construction(mob/living/user, obj/item/tool)
+	if(!anchored)
+		balloon_alert(user, "frame must be anchored!")
+		return FALSE
+
 	tool.play_tool_sound(src)
 	var/obj/machinery/new_machine = new circuit.build_path(loc)
 	new_machine.balloon_alert(user, "monitor connected")

@@ -86,10 +86,10 @@
 	var/datum/job/preview_job
 	var/highest_pref = 0
 
-	for(var/job in job_preferences)
-		if(job_preferences[job] > highest_pref)
+	for(var/job, priority in job_preferences)
+		if(priority > highest_pref)
 			preview_job = SSjob.get_job(job)
-			highest_pref = job_preferences[job]
+			highest_pref = priority
 
 	return preview_job
 
@@ -100,11 +100,9 @@
 	if(preview_job)
 		// Silicons only need a very basic preview since there is no customization for them.
 		if (istype(preview_job,/datum/job/ai))
-			var/display_icon = 'icons/mob/silicon/ai.dmi'
 			var/selected_display = read_preference(/datum/preference/choiced/ai_core_display)
-			if(GLOB.ai_core_display_screen_icons.Find(selected_display))
-				display_icon = GLOB.ai_core_display_screen_icons[selected_display]
-			return image(display_icon, icon_state = resolve_ai_icon(selected_display), dir = SOUTH)
+			var/icon = GLOB.ai_core_display_screen_icons[selected_display] || 'icons/mob/silicon/ai.dmi'
+			return image(icon, icon_state = resolve_ai_icon(selected_display), dir = SOUTH)
 		if (istype(preview_job,/datum/job/cyborg))
 			return image('icons/mob/silicon/robots.dmi', icon_state = "robot", dir = SOUTH)
 		if (istype(preview_job,/datum/job/animal))
@@ -128,10 +126,12 @@
 	if(SSquirks?.initialized)
 		// And yes we need to clean all the quirk datums every time
 		mannequin.cleanse_quirk_datums()
-		for(var/quirk_name as anything in all_quirks)
+		for(var/quirk_name in all_quirks)
 			var/datum/quirk/quirk_type = SSquirks.quirks[quirk_name]
 			if(!(initial(quirk_type.quirk_flags) & QUIRK_CHANGES_APPEARANCE))
 				continue
 			mannequin.add_quirk(quirk_type, parent, announce = FALSE)
 
+	// Height is applied universally once to save on filters
+	mannequin.apply_height(mannequin, ENTIRE_BODY)
 	return mannequin.appearance

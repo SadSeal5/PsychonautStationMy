@@ -99,6 +99,7 @@
 #define LOG_CATEGORY_CONFIG "config"
 #define LOG_CATEGORY_DYNAMIC "dynamic"
 #define LOG_CATEGORY_ECONOMY "economy"
+#define LOG_CATEGORY_FISHING "fishing"
 #define LOG_CATEGORY_FILTER "filter"
 #define LOG_CATEGORY_MANIFEST "manifest"
 #define LOG_CATEGORY_MECHA "mecha"
@@ -110,6 +111,7 @@
 #define LOG_CATEGORY_SILO "silo"
 #define LOG_CATEGORY_SIGNAL "signal"
 #define LOG_CATEGORY_SPEECH_INDICATOR "speech-indiciator"
+#define LOG_CATEGORY_STORYTELLER "storyteller"
 // Leave the underscore, it's there for backwards compatibility reasons
 #define LOG_CATEGORY_SUSPICIOUS_LOGIN "suspicious_logins"
 #define LOG_CATEGORY_TARGET_ZONE_SWITCH "target-zone-switch"
@@ -118,6 +120,7 @@
 #define LOG_CATEGORY_TRANSPORT "transport"
 #define LOG_CATEGORY_VIRUS "virus"
 #define LOG_CATEGORY_CAVE_GENERATION "cave-generation"
+#define LOG_CATEGORY_IMAGE "image"
 
 // Admin categories
 #define LOG_CATEGORY_ADMIN "admin"
@@ -144,7 +147,9 @@
 // Game categories
 #define LOG_CATEGORY_GAME "game"
 #define LOG_CATEGORY_GAME_ACCESS "game-access"
+#define LOG_CATEGORY_GAME_BLOOD_WORM "game-blood-worm"
 #define LOG_CATEGORY_GAME_EMOTE "game-emote"
+#define LOG_CATEGORY_GAME_MINIMAP_DRAWING "game-minimap-drawing"
 #define LOG_CATEGORY_GAME_INTERNET_REQUEST "game-internet-request"
 #define LOG_CATEGORY_GAME_JUKEBOX "game-jukebox"
 #define LOG_CATEGORY_GAME_OOC "game-ooc"

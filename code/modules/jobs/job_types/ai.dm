@@ -24,7 +24,8 @@
 	alt_titles = list(
 		"AI",
 		"Station Intelligence",
-		"Automated Overseer"
+		"Automated Overseer",
+		"Machine Spirit"
 	)
 
 /datum/job/ai/after_spawn(mob/living/spawned, client/player_client)
@@ -93,3 +94,6 @@
 
 /datum/job/ai/on_respawn(mob/new_character)
 	new_character.AIize()
+
+/datum/job/ai/get_lobby_icon()
+	return icon('icons/mob/huds/hud.dmi', "hudai")

@@ -1,7 +1,12 @@
 /datum/map_template/shuttle/cargo
 	port_id = "cargo"
+	prefix = "_maps/shuttles/cargo/"
 	name = "Base Shuttle Template (Cargo)"
 	who_can_purchase = null
+
+/datum/map_template/shuttle/cargo/mini
+	suffix ="mini"
+	name = "supply shuttle (Mini)"
 
 /datum/map_template/shuttle/cargo/kilo
 	suffix = "kilo"
@@ -38,11 +43,3 @@
 /datum/map_template/shuttle/cargo/nebula
 	suffix = "nebula"
 	name = "supply shuttle (Nebula)"
-
-/datum/map_template/shuttle/cargo/theia
-	suffix = "theia"
-	name = "supply shuttle (Theia)"
-
-/datum/map_template/shuttle/cargo/helio
-	suffix = "helio"
-	name = "supply shuttle (Helio)"

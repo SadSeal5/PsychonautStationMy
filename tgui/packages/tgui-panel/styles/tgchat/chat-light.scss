@@ -267,6 +267,16 @@ a:visited {
   background: yellow;
 }
 
+.Chat__highlight {
+  color: oklch(from var(--highlight-color) min(l, 0.45) c h);
+  background: oklch(from var(--highlight-color) min(l, 0.45) c h / 25%);
+}
+
+.ChatMessage--highlighted {
+  border-left-color: oklch(from var(--highlight-color) min(l, 0.45) c h);
+  background: oklch(from var(--highlight-color) min(l, 0.45) c h / 14%);
+}
+
 h1,
 h2,
 h3,
@@ -590,7 +600,7 @@ h2.alert {
 }
 
 .green {
-  color: hsl(132.9, 100%, 50.6%);
+  color: hsl(132.8, 93.4%, 29.6%);
 }
 
 .grey {
@@ -927,6 +937,13 @@ h2.alert {
   font-size: 125%;
 }
 
+.policy {
+  text-align: center;
+  font-size: 125%;
+  color: hsl(276, 70%, 52%);
+  font-style: italic;
+}
+
 .abductor {
   color: hsl(300, 100%, 25.1%);
   font-style: italic;
@@ -944,7 +961,9 @@ h2.alert {
 }
 
 .drone {
-  color: hsl(60, 0.8%, 51.4%);
+  color: hsl(60 100% 50%);
+  background-color: hsl(287 62% 36%);
+  font-style: italic;
 }
 
 .monkey {
@@ -960,12 +979,13 @@ h2.alert {
 }
 
 .upside_down {
-  display: inline;
-  -moz-transform: scale(-1, -1);
-  -webkit-transform: scale(-1, -1);
-  -o-transform: scale(-1, -1);
-  -ms-transform: scale(-1, -1);
-  transform: scale(-1, -1);
+  transform: rotate(180deg);
+  display: inline-block;
+}
+
+.cyan {
+  color: #95afac;
+  text-shadow: 0 0 6px #95afac;
 }
 
 .connectionClosed,
@@ -1263,5 +1283,80 @@ $border-width-px: $border-width * 1px;
       $lightness: 5%,
       $space: hsl
     );
+  }
+}
+
+$job-colors: (
+  // Command
+  'rawcommand': #99afe9,
+  'bridgeassistant': #99afe9,
+  'captain': #e6c45a,
+  'actingcaptain': #e6c45a,
+  // Service
+  'rawservice': #b9dfb2,
+  'assistant': #d3d3d3,
+  'headofpersonnel': #5f78ea,
+  'bartender': #bdd9b8,
+  'botanist': #a5e29a,
+  'cook': #b4f2c6,
+  'chef': #b4f2c6,
+  'chaplain': #97bea0,
+  'curator': #9fd3ab,
+  'janitor': #9ae0d6,
+  'lawyer': #c98b8b,
+  'mime': #c6dcc8,
+  'clown': #ff95dd,
+  // Cargo
+  'rawcargo': #d8bc8a,
+  'quartermaster': #c79c52,
+  'cargotechnician': #d3a372,
+  'shaftminer': #ce957e,
+  'bitrunner': #c99d72,
+  // Engineering
+  'rawengineering': #e6c98f,
+  'chiefengineer': #cfbb72,
+  'stationengineer': #e3b86a,
+  'atmospherictechnician': #d6a06f,
+  'worker': #e6c98f,
+  // Medical
+  'rawmedical': #99ccda,
+  'chiefmedicalofficer': #41defa,
+  'medicaldoctor': #6cb1c5,
+  'paramedic': #8fbeb4,
+  'virologist': #5ac5b0,
+  'chemist': #82bdce,
+  'psychiatrist': #88bac9,
+  'coroner': #88bac6,
+  // R&D
+  'rawscience': #e0c2ea,
+  'researchdirector': #974ea9,
+  'scientist': #cd85d2,
+  'roboticist': #b281c6,
+  'geneticist': #8fc4c6,
+  // Security
+  'rawsecurity': #e2baba,
+  'headofsecurity': #d12a44,
+  'warden': #dd3d4a,
+  'securityofficer': #e8b0b0,
+  'detective': #d39a9a,
+  'brigphysician': #b77a92,
+  'veteranadvisor': #d13a45,
+  // CentCom
+  'rawcentcom': #8fd88a,
+  'centcom': #4fc13f,
+  'ert': #3fa7ff,
+  // MISC - job
+  'vip': #ead77a,
+  'king': #ead77a,
+  'prisoner': #d99b6f,
+  'syndicate': #b17070,
+  'notcentcom': #9a99f0,
+  'unassigned': #e9ded4,
+  'unknown': #d3cfca
+);
+
+@each $job-name, $job-color in $job-colors {
+  .job__#{$job-name} {
+    color: $job-color;
   }
 }

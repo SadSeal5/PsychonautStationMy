@@ -18,11 +18,9 @@
 
 /datum/uplink_item/stealthy_tools/ai_detector
 	name = "Artificial Intelligence Detector"
-	desc = "A functional multitool that can decrypt upload keys when used on upload computers, \
-			and also turns red when it detects an artificial intelligence watching it, and can be \
-			activated to display their exact viewing location. Knowing when \
-			an artificial intelligence is watching you is useful for knowing when to maintain cover, and finding nearby \
-			blind spots can help you identify escape routes."
+	desc = "A functional multitool that turns red when it detects an artificial intelligence watching it, and can be \
+			activated to get an rough estimate of the AI's presence. Knowing when \
+			an artificial intelligence is watching you is useful for knowing when to maintain cover."
 	item = /obj/item/multitool/ai_detect
 	purchasable_from = ~(UPLINK_NUKE_OPS | UPLINK_CLOWN_OPS)
 	cost = 1
@@ -110,6 +108,18 @@
 	desc = "A box that contains the forensics spoofer (and instructions) which can scan and replicate fingerprints and fibers \
 			and apply them to a target object. Helpful for framing crew. Recommend buying soap with your purchase."
 	item = /obj/item/storage/box/syndie_kit/forensics_spoofer
+	cost = 5
+
+/datum/uplink_item/stealthy_tools/mes_device
+	name = "MI13 M-E-S Device"
+	desc = "A small device that can be placed on machines to set traps for your targets. By placing the device into the machines, you can set trap for your targets."
+	item = /obj/item/mes_device
+	cost = 1
+
+/datum/uplink_item/stealthy_tools/mes_device_kit
+	name = "MI13 M-E-S Device Kit"
+	desc = "A box that contains MI13 Sabotage Devices. By placing the devices included in the box into the machines, you can set traps for your targets."
+	item = /obj/item/storage/box/syndie_kit/mes_device_kit
 	cost = 5
 
 /datum/uplink_item/stealthy_tools/telecomm_blackout

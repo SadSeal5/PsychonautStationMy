@@ -103,14 +103,14 @@
 
 ///Handles the adverse effects of water on slimes
 /mob/living/basic/slime/proc/apply_water()
-	adjustBruteLoss(rand(15,20))
+	adjust_brute_loss(rand(15,20))
 	discipline_slime()
 
 ///Stops the slime from feeding, and might remove rabidity and targets
 /mob/living/basic/slime/proc/discipline_slime()
 	stop_feeding(silent = TRUE)
 	if(life_stage == SLIME_LIFE_STAGE_BABY && prob(80))
-		ai_controller?.clear_blackboard_key(BB_BASIC_MOB_CURRENT_TARGET)
+		ai_controller?.clear_blackboard_key(BB_CURRENT_TARGET)
 		ai_controller?.clear_blackboard_key(BB_CURRENT_HUNTING_TARGET)
 
 	if(prob(10))

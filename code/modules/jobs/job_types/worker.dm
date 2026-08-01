@@ -1,7 +1,6 @@
 /datum/job/worker
 	title = JOB_WORKER
 	description = "Amelelik yap, murettebatin istedigi yapi islerini yap, adiyaman tutun sarma ic, muhendislere racon kes."
-	department_head = list(JOB_CHIEF_ENGINEER)
 	faction = FACTION_STATION
 	total_positions = 3
 	spawn_positions = 3
@@ -19,7 +18,7 @@
 
 	liver_traits = list(TRAIT_ENGINEER_METABOLISM)
 
-	display_order = JOB_DISPLAY_ORDER_STATION_ENGINEER
+	display_order = JOB_DISPLAY_ORDER_WORKER
 	bounty_types = CIV_JOB_ENG
 	departments_list = list(
 		/datum/job_department/engineering,
@@ -40,7 +39,8 @@
 		"Worker",
 		"Amele",
 		"Workman",
-		"Prole"
+		"Prole",
+		"Deckhand"
 	)
 
 /datum/outfit/job/worker

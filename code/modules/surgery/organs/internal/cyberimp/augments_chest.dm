@@ -1,6 +1,7 @@
 /obj/item/organ/cyberimp/chest
 	name = "cybernetic torso implant"
 	desc = "Implants for the organs in your torso."
+	abstract_type = /obj/item/organ/cyberimp/chest
 	zone = BODY_ZONE_CHEST
 
 /obj/item/organ/cyberimp/chest/nutriment
@@ -8,18 +9,24 @@
 	desc = "This implant will synthesize and pump into your bloodstream a small amount of nutriment when you are starving."
 	icon_state = "nutriment_implant"
 	aug_overlay = "nutripump"
+	custom_materials = list(/datum/material/iron = HALF_SHEET_MATERIAL_AMOUNT, /datum/material/glass = HALF_SHEET_MATERIAL_AMOUNT, /datum/material/gold = HALF_SHEET_MATERIAL_AMOUNT)
 	var/hunger_threshold = NUTRITION_LEVEL_STARVING
 	var/synthesizing = 0
 	var/poison_amount = 5
 	slot = ORGAN_SLOT_STOMACH_AID
 
-/obj/item/organ/cyberimp/chest/nutriment/on_life(seconds_per_tick, times_fired)
+/obj/item/organ/cyberimp/chest/nutriment/on_life(seconds_per_tick)
+	. = ..()
+
 	if(synthesizing)
 		return
 
 	if(owner.nutrition <= hunger_threshold)
 		synthesizing = TRUE
-		to_chat(owner, span_notice("You feel less hungry..."))
+		var/feed_text = "You feel less hungry..."
+		if(owner.nutrition >= NUTRITION_LEVEL_FED)
+			feed_text = "You feel very full..."
+		to_chat(owner, span_notice(feed_text))
 		owner.adjust_nutrition(25 * seconds_per_tick)
 		addtimer(CALLBACK(src, PROC_REF(synth_cool)), 5 SECONDS)
 
@@ -41,6 +48,20 @@
 	aug_overlay = "nutripump_adv"
 	hunger_threshold = NUTRITION_LEVEL_HUNGRY
 	poison_amount = 10
+	custom_materials = list(/datum/material/uranium = SHEET_MATERIAL_AMOUNT * 0.75, /datum/material/iron = SHEET_MATERIAL_AMOUNT * 0.6, /datum/material/glass = SHEET_MATERIAL_AMOUNT * 0.6, /datum/material/gold = HALF_SHEET_MATERIAL_AMOUNT)
+
+/obj/item/organ/cyberimp/chest/nutriment/black_market
+	name = "nutriment pump implant PLUS PLUS PLUS"
+	desc = "This implant will synthesize and pump into your bloodstream a large amount of nutriment basically whenever."
+	icon_state = "bm_nutriment_implant"
+	aug_overlay = "nutripump_bm"
+	hunger_threshold = NUTRITION_LEVEL_FAT
+	poison_amount = 15
+
+/obj/item/organ/cyberimp/chest/nutriment/black_market/on_life(seconds_per_tick)
+	. = ..()
+	if(owner.nutrition >= NUTRITION_LEVEL_FAT && owner.overeatduration <= OVEREAT_TIME_LIMIT)
+		owner.overeatduration = min(owner.overeatduration + 40 SECONDS, OVEREAT_TIME_LIMIT)
 
 /obj/item/organ/cyberimp/chest/reviver
 	name = "reviver implant"
@@ -49,17 +70,20 @@
 	aug_overlay = "reviver"
 	emissive_overlay = TRUE
 	slot = ORGAN_SLOT_HEART_AID
+	custom_materials = list(/datum/material/iron = SHEET_MATERIAL_AMOUNT * 0.8, /datum/material/glass = SHEET_MATERIAL_AMOUNT * 0.8, /datum/material/uranium = HALF_SHEET_MATERIAL_AMOUNT, /datum/material/gold = SMALL_MATERIAL_AMOUNT * 3)
 	var/revive_cost = 0
 	var/reviving = FALSE
 	COOLDOWN_DECLARE(reviver_cooldown)
 	COOLDOWN_DECLARE(defib_cooldown)
 
-/obj/item/organ/cyberimp/chest/reviver/on_death(seconds_per_tick, times_fired)
+/obj/item/organ/cyberimp/chest/reviver/on_death(seconds_per_tick)
 	if(isnull(owner)) // owner can be null, on_death() gets called by /obj/item/organ/process() for decay
 		return
 	try_heal() // Allows implant to work even on dead people
 
-/obj/item/organ/cyberimp/chest/reviver/on_life(seconds_per_tick, times_fired)
+/obj/item/organ/cyberimp/chest/reviver/on_life(seconds_per_tick)
+	. = ..()
+
 	try_heal()
 
 /obj/item/organ/cyberimp/chest/reviver/proc/try_heal()
@@ -89,19 +113,19 @@
 	/// boolean that stands for if PHYSICAL damage being patched
 	var/body_damage_patched = FALSE
 	var/need_mob_update = FALSE
-	if(owner.getOxyLoss())
-		need_mob_update += owner.adjustOxyLoss(-5, updating_health = FALSE)
+	if(owner.get_oxy_loss())
+		need_mob_update += owner.adjust_oxy_loss(-5, updating_health = FALSE)
 		revive_cost += 5
-	if(owner.getBruteLoss())
-		need_mob_update += owner.adjustBruteLoss(-2, updating_health = FALSE)
+	if(owner.get_brute_loss())
+		need_mob_update += owner.adjust_brute_loss(-2, updating_health = FALSE)
 		revive_cost += 40
 		body_damage_patched = TRUE
-	if(owner.getFireLoss())
-		need_mob_update += owner.adjustFireLoss(-2, updating_health = FALSE)
+	if(owner.get_fire_loss())
+		need_mob_update += owner.adjust_fire_loss(-2, updating_health = FALSE)
 		revive_cost += 40
 		body_damage_patched = TRUE
-	if(owner.getToxLoss())
-		need_mob_update += owner.adjustToxLoss(-1, updating_health = FALSE)
+	if(owner.get_tox_loss())
+		need_mob_update += owner.adjust_tox_loss(-1, updating_health = FALSE)
 		revive_cost += 40
 	if(need_mob_update)
 		owner.updatehealth()
@@ -167,6 +191,7 @@
 	emissive_overlay = TRUE
 	actions_types = list(/datum/action/item_action/organ_action/toggle)
 	w_class = WEIGHT_CLASS_NORMAL
+	custom_materials = list(/datum/material/iron = SHEET_MATERIAL_AMOUNT * 2, /datum/material/glass = SHEET_MATERIAL_AMOUNT, /datum/material/silver = HALF_SHEET_MATERIAL_AMOUNT, /datum/material/diamond = HALF_SHEET_MATERIAL_AMOUNT)
 	var/on = FALSE
 
 /obj/item/organ/cyberimp/chest/thrusters/Initialize(mapload)
@@ -175,7 +200,6 @@
 		/datum/component/jetpack, \
 		FALSE, \
 		1.5 NEWTONS, \
-		1.2 NEWTONS, \
 		COMSIG_THRUSTER_ACTIVATED, \
 		COMSIG_THRUSTER_DEACTIVATED, \
 		THRUSTER_ACTIVATION_FAILED, \
@@ -279,6 +303,7 @@
 		Contains a slot which can be upgraded with a gravity anomaly core, improving its performance."
 	icon_state = "herculean_implant"
 	slot = ORGAN_SLOT_SPINE
+	custom_materials = list(/datum/material/iron = HALF_SHEET_MATERIAL_AMOUNT, /datum/material/diamond = HALF_SHEET_MATERIAL_AMOUNT, /datum/material/titanium = SMALL_MATERIAL_AMOUNT * 3, /datum/material/gold = SMALL_MATERIAL_AMOUNT * 3)
 	/// How much faster does the spinal implant improve our lifting speed, workout ability, reducing falling damage and improving climbing and standing speed
 	var/athletics_boost_multiplier = 0.8
 	/// How much additional throwing speed does our spinal implant grant us.
@@ -296,7 +321,7 @@
 	. = ..()
 	if(!owner || . & EMP_PROTECT_SELF)
 		return
-	to_chat(owner, span_warning("You feel sheering pain as your body is crushed like a soda can!"))
+	to_chat(owner, span_warning("You feel shearing pain as your body is crushed like a soda can!"))
 	owner.apply_damage(20/severity, BRUTE, def_zone = BODY_ZONE_CHEST)
 
 /obj/item/organ/cyberimp/chest/spine/on_mob_insert(mob/living/carbon/organ_owner, special, movement_flags)
@@ -334,6 +359,7 @@
 	added_throw_speed = /obj/item/organ/cyberimp/chest/spine/atlas::added_throw_speed
 	strength_bonus = /obj/item/organ/cyberimp/chest/spine/atlas::strength_bonus
 	core_applied = TRUE
+	icon_state = "herculean_implant_core"
 	update_appearance()
 	qdel(tool)
 	return ITEM_INTERACT_SUCCESS
@@ -350,3 +376,235 @@
 	added_throw_range = 8
 	strength_bonus = 8
 	core_applied = TRUE
+
+/datum/action/item_action/organ_action/sandy
+	name = "Sandevistan Activation"
+
+/obj/item/organ/cyberimp/chest/sandevistan
+	name = "Militech Apogee Sandevistan"
+	desc = "This model of Sandevistan doesn't exist, at least officially. Off the record, there's gossip of secret Militech Lunar labs producing covert cyberware. It was never meant to be mass produced, but an army would only really need a few pieces like this one to dominate their enemy."
+	icon = 'icons/psychonaut/obj/medical/organs/organs.dmi'
+	icon_state = "sandy"
+
+	aug_icon = 'icons/psychonaut/mob/human/species/misc/bodypart_overlay_augmentations.dmi'
+	aug_overlay = "sandy"
+	slot = ORGAN_SLOT_SPINE
+	organ_flags = parent_type::organ_flags | ORGAN_HIDDEN
+	actions_types = list(/datum/action/item_action/organ_action/sandy)
+
+	var/active = FALSE
+
+	var/exit_zone_timer
+
+	var/active_for = 0
+	var/cooldown_multiplier = 2 // Cooldown = active_for * cooldown_multiplier
+
+	var/emp_vulnerability = 30 //Chance of permanent effects if emp-ed.
+	var/emp_speed_multiplier = 1
+
+	COOLDOWN_DECLARE(in_the_zone)
+
+/obj/item/organ/cyberimp/chest/sandevistan/on_mob_remove(mob/living/carbon/organ_owner, special = FALSE, movement_flags)
+	. = ..()
+	clear_effects(organ_owner, TRUE)
+
+/obj/item/organ/cyberimp/chest/sandevistan/ui_action_click()
+
+	if((organ_flags & ORGAN_FAILING))
+		to_chat(owner, span_warning("The implant doesn't respond. It seems to be broken..."))
+		return
+	if(!active)
+		if(!COOLDOWN_FINISHED(src, in_the_zone))
+			to_chat(owner, span_warning("The implant doesn't respond. It seems to be recharging..."))
+			return
+		active_for = 0
+		active = TRUE
+		owner.AddComponent(/datum/component/after_image, 16, 0.5, TRUE)
+		owner.AddComponent(/datum/component/slowing_field, 0.1, 5, 1, 3)
+		owner.add_movespeed_modifier(/datum/movespeed_modifier/status_effect/sandevistan)
+		owner.add_actionspeed_modifier(/datum/actionspeed_modifier/status_effect/sandevistan)
+
+		exit_zone_timer = addtimer(CALLBACK(src, PROC_REF(exit_the_zone)), 15 SECONDS, TIMER_STOPPABLE)
+	else
+		exit_the_zone()
+
+/obj/item/organ/cyberimp/chest/sandevistan/on_life(seconds_per_tick)
+	. = ..()
+	if(!active)
+		return
+	active_for += seconds_per_tick
+
+/obj/item/organ/cyberimp/chest/sandevistan/proc/exit_the_zone()
+	if(!active)
+		return
+
+	deltimer(exit_zone_timer)
+	exit_zone_timer = null
+
+	active = FALSE
+	COOLDOWN_START(src, in_the_zone, (active_for * cooldown_multiplier) SECONDS)
+
+	clear_effects(owner)
+
+	if(organ_flags & ORGAN_EMP)
+		owner.add_or_update_variable_movespeed_modifier(/datum/movespeed_modifier/status_effect/slowing_field, TRUE, emp_speed_multiplier)
+		owner.add_or_update_variable_actionspeed_modifier(/datum/actionspeed_modifier/status_effect/slowing_field, TRUE, emp_speed_multiplier)
+		addtimer(CALLBACK(src, PROC_REF(end_emp_effect), owner), active_for SECONDS)
+
+/obj/item/organ/cyberimp/chest/sandevistan/proc/clear_effects(mob/living/organ_owner, force = FALSE)
+	if(isnull(organ_owner))
+		return FALSE
+	var/datum/component/after_image = organ_owner.GetComponent(/datum/component/after_image)
+	qdel(after_image)
+	var/datum/component/slowing_field = organ_owner.GetComponent(/datum/component/slowing_field)
+	qdel(slowing_field)
+
+	organ_owner.remove_movespeed_modifier(/datum/movespeed_modifier/status_effect/sandevistan)
+	organ_owner.remove_actionspeed_modifier(/datum/actionspeed_modifier/status_effect/sandevistan)
+	if(force)
+		end_emp_effect(organ_owner)
+
+/obj/item/organ/cyberimp/chest/sandevistan/proc/end_emp_effect(mob/living/organ_owner)
+	organ_owner.remove_movespeed_modifier(/datum/movespeed_modifier/status_effect/slowing_field)
+	organ_owner.remove_actionspeed_modifier(/datum/actionspeed_modifier/status_effect/slowing_field)
+
+/obj/item/organ/cyberimp/chest/sandevistan/emp_act(severity)
+	. = ..()
+	if(. & EMP_PROTECT_SELF)
+		return
+	if(prob(emp_vulnerability/severity))
+		organ_flags |= ORGAN_EMP
+
+/obj/item/organ/cyberimp/chest/sandevistan/hasty
+	name = "hasty sandevistan"
+	desc = "The branding has been scratched off of these and it looks hastily put together."
+	organ_flags = parent_type::organ_flags & ~ORGAN_HIDDEN
+	cooldown_multiplier = 3
+	emp_vulnerability = 50
+	emp_speed_multiplier = 1.25
+
+/obj/item/organ/cyberimp/chest/sandevistan/hasty/ui_action_click(mob/user, actiontype)
+	if(prob(45))
+		if(iscarbon(user))
+			var/mob/living/carbon/carbon = user
+			carbon.adjust_organ_loss(ORGAN_SLOT_BRAIN, 10)
+			to_chat(user, span_warning("You are overloaded with information and suffer some backlash."))
+	. = ..()
+
+/obj/item/organ/cyberimp/chest/sandevistan/hasty/exit_the_zone(mob/living/exiter)
+	. = ..()
+	if(prob(45))
+		exiter.adjust_brute_loss(10)
+		to_chat(exiter, span_warning("Your body was not able to handle the strain of [src] causing you to experience some minor bruising."))
+
+/obj/item/organ/cyberimp/chest/chemvat
+	name = "R.A.G.E. chemical system"
+	desc = "Extremely dangerous system that fills the user with a mix of potent drugs."
+	icon = 'icons/psychonaut/obj/clothing/back.dmi'
+
+	icon_state = "chemvat_back"
+	organ_flags = parent_type::organ_flags | ORGAN_HIDDEN
+	slot = ORGAN_SLOT_SPINE
+
+	var/obj/item/clothing/mask/chemvat/forced
+	var/obj/item/chemvat_tank/forced_tank
+
+	var/max_ticks_cooldown = 20 SECONDS
+	var/current_ticks_cooldown = 0
+
+	var/emp_vulnerability = 40
+
+	var/list/reagent_list = list(
+		/datum/reagent/determination = 2,
+		/datum/reagent/medicine/c2/penthrite = 3 ,
+		/datum/reagent/drug/bath_salts = 3 ,
+		/datum/reagent/medicine/omnizine = 3,
+		/datum/reagent/medicine/brain_healer = 5,
+	)
+
+	var/mutable_appearance/overlay
+
+/obj/item/organ/cyberimp/chest/chemvat/on_mob_insert(mob/living/carbon/receiver, special = FALSE, movement_flags)
+	. = ..()
+	var/mob/living/carbon/human/human = receiver
+	if(!istype(human))
+		return
+
+	forced = new
+	forced_tank = new
+
+	if(human.wear_mask && !istype(human.wear_mask,/obj/item/clothing/mask/chemvat))
+		human.dropItemToGround(human.wear_mask, TRUE)
+		human.equip_to_slot(forced, ITEM_SLOT_MASK)
+	if(!human.wear_mask)
+		human.equip_to_slot(forced, ITEM_SLOT_MASK)
+
+	if(human.back && !istype(human.back,/obj/item/chemvat_tank))
+		human.dropItemToGround(human.back, TRUE)
+		human.equip_to_slot(forced_tank, ITEM_SLOT_BACK)
+	if(!human.back)
+		human.equip_to_slot(forced_tank, ITEM_SLOT_BACK)
+
+/obj/item/organ/cyberimp/chest/chemvat/on_mob_remove(mob/living/carbon/organ_owner, special = FALSE, movement_flags)
+	. = ..()
+	var/mob/living/carbon/human/human = organ_owner
+	if(!istype(human))
+		return
+
+	human.dropItemToGround(human.wear_mask, TRUE)
+	human.dropItemToGround(human.back, TRUE)
+	QDEL_NULL(forced)
+	QDEL_NULL(forced_tank)
+
+
+/obj/item/organ/cyberimp/chest/chemvat/on_life()
+	. = ..()
+	//Cost of refilling is a little bit of nutrition, some blood and getting jittery
+	if(owner.nutrition > NUTRITION_LEVEL_STARVING && owner.blood_volume > BLOOD_VOLUME_SURVIVE && current_ticks_cooldown > 0)
+
+		owner.nutrition -= 5
+		owner.blood_volume--
+		owner.adjust_jitter(1)
+		owner.adjust_dizzy(1)
+
+		current_ticks_cooldown -= SSmobs.wait
+
+		return
+
+	if(current_ticks_cooldown <= 0)
+		current_ticks_cooldown = max_ticks_cooldown
+		on_effect()
+
+/obj/item/organ/cyberimp/chest/chemvat/proc/on_effect()
+	var/obj/effect/temp_visual/chempunk/punk = new /obj/effect/temp_visual/chempunk(get_turf(owner))
+	punk.color = "#77BD5D"
+	owner.reagents.add_reagent_list(reagent_list)
+
+	overlay = mutable_appearance('icons/effects/effects.dmi', "biogas", ABOVE_MOB_LAYER)
+	overlay.color = "#77BD5D"
+
+	RegisterSignal(owner,COMSIG_ATOM_UPDATE_OVERLAYS, PROC_REF(update_owner_overlay))
+
+	addtimer(CALLBACK(src, PROC_REF(remove_overlay)),max_ticks_cooldown/2)
+
+	to_chat(owner,"<span class = 'notice'> You feel a sharp pain as the cocktail of chemicals is injected into your bloodstream!</span>")
+	return
+
+/obj/item/organ/cyberimp/chest/chemvat/proc/update_owner_overlay(atom/source, list/overlays)
+	SIGNAL_HANDLER
+
+	if(overlay)
+		overlays += overlay
+
+/obj/item/organ/cyberimp/chest/chemvat/proc/remove_overlay()
+	QDEL_NULL(overlay)
+
+	UnregisterSignal(owner,COMSIG_ATOM_UPDATE_OVERLAYS)
+
+/obj/item/organ/cyberimp/chest/chemvat/emp_act(severity)
+	. = ..()
+	if(. & EMP_PROTECT_SELF)
+		return
+	if(prob(emp_vulnerability/severity) && !(organ_flags & ORGAN_EMP))
+		organ_flags |= ORGAN_EMP
+		reagent_list += list(/datum/reagent/toxin/histamine = 10, /datum/reagent/toxin/mutetoxin = 5)

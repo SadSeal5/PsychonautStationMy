@@ -47,7 +47,6 @@
 		SSshuttle.emergency_last_call_loc = signal_origin
 	else
 		SSshuttle.emergency_last_call_loc = null
-
 	priority_announce(
 		text = "Acil durum mekiği çağrıldı. [red_alert ? "Kırmızı Alarm durumu onaylandı: Öncelikli mekik gönderiliyor. " : "" ][(timeLeft(60 SECONDS))] dakika içinde ulaşacaktır.[reason][SSshuttle.emergency_last_call_loc ? "\n\nÇağrı sinyali izlenmektedir. Sonuçları herhangi bir iletişim konsolunda görüntülenebilir." : "" ][SSshuttle.admin_emergency_no_recall ? "\n\nUyarı: Mekik geri çağırma alt prosedürleri devre dışı; Geri çağırma mümkün değil." : ""]",
 		title = "Acil Durum Mekiği Gönderildi",
@@ -56,19 +55,20 @@
 		color_override = "orange",
 		)
 
-/obj/docking_port/mobile/emergency/cancel(area/signalOrigin)
+/// This proc will assume you have done all of the necessary checks to see if the shuttle can be recalled, it will always recall when invoked.
+/// signal_origin is an optional parameter that will log where the recall signal was sent from
+/obj/docking_port/mobile/emergency/cancel(area/signal_origin = null)
 	if(mode != SHUTTLE_CALL)
-		return
-	if(SSshuttle.emergency_no_recall)
 		return
 
 	invertTimer()
 	mode = SHUTTLE_RECALL
 
 	if(prob(70))
-		SSshuttle.emergency_last_call_loc = signalOrigin
+		SSshuttle.emergency_last_call_loc = signal_origin
 	else
 		SSshuttle.emergency_last_call_loc = null
+
 	priority_announce(
 		text = "Acil durum mekiği geri çağrıldı.[SSshuttle.emergency_last_call_loc ? " Geri çağırma sinyali izlenmektedir. Sonuçlar herhangi bir iletişim konsolunda görüntülenebilir." : "" ]",
 		title = "Acil Durum Mekiği Geri Çağrıldı",
@@ -173,7 +173,8 @@
 				)
 				ShuttleDBStuff()
 				addtimer(CALLBACK(src, PROC_REF(announce_shuttle_events)), 20 SECONDS)
-
+				if(CONFIG_GET(flag/enable_storyteller) && CONFIG_GET(flag/auto_vote_storyteller) && isnull(SSstoryteller.next_storyteller))
+					INVOKE_ASYNC(SSvote, TYPE_PROC_REF(/datum/controller/subsystem/vote, initiate_vote), /datum/vote/storyteller_vote, vote_initiator_name = "Storyteller Selection", forced = TRUE)
 
 		if(SHUTTLE_DOCKED)
 			if(time_left <= ENGINE_START_TIME)

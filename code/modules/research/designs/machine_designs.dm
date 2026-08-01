@@ -901,16 +901,6 @@
 	)
 	departmental_flags = DEPARTMENT_BITFLAG_SERVICE
 
-/datum/design/board/donksofttoyvendor
-	name = "Donksoft Toy Vendor Board"
-	desc = "The circuit board for a Donksoft Toy Vendor."
-	id = "donksofttoyvendor"
-	build_path = /obj/item/circuitboard/machine/vending/donksofttoyvendor
-	category = list(
-		RND_CATEGORY_MACHINE + RND_SUBCATEGORY_MACHINE_SERVICE
-	)
-	departmental_flags = DEPARTMENT_BITFLAG_SERVICE
-
 /datum/design/board/cell_charger
 	name = "Cell Charger Board"
 	desc = "The circuit board for a cell charger."
@@ -1028,16 +1018,6 @@
 	build_path = /obj/item/circuitboard/machine/restaurant_portal
 	category = list(
 		RND_CATEGORY_MACHINE + RND_SUBCATEGORY_MACHINE_KITCHEN
-	)
-	departmental_flags = DEPARTMENT_BITFLAG_SERVICE
-
-/datum/design/board/vendatray
-	name = "Vend-a-Tray Board"
-	desc = "The circuit board for a Vend-a-Tray."
-	id = "vendatray"
-	build_path = /obj/item/circuitboard/machine/vendatray
-	category = list(
-		RND_CATEGORY_MACHINE + RND_SUBCATEGORY_MACHINE_SERVICE
 	)
 	departmental_flags = DEPARTMENT_BITFLAG_SERVICE
 
@@ -1391,6 +1371,7 @@
 	desc = "The circuit for a propulsion engine."
 	id = "propulsion_engine"
 	build_path = /obj/item/circuitboard/machine/engine/propulsion
+	build_type = IMPRINTER
 	category = list(
 		RND_CATEGORY_MACHINE + RND_SUBCATEGORY_MACHINE_ENGINEERING
 	)
@@ -1435,3 +1416,13 @@
 		RND_CATEGORY_COMPUTER + RND_SUBCATEGORY_COMPUTER_CARGO
 	)
 	departmental_flags = DEPARTMENT_BITFLAG_ENGINEERING
+
+/datum/design/board/washing_machine
+	name = "Washing Machine"
+	desc = "The circuit board to build a washing machine."
+	id = "washing_machine"
+	build_path = /obj/item/circuitboard/machine/washing_machine
+	category = list(
+		RND_CATEGORY_MACHINE + RND_SUBCATEGORY_MACHINE_SERVICE
+	)
+	departmental_flags = DEPARTMENT_BITFLAG_SERVICE

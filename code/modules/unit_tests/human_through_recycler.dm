@@ -13,7 +13,7 @@
 	if(assistant.stat < UNCONSCIOUS)
 		TEST_FAIL("Assistant was not made unconscious by the emagged recycler!") // crush_living() on the recycler should have made the assistant unconscious or worse.
 	// crush_living() on the recycler should have applied the crush_damage to the assistant.
-	var/damage_incurred = assistant.getBruteLoss()
+	var/damage_incurred = assistant.get_brute_loss()
 	TEST_ASSERT_EQUAL(damage_incurred, chewer.crush_damage, "Assistant did not take the expected amount of brute damage ([chewer.crush_damage]) from the emagged recycler! Took ([damage_incurred]) instead.")
 	TEST_ASSERT(chewer.bloody, "The emagged recycler did not become bloody after crushing the assistant!")
 
@@ -21,10 +21,6 @@
 	for(var/obj/item/item in assistant.contents)
 		if(item.item_flags & ABSTRACT)
 			bad_contents -= item
-
-	for(var/atom/atom in assistant.contents)
-		if(istype(atom, /obj/effect/abstract) || istype(atom, /atom/movable/screen/name_shadow))
-			bad_contents -= atom
 
 	// Now, let's test to see if all of their clothing got properly deleted.
 	TEST_ASSERT_EQUAL(length(bad_contents), 0, "Assistant still has items in its contents after being put through an emagged recycler!")
@@ -48,5 +44,4 @@
 	TEST_ASSERT_NULL(assistant.r_store, "Assistant still has an item in their right pocket after being put through an emagged recycler!")
 	TEST_ASSERT_NULL(assistant.s_store, "Assistant still has an item in their suit storage slot after being put through an emagged recycler!")
 	TEST_ASSERT_NULL(assistant.glasses, "Assistant still has glasses on after being put through an emagged recycler!")
-
 

@@ -23,7 +23,7 @@
 	///Sound used when item sold/bought
 	var/sell_sound = 'sound/effects/cashregister.ogg'
 	///The currency name
-	var/currency_name = "credits"
+	var/currency_name = MONEY_NAME
 	///The spawner we use to create our look
 	var/spawner_path = /obj/effect/mob_spawn/corpse/human/generic_assistant
 	///Our species to create our look
@@ -49,7 +49,7 @@
 	AddComponent(/datum/component/trader, trader_data = trader_data)
 	AddComponent(/datum/component/ranged_attacks, casing_type = ranged_attack_casing, projectile_sound = ranged_attack_sound, cooldown_time = 3 SECONDS)
 	AddElement(/datum/element/ai_retaliate)
-	AddElement(/datum/element/ai_swap_combat_mode, BB_BASIC_MOB_CURRENT_TARGET, string_list(trader_data.say_phrases[TRADER_BATTLE_START_PHRASE]), string_list(trader_data.say_phrases[TRADER_BATTLE_END_PHRASE]))
+	AddElement(/datum/element/ai_swap_combat_mode, BB_CURRENT_TARGET, string_list(trader_data.say_phrases[TRADER_BATTLE_START_PHRASE]), string_list(trader_data.say_phrases[TRADER_BATTLE_END_PHRASE]))
 	if(LAZYLEN(loot))
 		loot = string_list(loot)
 		AddElement(/datum/element/death_drops, loot)

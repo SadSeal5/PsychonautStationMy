@@ -51,21 +51,22 @@
 /datum/species/ipc/on_species_gain(mob/living/carbon/human/ipc, datum/species/old_species, pref_load, regenerate_icons)
 	. = ..()
 	RegisterSignal(ipc, COMSIG_CARBON_ATTEMPT_EAT, PROC_REF(try_eating))
+	RegisterSignal(ipc, COMSIG_LIVING_LIFE, PROC_REF(on_life))
 
 /datum/species/ipc/on_species_loss(mob/living/carbon/human/old_ipc, datum/species/new_species, pref_load)
 	. = ..()
-	UnregisterSignal(old_ipc, COMSIG_CARBON_ATTEMPT_EAT)
+	UnregisterSignal(old_ipc, list(COMSIG_CARBON_ATTEMPT_EAT, COMSIG_LIVING_LIFE))
 
 /datum/species/ipc/proc/try_eating(mob/living/carbon/source, atom/eating)
 	SIGNAL_HANDLER
 	to_chat(source, span_notice("You have no mouth!"))
 	INVOKE_ASYNC(source, TYPE_PROC_REF(/mob, emote), "scream")
-	return COMSIG_CARBON_BLOCK_EAT
+	return BLOCK_EAT_ATTEMPT
 
-/datum/species/ipc/spec_life(mob/living/carbon/human/H, seconds_per_tick, times_fired)
-	. = ..()
-	if(H.health < H.crit_threshold && !HAS_TRAIT(H, TRAIT_NOCRITDAMAGE))
-		H.adjustBruteLoss(1.5 * seconds_per_tick)
+/datum/species/ipc/proc/on_life(mob/living/carbon/human/source, seconds_per_tick)
+	SIGNAL_HANDLER
+	if(source.health < source.crit_threshold && !HAS_TRAIT(source, TRAIT_NOCRITDAMAGE))
+		source.adjust_brute_loss(1.5 * seconds_per_tick)
 
 /datum/species/ipc/wash(mob/living/carbon/human/H)
 	. = FALSE
@@ -81,14 +82,14 @@
 	if(!chest_covered || !head_covered)
 		var/obj/item/organ/heart/heart = H.get_organ_slot(ORGAN_SLOT_HEART)
 		if(heart && istype(heart, /obj/item/organ/heart/cybernetic))
-			H.adjustFireLoss(rand(1,3))
+			H.adjust_fire_loss(rand(1,3))
 		else
-			H.adjustFireLoss(rand(5,15))
+			H.adjust_fire_loss(rand(5,15))
 		return TRUE
 
 /datum/species/ipc/randomize_features()
 	var/list/features = ..()
-	features[FEATURE_IPC_CHASSIS] = SSaccessories.ipc_chassis_list[pick(SSaccessories.ipc_chassis_list)]
+	features[FEATURE_IPC_CHASSIS] = pick(SSaccessories.feature_list[FEATURE_IPC_CHASSIS])
 	return features
 
 /datum/species/ipc/get_features()
@@ -100,11 +101,11 @@
 
 /datum/species/ipc/replace_body(mob/living/carbon/target, datum/species/new_species)
 	. = ..()
-	var/datum/sprite_accessory/ipc_chassis/chassis_of_choice = SSaccessories.ipc_chassis_list[target.dna.features[FEATURE_IPC_CHASSIS]]
-	if(chassis_of_choice)
+	var/datum/sprite_accessory/ipc_chassis/chasis = SSaccessories.feature_list[FEATURE_IPC_CHASSIS][target.dna.features[FEATURE_IPC_CHASSIS]]
+	if(chasis)
 		for(var/obj/item/bodypart/bodypart as anything in target.bodyparts)
 			bodypart.icon = 'icons/psychonaut/mob/human/species/ipc/bodyparts.dmi'
-			bodypart.change_appearance('icons/psychonaut/mob/human/species/ipc/bodyparts.dmi', chassis_of_choice.icon_state, (chassis_of_choice.color_src == MUTANT_COLOR), FALSE)
+			bodypart.change_appearance('icons/psychonaut/mob/human/species/ipc/bodyparts.dmi', chasis.icon_state, (chasis.color_src == MUTANT_COLOR), FALSE)
 			bodypart.update_limb()
 
 /datum/species/ipc/get_species_description()
@@ -173,9 +174,9 @@
 	var/adjusted_pressure = H.calculate_affecting_pressure(pressure)
 
 	if(adjusted_pressure >= HAZARD_HIGH_PRESSURE && !HAS_TRAIT(H, TRAIT_RESISTHIGHPRESSURE))
-		H.adjustBruteLoss(min(((adjusted_pressure / HAZARD_HIGH_PRESSURE) - 1) * PRESSURE_DAMAGE_COEFFICIENT, MAX_HIGH_PRESSURE_DAMAGE) * 1.5 * H.physiology.pressure_mod * seconds_per_tick, required_bodytype = BODYTYPE_ORGANIC | BODYTYPE_IPC)
+		H.adjust_brute_loss(min(((adjusted_pressure / HAZARD_HIGH_PRESSURE) - 1) * PRESSURE_DAMAGE_COEFFICIENT, MAX_HIGH_PRESSURE_DAMAGE) * 1.5 * H.physiology.pressure_mod * seconds_per_tick, required_bodytype = BODYTYPE_ORGANIC | BODYTYPE_IPC)
 	else if(adjusted_pressure < HAZARD_LOW_PRESSURE && !HAS_TRAIT(H, TRAIT_RESISTLOWPRESSURE))
-		H.adjustBruteLoss(LOW_PRESSURE_DAMAGE * 1.5 * H.physiology.pressure_mod * seconds_per_tick, required_bodytype = BODYTYPE_ORGANIC | BODYTYPE_IPC)
+		H.adjust_brute_loss(BASE_LOW_PRESSURE_DAMAGE * 3 * H.physiology.pressure_mod * seconds_per_tick, required_bodytype = BODYTYPE_ORGANIC | BODYTYPE_IPC)
 
 ////////////////////////////////////// ORGANS //////////////////////////////////////
 // Voltage Protector Organ
@@ -186,6 +187,7 @@
 	slot = ORGAN_SLOT_VOLTPROTECT
 	organ_flags = ORGAN_ROBOTIC
 	zone = BODY_ZONE_CHEST
+	custom_materials = list(/datum/material/iron = SHEET_MATERIAL_AMOUNT * 5)
 
 /obj/item/organ/voltage_protector/on_mob_insert(mob/living/carbon/owner)
 	. = ..()
@@ -205,6 +207,7 @@
 	name = "power cord implant"
 	desc = "An internal power cord hooked up to a battery. Useful if you run on volts."
 	items_to_create = list(/obj/item/apc_powercord)
+	custom_materials = list(/datum/material/iron = SHEET_MATERIAL_AMOUNT * 5)
 
 ////////////////////////////////////// ITEMS //////////////////////////////////////
 

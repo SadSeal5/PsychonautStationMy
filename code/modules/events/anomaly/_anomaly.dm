@@ -8,6 +8,8 @@
 	category = EVENT_CATEGORY_ANOMALIES
 	description = "This anomaly shocks and explodes. This is the base type."
 	admin_setup = list(/datum/event_admin_setup/set_location/anomaly)
+	track = EVENT_TRACK_MODERATE
+	tags = list(TAG_DESTRUCTIVE, TAG_MAGICAL)
 
 /datum/round_event/anomaly
 	start_when = ANOMALY_START_HARMFUL_TIME
@@ -40,10 +42,13 @@
 
 	var/newAnomaly
 	if(anomaly_turf)
-		newAnomaly = new anomaly_path(anomaly_turf)
+		newAnomaly = make_anomaly(anomaly_turf)
 	if (newAnomaly)
 		apply_anomaly_properties(newAnomaly)
 		announce_to_ghosts(newAnomaly)
+
+/datum/round_event/anomaly/proc/make_anomaly(turf/anomaly_turf)
+	return new anomaly_path(anomaly_turf)
 
 /// Make any further post-creation modifications to the anomaly
 /datum/round_event/anomaly/proc/apply_anomaly_properties(obj/effect/anomaly/new_anomaly)
@@ -54,4 +59,3 @@
 
 /datum/event_admin_setup/set_location/anomaly/apply_to_event(datum/round_event/anomaly/event)
 	event.spawn_location = chosen_turf
-

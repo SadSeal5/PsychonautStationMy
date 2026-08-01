@@ -9,8 +9,10 @@
 	armor_type = /datum/armor/poddoor_shutters
 	max_integrity = 100
 	recipe_type = /datum/crafting_recipe/shutters
+	custom_materials = list(/datum/material/alloy/plasteel = SHEET_MATERIAL_AMOUNT * 5, /datum/material/iron = SMALL_MATERIAL_AMOUNT, /datum/material/glass = SMALL_MATERIAL_AMOUNT)
 	animation_sound = 'sound/machines/shutter.ogg'
 	show_nav_computer_icon = FALSE
+	impact_sound = SFX_BULLET_IMPACT_METAL
 
 /obj/machinery/door/poddoor/shutters/animation_length(animation)
 	switch(animation)
@@ -37,6 +39,7 @@
 
 /obj/machinery/door/poddoor/shutters/preopen/deconstructed
 	deconstruction = BLASTDOOR_NEEDS_WIRES
+	custom_materials = list(/datum/material/alloy/plasteel = SHEET_MATERIAL_AMOUNT * 5)
 
 /obj/machinery/door/poddoor/shutters/indestructible
 	name = "hardened shutters"
@@ -97,3 +100,15 @@
 	icon_state = "open"
 	density = FALSE
 	opacity = FALSE
+
+/obj/machinery/door/poddoor/shutters/syndicate
+	icon = 'icons/obj/doors/syndicateshutters.dmi'
+
+/obj/machinery/door/poddoor/shutters/syndicate/preopen
+	icon_state = "open"
+	density = FALSE
+	opacity = FALSE
+
+/obj/machinery/door/poddoor/shutters/syndicate/indestructible
+	name = "hardened syndicate shutters"
+	resistance_flags = INDESTRUCTIBLE

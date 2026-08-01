@@ -1,4 +1,5 @@
 /datum/job
+	abstract_type = /datum/job
 	/// The name of the job , used for preferences, bans and more. Make sure you know what you're doing before changing this.
 	var/title = "NOPE"
 
@@ -11,11 +12,8 @@
 	/// Innate skill levels unlocked at roundstart. Based on config.jobs_have_minimal_access config setting, for example with a full crew. Format is list(/datum/skill/foo = SKILL_EXP_NOVICE) with exp as an integer or as per code/_DEFINES/skills.dm
 	var/list/minimal_skills
 
-	/// Determines who can demote this position
-	var/department_head = list()
-
 	/// Tells the given channels that the given mob is the new department head. See communications.dm for valid channels.
-	var/list/head_announce = null
+	var/head_announce
 
 	/// Bitflags for the job
 	var/auto_deadmin_role_flags = NONE
@@ -71,7 +69,7 @@
 
 	var/display_order = JOB_DISPLAY_ORDER_DEFAULT
 
-	///What types of bounty tasks can this job receive past the default?
+	///What types of bounty tasks can this job receive past the default? TODO, move to id trims.
 	var/bounty_types = CIV_JOB_BASIC
 
 	/// Goodies that can be received via the mail system.
@@ -140,6 +138,8 @@
 
 	/// The list of alternative job titles people can pick from
 	var/list/alt_titles
+	/// How desensitized this job is to seeing death as a base - applied with the job
+	var/desensitized_base = 1.0
 
 /datum/job/New()
 	. = ..()
@@ -159,6 +159,8 @@
 	SHOULD_CALL_PARENT(TRUE)
 	if(length(mind_traits))
 		spawned.mind.add_traits(mind_traits, JOB_TRAIT)
+
+	spawned.mind.desensitized_level = clamp(desensitized_base, DESENSITIZED_MINIMUM, spawned.mind.desensitized_level)
 
 	var/obj/item/organ/liver/liver = spawned.get_organ_slot(ORGAN_SLOT_LIVER)
 	if(liver && length(liver_traits))
@@ -197,7 +199,7 @@
 /// Note the joining mob has no client at this point.
 /datum/job/proc/announce_job(mob/living/joining_mob, job_title)
 	if(head_announce)
-		announce_head(joining_mob, head_announce, job_title)
+		announce_head(joining_mob, list(head_announce), job_title)
 
 
 //Used for a special check of whether to allow a client to latejoin as this job.
@@ -213,7 +215,7 @@
 /mob/living/carbon/human/on_job_equipping(datum/job/equipping, client/player_client)
 	if(equipping.paycheck_department)
 		var/datum/bank_account/bank_account = new(real_name, equipping, dna.species.payday_modifier)
-		bank_account.payday(STARTING_PAYCHECKS, TRUE)
+		bank_account.payday(STARTING_PAYCHECKS, free = TRUE)
 		account_id = bank_account.account_id
 		bank_account.replaceable = FALSE
 		add_mob_memory(/datum/memory/key/account, remembered_id = account_id)
@@ -424,23 +426,29 @@
 		var/datum/bank_account/account = SSeconomy.bank_accounts_by_id["[equipped.account_id]"]
 
 		if(account && account.account_id == equipped.account_id)
-			card.registered_account = account
-			account.bank_cards += card
+			card.set_account(account)
 
-		equipped.sec_hud_set_ID()
+		equipped.update_ID_card()
+
+	if(!pda_slot) //This job outfit doesn't have a PDA.
+		return
 
 	var/obj/item/modular_computer/pda/pda = equipped.get_item_by_slot(pda_slot)
+	if(pda && !istype(pda)) //we found something but it isn't a PDA, check if it's inside it instead.
+		pda = locate() in pda
 
-	if(istype(pda))
-		pda.imprint_id(equipped.real_name, equipped_job.title)
-		pda.update_ringtone(equipped_job.job_tone)
-		pda.UpdateDisplay()
+	if(!istype(pda)) //We couldn't find a PDA at all.
+		stack_trace("pda_slot was set but we couldn't find a PDA!")
+		return
 
-		var/client/equipped_client = GLOB.directory[ckey(equipped.mind?.key)]
+	pda.imprint_id(equipped.real_name, equipped_job?.title || equipped.job)
+	pda.update_ringtone(equipped_job?.job_tone)
+	pda.UpdateDisplay()
 
-		if(equipped_client)
-			pda.update_pda_prefs(equipped_client)
+	var/client/equipped_client = GLOB.directory[ckey(equipped.mind?.key)]
 
+	if(equipped_client)
+		pda.update_pda_prefs(equipped_client)
 
 /datum/outfit/job/get_chameleon_disguise_info()
 	var/list/types = ..()
@@ -505,7 +513,7 @@
 				continue
 
 			var/is_subjob = FALSE
-			for(var/subjob as anything in spawn_point.subjobs)
+			for(var/subjob in spawn_point.subjobs)
 				if (subjob == title)
 					is_subjob = TRUE
 					break
@@ -535,10 +543,9 @@
 	var/mob/living/spawn_instance
 	if(ispath(spawn_type, /mob/living/silicon/ai))
 		// This is unfortunately necessary because of snowflake AI init code. To be refactored.
-		spawn_instance = new spawn_type(get_turf(spawn_point), null, player_client.mob)
+		spawn_instance = new spawn_type(get_turf(spawn_point), null, player_client.mob, TRUE)
 	else
-		spawn_instance = new spawn_type(player_client.mob.loc)
-		spawn_point.JoinPlayerHere(spawn_instance, TRUE)
+		spawn_instance = spawn_point.JoinPlayerHere(spawn_type, TRUE)
 	spawn_instance.apply_prefs_job(player_client, src)
 	if(!player_client)
 		qdel(spawn_instance)
@@ -684,3 +691,23 @@
 /// This proc may be called when someone of this job is made into a traitor to create custom objectives related to the job.
 /datum/job/proc/generate_traitor_objective()
 	return null
+
+/// Returns a large (due to cropping) icon of this job's sechud icon state.
+/datum/job/proc/get_lobby_icon() as /icon
+	var/datum/outfit/job_outfit = outfit
+	if(!job_outfit || !job_outfit::id_trim)
+		CRASH("[src.type] has no job outfit but isn't overwriting get_lobby_icon().")
+	var/datum/id_trim/job_trim = job_outfit::id_trim
+	var/icon_state = job_trim::sechud_icon_state
+	if(!icon_state || icon_state == SECHUD_UNKNOWN)
+		CRASH("[src.type] has no job icon state.")
+	var/icon_file = GLOB.hud_icon_overrides[icon_state] || 'icons/mob/huds/hud.dmi'
+
+	return icon(icon_file, icon_state)
+
+/datum/job/proc/display_order_with_department()
+	var/datum/job_department/main_department = departments_list?[1]
+	if(!main_department)
+		main_department = /datum/job_department/undefined
+
+	return display_order + (main_department::display_order * 1000)

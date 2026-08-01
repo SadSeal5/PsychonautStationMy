@@ -1,4 +1,4 @@
-#define RANDOM_EVENT_ADMIN_INTERVENTION_TIME (10 SECONDS)
+#define RANDOM_EVENT_ADMIN_INTERVENTION_TIME (20 SECONDS)
 
 //this singleton datum is used by the events controller to dictate how it selects events
 /datum/round_event_control
@@ -37,6 +37,9 @@
 	var/list/datum/event_admin_setup/admin_setup = list()
 	/// Flags dictating whether this event should be run on certain kinds of map
 	var/map_flags = NONE
+
+	var/track = UNCATEGORIZED_EVENTS
+	var/tags = list()
 
 /datum/round_event_control/New()
 	if(!length(admin_setup))
@@ -168,6 +171,8 @@ Runs the event
 		round_event.announce_deadchat(random, event_cause)
 
 	SSblackbox.record_feedback("tally", "event_ran", 1, "[round_event]")
+	if(!isnull(SSstoryteller.current_storyteller))
+		SSstoryteller.current_storyteller.event_execute(src)
 	return round_event
 
 //Returns the component for the listener

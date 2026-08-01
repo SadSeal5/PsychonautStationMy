@@ -38,7 +38,7 @@
 	filename = "syndeye"
 	filedesc = "SyndEye"
 	extended_desc = "This program allows for illegal access to security camera networks."
-	download_access = list()
+	download_access = null
 	can_run_on_flags = PROGRAM_ALL
 	program_flags = PROGRAM_ON_SYNDINET_STORE | PROGRAM_UNIQUE_COPY
 
@@ -69,7 +69,7 @@
 	)
 	spying = TRUE
 
-/datum/computer_file/program/secureye/on_install(datum/computer_file/source, obj/item/modular_computer/computer_installing)
+/datum/computer_file/program/secureye/on_install(datum/computer_file/source, obj/item/modular_computer/computer_installing, mob/user)
 	. = ..()
 	// Map name has to start and end with an A-Z character,
 	// and definitely NOT with a square bracket or even a number.
@@ -83,6 +83,10 @@
 	cam_screen.generate_view(map_name)
 
 /datum/computer_file/program/secureye/Destroy()
+	var/obj/machinery/camera/active_camera = camera_ref?.resolve()
+	if(!spying && active_camera)
+		active_camera.on_stop_watching(src)
+	camera_ref = null
 	QDEL_NULL(cam_screen)
 	QDEL_NULL(internal_tracker)
 	last_camera_turf = null
@@ -102,7 +106,7 @@
 	// Ghosts shouldn't count towards concurrent users, which produces
 	// an audible terminal_on click.
 	if(is_living)
-		concurrent_users += user_ref
+		concurrent_users |= user_ref
 	// Register map objects
 	cam_screen.display_to(user, ui.window)
 
@@ -129,7 +133,7 @@
 	data["network"] = network
 	data["mapRef"] = cam_screen.assigned_map
 	data["can_spy"] = !!spying
-	data["cameras"] = GLOB.cameranet.get_available_cameras_data(network)
+	data["cameras"] = SScameras.get_available_cameras_data(network)
 	return data
 
 /datum/computer_file/program/secureye/ui_act(action, params, datum/tgui/ui, datum/ui_state/state)
@@ -145,7 +149,7 @@
 			if(!spying)
 				playsound(computer, SFX_TERMINAL_TYPE, 25, FALSE)
 
-			var/obj/machinery/camera/selected_camera = locate(params["camera"]) in GLOB.cameranet.cameras
+			var/obj/machinery/camera/selected_camera = locate(params["camera"]) in SScameras.cameras
 			if(selected_camera)
 				camera_ref = WEAKREF(selected_camera)
 			else
@@ -168,12 +172,13 @@
 
 /datum/computer_file/program/secureye/proc/on_track_target(datum/trackable/source, mob/living/target)
 	SIGNAL_HANDLER
-	var/datum/camerachunk/target_camerachunk = GLOB.cameranet.getTurfVis(get_turf(target))
+	var/target_turf = get_turf(target)
+	var/datum/camerachunk/target_camerachunk = SScameras.get_turf_camera_chunk(target_turf)
 	if(!target_camerachunk)
 		CRASH("[src] was able to track [target] through /datum/trackable, but was not on a visible turf to cameras.")
 	for(var/obj/machinery/camera/cameras as anything in target_camerachunk.cameras["[target.z]"])
-		var/found_target = locate(target) in cameras.can_see()
-		if(!found_target)
+		// We need to find a particular camera that can see this turf
+		if(!(length(cameras.can_see() & list(target_turf))))
 			continue
 		var/new_camera = WEAKREF(cameras)
 		if(camera_ref == new_camera)
@@ -194,8 +199,17 @@
 	// Unregister map objects
 	cam_screen.hide_from(user)
 	// Turn off the console
+	var/obj/machinery/camera/active_camera = camera_ref?.resolve()
+	if(istype(active_camera, /obj/machinery/camera/bodycam))
+		if(!has_living_viewers(user))
+			if(!spying && active_camera)
+				active_camera.on_stop_watching(src)
+			camera_ref = null
+			last_camera_turf = null
+			if(!spying && is_living)
+				playsound(computer, 'sound/machines/terminal/terminal_off.ogg', 25, FALSE)
+		return
 	if(length(concurrent_users) == 0 && is_living)
-		var/obj/machinery/camera/active_camera = camera_ref?.resolve()
 		if(!spying && active_camera)
 			active_camera.on_stop_watching(src)
 		camera_ref = null
@@ -203,8 +217,40 @@
 		if(!spying)
 			playsound(computer, 'sound/machines/terminal/terminal_off.ogg', 25, FALSE)
 
+/datum/computer_file/program/secureye/proc/has_living_viewers(mob/excluding_user)
+	var/list/viewer_uis = computer?.open_uis
+	if(!LAZYLEN(viewer_uis))
+		viewer_uis = open_uis
+	if(!LAZYLEN(viewer_uis))
+		return FALSE
+	for(var/datum/tgui/ui in viewer_uis)
+		var/mob/user = ui.user
+		if(user == excluding_user)
+			continue
+		if(user && GET_CLIENT(user) && isliving(user))
+			return TRUE
+	return FALSE
+
+/datum/computer_file/program/secureye/proc/on_camera_disabled(obj/machinery/camera/camera)
+	var/obj/machinery/camera/active_camera = camera_ref?.resolve()
+	if(active_camera != camera)
+		return
+	if(!spying && active_camera)
+		active_camera.on_stop_watching(src)
+	camera_ref = null
+	last_camera_turf = null
+	update_active_camera_screen()
+	SStgui.update_uis(src)
+
 /datum/computer_file/program/secureye/proc/update_active_camera_screen()
 	var/obj/machinery/camera/active_camera = camera_ref?.resolve()
+	if(istype(active_camera, /obj/machinery/camera/bodycam) && !has_living_viewers())
+		if(!spying && active_camera)
+			active_camera.on_stop_watching(src)
+		camera_ref = null
+		last_camera_turf = null
+		cam_screen.show_camera_static()
+		return
 	// Show static if can't use the camera
 	if(!active_camera?.can_use())
 		cam_screen.show_camera_static()

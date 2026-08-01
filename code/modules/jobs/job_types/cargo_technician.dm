@@ -3,7 +3,6 @@
 	description = "Distribute supplies to the departments that ordered them, \
 		collect empty crates, load and unload the supply shuttle, \
 		ship bounty cubes."
-	department_head = list(JOB_QUARTERMASTER)
 	faction = FACTION_STATION
 	total_positions = 5
 	spawn_positions = 3
@@ -41,6 +40,7 @@
 		"Mailman",
 		"Union Associate",
 		"Inventory Associate",
+		"Cargo Operator"
 	)
 
 /datum/outfit/job/cargo_tech

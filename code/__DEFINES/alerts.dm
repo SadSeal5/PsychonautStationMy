@@ -14,6 +14,8 @@
 #define ALERT_TOO_MUCH_NITRO "too_much_nitro"
 #define ALERT_NOT_ENOUGH_NITRO "not_enough_nitro"
 
+#define ALERT_BRONCHODILATION "bronchodilation"
+
 #define ALERT_NOT_ENOUGH_WATER "not_enough_water"
 
 /** Mob related */
@@ -47,6 +49,7 @@
 #define ALERT_LOCKED "locked"
 #define ALERT_HACKED "hacked"
 #define ALERT_HACKING_APC "hackingapc"
+#define ALERT_BODYCAM_VIEWED "bodycam_viewed"
 
 /** MODsuit/Mech related */
 #define ALERT_MECH_DAMAGE "mech_damage"

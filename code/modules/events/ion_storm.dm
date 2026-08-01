@@ -7,6 +7,8 @@
 	description = "Gives the AI a new, randomized law."
 	min_wizard_trigger_potency = 2
 	max_wizard_trigger_potency = 7
+	track = EVENT_TRACK_MODERATE
+	tags = list(TAG_TARGETED)
 
 /datum/round_event/ion_storm
 	var/replaceLawsetChance = 25 //chance the AI's lawset is completely replaced with something else per config weights
@@ -60,7 +62,7 @@
 			M.post_lawchange()
 
 	if(botEmagChance)
-		for(var/mob/living/simple_animal/bot/bot in GLOB.alive_mob_list)
+		for(var/mob/living/basic/bot/bot in GLOB.alive_mob_list)
 			if(prob(botEmagChance))
 				bot.emag_act()
 

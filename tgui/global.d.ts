@@ -64,12 +64,9 @@ type ByondType = {
   strictMode: boolean;
 
   /**
-   * If `true`, all byond.topic and byond.send_message calls will silently fail.
-   * This is to deal with a byond bug where sending messages to the server while
-   * a client is reconnecting or the world is rebooting can cause the connection
-   * to die. Set on world reboot.
+   * The external URL for the IndexedDB IFrame to use as the origin
    */
-  communicationLocked: boolean;
+  storageCdn: string;
 
   /**
    * Makes a BYOND call.
@@ -180,7 +177,7 @@ type ByondType = {
   /**
    * Maps icons to their ref
    */
-  iconRefMap: Record<string, string>;
+  iconRefMap: Record<string, string | undefined>;
 
   /**
    * Downloads a blob, platform-agnostic
@@ -192,12 +189,11 @@ type ByondType = {
  * Object that provides access to Byond Skin API and is available in
  * any tgui application.
  */
-const Byond: ByondType;
+const Byond: ByondType = {};
 
 interface Window {
   Byond: ByondType;
-  __store__: Store<unknown, AnyAction>;
-  __augmentStack__: (store: Store) => StackAugmentor;
+  __augmentStack__: (stack: string, error?: Error) => string;
 
   // IE IndexedDB stuff.
   msIndexedDB: IDBFactory;
@@ -207,4 +203,6 @@ interface Window {
   hubStorage: Storage;
   domainStorage: Storage;
   serverStorage: Storage;
+
+  __chatRenderer__: any;
 }

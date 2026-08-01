@@ -100,6 +100,7 @@
 	internal_type = /obj/item/tank/internals/emergency_oxygen/engi
 
 /obj/item/storage/box/survival/worker/PopulateContents()
+	..()
 	new /obj/item/reagent_containers/cup/soda_cans/cola(src)
 
 // Syndie survival box
@@ -204,9 +205,11 @@
 		return ITEM_INTERACT_BLOCKING
 	qdel(tool)
 	loc.balloon_alert(user, "wheels added, honk!")
-	var/obj/item/bot_assembly/honkbot/A = new
+	var/obj/item/bot_assembly/honkbot/assembly = new(drop_location())
+	var/held_index = user.is_holding(src)
 	qdel(src)
-	user.put_in_hands(A)
+	if (held_index)
+		user.put_in_hand(assembly, held_index)
 	return ITEM_INTERACT_SUCCESS
 
 /obj/item/storage/box/clown/suicide_act(mob/living/user)

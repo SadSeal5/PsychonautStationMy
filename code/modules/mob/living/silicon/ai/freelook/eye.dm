@@ -99,6 +99,10 @@
 		if(!H.move_hologram(ai, destination))
 			H.clear_holo(ai)
 
+	if(ai && !ai.viewing_camera)
+		for(var/datum/component/pausable_bodycam/bodycam in GLOB.pausable_bodycams)
+			bodycam.check_proximity_state()
+
 	if(ai.camera_light_on)
 		ai.light_cameras()
 	if(ai.master_multicam)
@@ -127,6 +131,7 @@
 	if(same_z_layer)
 		return
 	update_ai_detect_hud()
+	ai?.on_looking_z_level_change(old_turf, new_turf)
 
 /*----------------------------------------------------*/
 
@@ -136,6 +141,9 @@
 	var/mob/living/silicon/ai/AI = usr
 	if(AI.eyeobj && (AI.multicam_on || (AI.client.eye == AI.eyeobj)) && (AI.eyeobj.z == z))
 		AI.ai_tracking_tool.reset_tracking()
+		if(AI.viewing_camera)
+			AI.viewing_camera.on_stop_watching(AI)
+			AI.viewing_camera = null
 		if (isturf(loc) || isturf(src))
 			AI.eyeobj.setLoc(src)
 
@@ -169,6 +177,9 @@
 		sprint = initial(sprint)
 
 	ai_tracking_tool.reset_tracking()
+	if(viewing_camera)
+		viewing_camera.on_stop_watching(src)
+		viewing_camera = null
 #undef SPRINT_PER_STEP
 #undef MAX_SPRINT
 #undef SPRINT_PER_TICK
@@ -182,6 +193,10 @@
 		current = null
 	if(ai_tracking_tool)
 		ai_tracking_tool.reset_tracking()
+
+	if(viewing_camera)
+		viewing_camera.on_stop_watching(src)
+		viewing_camera = null
 
 	if(isturf(loc) && (QDELETED(eyeobj) || !eyeobj.loc))
 		to_chat(src, "ERROR: Eyeobj not found. Creating new eye...")
@@ -198,7 +213,6 @@
 	all_eyes += eyeobj
 	eyeobj.ai = src
 	eyeobj.name = "[name] (AI Eye)"
-	eyeobj.update_name_tag()
 	eyeobj.setLoc(loc, TRUE)
 	set_eyeobj_visible(TRUE)
 
@@ -211,19 +225,17 @@
 	else
 		eyeobj.RemoveInvisibility(type)
 
-/mob/living/silicon/ai/verb/toggle_acceleration()
-	set category = "AI Commands"
-	set name = "Toggle Camera Acceleration"
+GAME_VERB(/mob/living/silicon/ai, toggle_acceleration, "Toggle Camera Acceleration", "AI Commands")
 
 	if(incapacitated)
 		return
 	acceleration = !acceleration
 	to_chat(usr, "Camera acceleration has been toggled [acceleration ? "on" : "off"].")
 
-/mob/eye/camera/ai/Hear(message, atom/movable/speaker, datum/language/message_language, raw_message, radio_freq, radio_freq_name, radio_freq_color, list/spans, list/message_mods = list(), message_range)
+/mob/eye/camera/ai/Hear(atom/movable/speaker, datum/language/message_language, raw_message, radio_freq, radio_freq_name, radio_freq_color, list/spans, list/message_mods = list(), message_range)
 	. = ..()
-	if(relay_speech && speaker && ai && !radio_freq && speaker != ai && GLOB.cameranet.checkCameraVis(speaker))
-		ai.relay_speech(message, speaker, message_language, raw_message, radio_freq, spans, message_mods)
+	if(relay_speech && speaker && ai && !radio_freq && speaker != ai && SScameras.is_visible_by_cameras(speaker))
+		ai.relay_speech(speaker, message_language, raw_message, radio_freq, spans, message_mods)
 
 /mob/eye/camera/ai/get_mob_appearance()
 	if(!isnull(ai))

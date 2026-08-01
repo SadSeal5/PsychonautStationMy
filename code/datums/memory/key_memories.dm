@@ -99,6 +99,30 @@
 /datum/memory/key/quirk_allergy/get_starts()
 	return list("[protagonist_name] sneezing after coming into contact with [allergy_string].")
 
+/// Tracks what kind of item the quirk user's heirloom is
+/datum/memory/key/quirk_heirloom
+	var/heirloom_name
+
+/datum/memory/key/quirk_heirloom/New(
+	datum/mind/memorizer_mind,
+	atom/protagonist,
+	atom/deuteragonist,
+	atom/antagonist,
+	heirloom_name,
+)
+	src.heirloom_name = heirloom_name
+	return ..()
+
+/datum/memory/key/quirk_heirloom/get_names()
+	return list("[protagonist_name]'s heirloom [heirloom_name].")
+
+/datum/memory/key/quirk_heirloom/get_starts()
+	return list(
+		"[protagonist_name] being bequeathed the heirloom [heirloom_name] by a dear relative.",
+		"[protagonist_name] discovering the heirloom [heirloom_name] in some long-forgotten boxes.",
+		"[protagonist_name] stealing the heirloom [heirloom_name] from an undeserving family member.",
+	)
+
 /// Tracks what brand a smoker quirk user likes
 /datum/memory/key/quirk_smoker
 	memory_flags = MEMORY_FLAG_NOLOCATION|MEMORY_FLAG_NOPERSISTENCE|MEMORY_SKIP_UNCONSCIOUS // Does not have nomood
@@ -235,27 +259,4 @@
 		"A sticky note attached to a monitor with [decrypt_key] written on it.",
 		"Poly the parrot screaming \"[decrypt_key]!\" over and over again.",
 		"[protagonist_name] spilling coffee over the message monitor while typing [decrypt_key].",
-	)
-
-/datum/memory/key/silicon_decrypt_key
-	var/upload_key
-
-/datum/memory/key/silicon_decrypt_key/New(
-	datum/mind/memorizer_mind,
-	atom/protagonist,
-	atom/deuteragonist,
-	atom/antagonist,
-	upload_key,
-)
-	src.upload_key = upload_key
-	return ..()
-
-/datum/memory/key/silicon_decrypt_key/get_names()
-	return list("The secret silicon decryption key is [upload_key]. Keep it a secret from the clown.")
-
-/datum/memory/key/silicon_decrypt_key/get_starts()
-	return list(
-		"A sticky note attached to a locker with [upload_key] written on it.",
-		"Lamarr the facehugger jumps to a AI upload console with [upload_key] written on it over and over again.",
-		"[protagonist_name] spilling coffee over the AI upload console while typing [upload_key].",
 	)
