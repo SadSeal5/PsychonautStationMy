@@ -89,11 +89,6 @@ const ALTERNATE_ACTIONS: Record<string, AlternateAction> = {
     text: 'Strip accessory',
   },
 
-  toggle_bodycam: {
-    icon: 'video',
-    text: 'Toggle bodycam',
-  },
-
   deploy: {
     icon: 'plus',
     text: 'Deploy MOD',
@@ -111,6 +106,11 @@ const ALTERNATE_ACTIONS: Record<string, AlternateAction> = {
   deactivate_mod: {
     icon: 'power-off',
     text: 'Deactivate MOD',
+  },
+
+  access_storage: {
+    icon: 'box-open',
+    text: 'Open',
   },
 };
 

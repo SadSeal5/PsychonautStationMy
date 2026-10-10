@@ -107,8 +107,10 @@ GLOBAL_LIST_EMPTY(preferences_datums)
 	value_cache = null
 	return ..()
 
-/datum/preferences/New(client/parent)
+/datum/preferences/New(client/parent, do_not_save = FALSE)
 	src.parent = parent
+	if(do_not_save)
+		load_and_save = FALSE
 
 	for (var/middleware_type in subtypesof(/datum/preference_middleware))
 		middleware += new middleware_type(src)
@@ -536,7 +538,7 @@ GLOBAL_LIST_EMPTY(preferences_datums)
 		if (preference.type in do_not_apply)
 			continue
 
-		preference.apply_to_human(character, read_preference(preference.type))
+		preference.apply_to_human(character, read_preference(preference.type), src)
 
 	character.dna.real_name = character.real_name
 

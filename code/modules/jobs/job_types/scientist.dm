@@ -48,6 +48,7 @@
 		"Graduate Student",
 		"Cryptozoologist",
 	)
+	tgui_icon = FA_ICON_FLASK
 
 /datum/outfit/job/scientist
 	name = "Scientist"
@@ -56,7 +57,7 @@
 	id_trim = /datum/id_trim/job/scientist
 	uniform = /obj/item/clothing/under/rank/rnd/scientist
 	suit = /obj/item/clothing/suit/toggle/labcoat/science
-	belt = /obj/item/modular_computer/pda/science
+	belt = /obj/item/modular_computer/pda/crew/science
 	ears = /obj/item/radio/headset/headset_sci
 	shoes = /obj/item/clothing/shoes/sneakers/white
 
@@ -64,6 +65,8 @@
 	satchel = /obj/item/storage/backpack/satchel/science
 	duffelbag = /obj/item/storage/backpack/duffelbag/science
 	messenger = /obj/item/storage/backpack/messenger/science
+
+	wintercoat = /obj/item/clothing/suit/hooded/wintercoat/science
 
 /datum/outfit/job/scientist/pre_equip(mob/living/carbon/human/H)
 	..()

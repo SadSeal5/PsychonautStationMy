@@ -171,7 +171,7 @@
 	if(!SSticker)
 		return
 	var/mob/M = AM
-	if(HAS_TRAIT(M, TRAIT_HANDS_BLOCKED) || ((isdrone(M) || iscyborg(M)) && M.stat != CONSCIOUS))
+	if(HAS_TRAIT(M, TRAIT_HANDS_BLOCKED) || ((isdrone(M) || iscyborg(M)) && IS_UNCONSCIOUS_OR_CRIT(M)))
 		return
 	bumpopen(M)
 
@@ -236,7 +236,7 @@
 		leaving.Bump(src)
 		return COMPONENT_ATOM_BLOCK_EXIT
 
-/obj/machinery/door/window/open(forced = DEFAULT_DOOR_CHECKS)
+/obj/machinery/door/window/open(forced = DEFAULT_DOOR_CHECKS, mob/living/opener)
 	if(!density)
 		return TRUE
 
@@ -354,11 +354,15 @@
 	add_atom_colour(NARSIE_WINDOW_COLOUR, FIXED_COLOUR_PRIORITY)
 
 /obj/machinery/door/window/rust_heretic_act()
+	if(HAS_TRAIT(src, TRAIT_RUSTY))
+		return FALSE
+
 	add_atom_colour(COLOR_RUSTED_GLASS, FIXED_COLOUR_PRIORITY)
 	AddElement(/datum/element/rust)
 	set_armor(/datum/armor/none)
 	take_damage(get_integrity() * 0.5)
 	modify_max_integrity(initial(max_integrity) * 0.2)
+	return TRUE
 
 /obj/machinery/door/window/should_atmos_process(datum/gas_mixture/air, exposed_temperature)
 	return (exposed_temperature > T0C + (reinf ? 1600 : 800))
@@ -553,7 +557,7 @@ MAPPING_DIRECTIONAL_HELPERS(/obj/machinery/door/window/brigdoor/security/holodec
 */
 /obj/machinery/door/window/instant
 
-/obj/machinery/door/window/instant/open(forced = DEFAULT_DOOR_CHECKS)
+/obj/machinery/door/window/instant/open(forced = DEFAULT_DOOR_CHECKS, mob/living/opener)
 	if(!density || operating || !try_to_force_door_open(forced))
 		return FALSE
 

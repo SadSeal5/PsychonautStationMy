@@ -39,6 +39,7 @@
 		"Concierge",
 		"Maid",
 	)
+	tgui_icon = FA_ICON_SOAP
 
 /datum/outfit/job/janitor
 	name = "Janitor"
@@ -46,10 +47,12 @@
 
 	id_trim = /datum/id_trim/job/janitor
 	uniform = /obj/item/clothing/under/rank/civilian/janitor
-	belt = /obj/item/modular_computer/pda/janitor
+	belt = /obj/item/modular_computer/pda/crew/janitor
 	ears = /obj/item/radio/headset/headset_srv
 	skillchips = list(/obj/item/skillchip/job/janitor, /obj/item/skillchip/disposals)
 	backpack_contents = list(/obj/item/access_key)
+
+	wintercoat = /obj/item/clothing/suit/hooded/wintercoat/janitor
 
 /datum/outfit/job/janitor/pre_equip(mob/living/carbon/human/human_equipper, visuals_only)
 	. = ..()

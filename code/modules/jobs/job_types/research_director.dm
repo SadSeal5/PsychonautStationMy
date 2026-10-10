@@ -54,6 +54,7 @@
 		"Research Supervisor",
 		"Chief Science Officer"
 	)
+	tgui_icon = FA_ICON_USER_GRADUATE
 
 /datum/job/research_director/get_captaincy_announcement(mob/living/captain)
 	return "Personel eksikliği nedeniyle, yeni terfi eden geçici kaptan [captain.real_name] güvertede!"
@@ -70,7 +71,7 @@
 	backpack_contents = list(
 		/obj/item/melee/baton/telescopic/silver = 1,
 		)
-	belt = /obj/item/modular_computer/pda/heads/rd
+	belt = /obj/item/modular_computer/pda/crew/heads/rd
 	head = /obj/item/clothing/head/beret/science/rd
 	ears = /obj/item/radio/headset/heads/rd
 	shoes = /obj/item/clothing/shoes/jackboots
@@ -85,6 +86,8 @@
 
 	chameleon_extras = /obj/item/stamp/head/rd
 	skillchips = list(/obj/item/skillchip/research_director, /obj/item/skillchip/job/roboticist)
+
+	wintercoat = /obj/item/clothing/suit/hooded/wintercoat/science/rd
 
 /datum/outfit/job/rd/mod
 	name = "Research Director (MODsuit)"

@@ -634,7 +634,7 @@
 	impact_sound = SFX_BULLET_IMPACT_WOOD
 
 /obj/structure/table/wood/after_smash(mob/living/smashed_onto)
-	if(QDELETED(src) || prob(66))
+	if(QDELETED(src) || QDELETED(smashed_onto) || prob(66))
 		return
 	visible_message(
 		span_warning("[src] smashes into bits!"),
@@ -1477,7 +1477,7 @@
 		return
 	building = TRUE
 	to_chat(user, span_notice("You start constructing a rack..."))
-	if(do_after(user, 5 SECONDS, target = user, progress=TRUE))
+	if(do_after(user, 5 SECONDS, target = user))
 		if(!user.temporarilyRemoveItemFromInventory(src))
 			return
 		var/obj/structure/rack/R = new /obj/structure/rack(get_turf(src))

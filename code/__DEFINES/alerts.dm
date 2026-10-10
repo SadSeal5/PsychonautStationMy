@@ -29,6 +29,7 @@
 #define ALERT_RADIOACTIVE_AREA "radioactive_area"
 #define ALERT_UNPOSSESS_OBJECT "unpossess_object"
 #define ALERT_HIGHWEIGHT "high_weight"
+#define ALERT_BLOODWORM_INFO "bloodworm_info"
 
 //antag related
 #define ALERT_HYPNOSIS "hypnosis"
@@ -49,7 +50,6 @@
 #define ALERT_LOCKED "locked"
 #define ALERT_HACKED "hacked"
 #define ALERT_HACKING_APC "hackingapc"
-#define ALERT_BODYCAM_VIEWED "bodycam_viewed"
 
 /** MODsuit/Mech related */
 #define ALERT_MECH_DAMAGE "mech_damage"

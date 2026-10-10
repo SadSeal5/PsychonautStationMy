@@ -44,6 +44,7 @@
 		"Trauma Technician",
 		"Rescue Specialist"
 	)
+	tgui_icon = FA_ICON_TRUCK_MEDICAL
 
 /datum/outfit/job/paramedic
 	name = "Paramedic"
@@ -62,7 +63,7 @@
 	head = /obj/item/clothing/head/soft/paramedic
 	gloves = /obj/item/clothing/gloves/latex/nitrile
 	shoes = /obj/item/clothing/shoes/workboots/black
-	l_pocket = /obj/item/modular_computer/pda/medical/paramedic
+	l_pocket = /obj/item/modular_computer/pda/crew/medical/paramedic
 	r_pocket = /obj/item/storage/box/bandages
 
 	backpack = /obj/item/storage/backpack/medic
@@ -73,6 +74,8 @@
 	box = /obj/item/storage/box/survival/medical
 	chameleon_extras = /obj/item/gun/syringe
 	pda_slot = ITEM_SLOT_LPOCKET
+
+	wintercoat = /obj/item/clothing/suit/hooded/wintercoat/medical/paramedic
 
 /datum/outfit/job/doctor/mod
 	name = "Paramedic (MODsuit)"
