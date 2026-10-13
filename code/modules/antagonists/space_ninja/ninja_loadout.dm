@@ -24,13 +24,11 @@
 	var/in_setup_phase = FALSE
 	/// Stoppable timer ID for the 3-minute timeout
 	var/setup_timer
-	/// Menu UI datum
-	var/datum/ninja_loadout_menu/loadout_menu
 
 /**
  * Starts the ninja setup phase upon gaining the antag datum:
  * Sets alpha = 0, observer invisibility, godmode protection, registers break signals,
- * and opens the loadout UI.
+ * and opens the AntagInfoNinja UI.
  */
 /datum/antagonist/ninja/proc/start_setup_phase()
 	if(in_setup_phase)
@@ -56,8 +54,8 @@
 
 	setup_timer = addtimer(CALLBACK(src, PROC_REF(end_setup_phase)), 3 MINUTES, TIMER_STOPPABLE)
 
-	to_chat(ninja, span_boldnotice("SYSTEM: Setup cloak and stasis field engaged. Select your mission loadout. Moving, attacking, or 3 minutes elapsed will drop cloaking."))
-	open_loadout_menu(ninja)
+	to_chat(ninja, span_boldnotice("Spider Clan temporal concealment field active. Shadows envelop your cybernetic form. You are shielded from vacuum and undetected by station sensors. Moving, attacking, or confirming your mission parameters will disengage the veil."))
+	ui_interact(ninja)
 
 /**
  * Signal handler triggered when the ninja moves or attacks during setup phase.
@@ -68,7 +66,7 @@
 
 /**
  * Ends the setup phase: restores alpha, removes invisibility and protection, unregisters signals,
- * and applies the chosen loadout.
+ * applies the chosen loadout, and updates open AntagInfoNinja interfaces.
  */
 /datum/antagonist/ninja/proc/end_setup_phase()
 	if(!in_setup_phase)
@@ -93,19 +91,10 @@
 		ninja.invisibility = INVISIBILITY_NONE
 		REMOVE_TRAIT(ninja, TRAIT_GODMODE, REF(src))
 		new /obj/effect/temp_visual/dir_setting/ninja(get_turf(ninja), ninja.dir)
-		to_chat(ninja, span_warning("Cloaking and protection deactivated! You are now exposed."))
+		to_chat(ninja, span_warning("The shadows recede as your cybernetic systems calibrate. You are now exposed to the void."))
 
 	apply_loadout()
-	if(loadout_menu)
-		SStgui.close_uis(loadout_menu)
-
-/**
- * Opens or re-opens the loadout menu for the ninja.
- */
-/datum/antagonist/ninja/proc/open_loadout_menu(mob/user)
-	if(!loadout_menu)
-		loadout_menu = new(src)
-	loadout_menu.ui_interact(user)
+	SStgui.update_uis(src)
 
 /**
  * Applies the selected loadout to the ninja's MODsuit, swapping modules and updating pinned actions.
@@ -167,44 +156,22 @@
 		pre.default_pins[new_type] = list(REF(ninja))
 	return new_module
 
-// Dedicated TGUI Menu Datum for Ninja Loadout
-/datum/ninja_loadout_menu
-	var/datum/antagonist/ninja/ninja_antag
-
-/datum/ninja_loadout_menu/New(datum/antagonist/ninja/antag)
-	ninja_antag = antag
-
-/datum/ninja_loadout_menu/Destroy()
-	ninja_antag = null
-	return ..()
-
-/datum/ninja_loadout_menu/ui_interact(mob/user, datum/tgui/ui)
-	ui = SStgui.try_update_ui(user, src, ui)
-	if(!ui)
-		ui = new(user, src, "NinjaLoadout", "Spider Clan Loadout")
-		ui.open()
-
-/datum/ninja_loadout_menu/ui_state(mob/user)
-	return GLOB.always_state
-
-/datum/ninja_loadout_menu/ui_data(mob/user)
+/datum/antagonist/ninja/ui_data(mob/user)
 	var/list/data = list()
-	if(!ninja_antag)
-		return data
-	data["in_setup"] = ninja_antag.in_setup_phase
-	data["slot_stealth"] = ninja_antag.loadout_stealth
-	data["slot_star"] = ninja_antag.loadout_star
-	data["slot_heal"] = ninja_antag.loadout_heal
-	data["slot_trap"] = ninja_antag.loadout_trap
-	data["confirmed"] = ninja_antag.loadout_confirmed
+	data["objectives"] = get_objectives()
+	data["can_change_objective"] = can_assign_self_objectives
+	data["in_setup"] = in_setup_phase
+	data["slot_stealth"] = loadout_stealth
+	data["slot_star"] = loadout_star
+	data["slot_heal"] = loadout_heal
+	data["slot_trap"] = loadout_trap
+	data["confirmed"] = loadout_confirmed
 	data["mod_icon"] = 'icons/obj/clothing/modsuit/mod_modules.dmi'
 	return data
 
-/datum/ninja_loadout_menu/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
+/datum/antagonist/ninja/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
 	. = ..()
 	if(.)
-		return
-	if(!ninja_antag)
 		return
 	switch(action)
 		if("set_slot")
@@ -212,16 +179,17 @@
 			var/value = text2num(params["value"])
 			switch(slot)
 				if("stealth")
-					ninja_antag.loadout_stealth = value
+					loadout_stealth = value
 				if("star")
-					ninja_antag.loadout_star = value
+					loadout_star = value
 				if("heal")
-					ninja_antag.loadout_heal = value
+					loadout_heal = value
 				if("trap")
-					ninja_antag.loadout_trap = value
+					loadout_trap = value
 			return TRUE
 		if("confirm")
-			ninja_antag.apply_loadout()
-			ninja_antag.end_setup_phase()
+			apply_loadout()
+			end_setup_phase()
 			to_chat(ui.user, span_notice("Spider Clan loadout synchronized."))
+			SStgui.update_uis(src)
 			return TRUE
