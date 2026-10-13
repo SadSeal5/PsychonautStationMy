@@ -1104,7 +1104,7 @@
 	removable = FALSE
 	module_type = MODULE_ACTIVE
 	use_energy_cost = DEFAULT_CHARGE_DRAIN * 6
-	incompatible_modules = list(/obj/item/mod/module/energy_net, /obj/item/mod/module/shadow_bind)
+	incompatible_modules = list(/obj/item/mod/module/energy_net, /obj/item/mod/module/hologram_decoy)
 	cooldown_time = 5 SECONDS
 	required_slots = list(ITEM_SLOT_GLOVES)
 	/// List of all energy nets this module made.
@@ -1216,111 +1216,139 @@
 /obj/structure/energy_net/user_unbuckle_mob(mob/living/buckled_mob, mob/living/user)
 	return//The net must be destroyed to free the target
 
-///Shadow Bind - Fires shadow nanites that root, force-drop held items, silence and shock the victim.
-/obj/item/mod/module/shadow_bind/ninja
-	name = "\improper MOD shadow bind module"
-	desc = "A specialized tactical restraint launcher. Instead of conventional energy fields, this module fires \
-		a dense cluster of shadow-nanites that rapidly expand into grasping tendrils upon impact, rooting the victim, \
-		disarming them, and conducting a paralyzing silencing shock without relocating them."
-	icon_state = "shadow_bind"
-	removable = FALSE
-	module_type = MODULE_ACTIVE
-	complexity = 0
-	cooldown_time = 6 SECONDS
+///Holographic Decoy Module - Projects a lifelike hologram decoy while cloaking the user and buffing speed, then detonates in an EMP flash.
+/obj/item/mod/module/hologram_decoy
+	name = "\improper MOD holographic decoy module"
+	desc = "A state-of-the-art Spider Clan misdirection system. When activated, projects a lifelike holographic decoy of the user that runs towards targets, absorbing attacks. The user enters brief optical camouflage. Upon taking damage or after 5 seconds, the hologram overloads with an electromagnetic flash pulse, disorienting pursuers."
+	icon_state = "decoy_ninja"
+	module_type = MODULE_USABLE
+	complexity = 3
 	use_energy_cost = DEFAULT_CHARGE_DRAIN * 6
-	incompatible_modules = list(/obj/item/mod/module/energy_net, /obj/item/mod/module/shadow_bind)
+	incompatible_modules = list(/obj/item/mod/module/energy_net, /obj/item/mod/module/hologram_decoy)
+	cooldown_time = 12 SECONDS
 	required_slots = list(ITEM_SLOT_GLOVES)
 
-/obj/item/mod/module/shadow_bind/ninja/on_select_use(atom/target)
-	. = ..()
-	if(!.)
+/obj/item/mod/module/hologram_decoy/ninja
+	removable = FALSE
+
+/obj/item/mod/module/hologram_decoy/ninja/on_use(mob/activator)
+	var/mob/living/ninja = mod?.wearer
+	if(!istype(ninja))
 		return
-	if(IS_SPACE_NINJA(mod.wearer) && isliving(target))
-		mod.wearer.say("Shadows bind you!", forced = type)
-	var/obj/projectile/shadow_bind/projectile = new(mod.wearer.loc, src)
-	projectile.aim_projectile(target, mod.wearer)
-	projectile.firer = mod.wearer
-	playsound(src, 'sound/items/weapons/punchmiss.ogg', 25, TRUE)
-	INVOKE_ASYNC(projectile, TYPE_PROC_REF(/obj/projectile, fire))
-	drain_power(use_energy_cost)
+	if(!drain_power(use_energy_cost))
+		return
 
-/obj/projectile/shadow_bind
-	name = "shadow bind"
-	icon_state = "shadow_bind_projectile"
-	icon = 'icons/obj/clothing/modsuit/mod_modules.dmi'
-	damage = 0
-	range = 9
-	hitsound = 'sound/items/weapons/zapbang.ogg'
-	hitsound_wall = 'sound/items/weapons/zapbang.ogg'
-	/// Reference to the beam following the projectile.
-	var/line
+	playsound(ninja, 'sound/effects/phasein.ogg', 50, TRUE)
+	do_sparks(2, TRUE, ninja)
 
-/obj/projectile/shadow_bind/fire(setAngle)
-	if(firer)
-		line = firer.Beam(src, "shadow_beam", 'icons/obj/clothing/modsuit/mod_modules.dmi')
+	ninja.alpha = 25
+	ADD_TRAIT(ninja, TRAIT_SILENT_FOOTSTEPS, REF(src))
+	ninja.add_movespeed_modifier(/datum/movespeed_modifier/ninja_decoy_speed)
+	to_chat(ninja, span_notice("You engage optical camouflage as a holographic decoy deploys!"))
+	addtimer(CALLBACK(src, PROC_REF(end_stealth), WEAKREF(ninja)), 2.5 SECONDS)
+
+	var/mob/living/basic/illusion/ninja_decoy/decoy = new(ninja.loc)
+	decoy.setup_decoy(ninja)
+
+/obj/item/mod/module/hologram_decoy/ninja/proc/end_stealth(datum/weakref/ninja_ref)
+	var/mob/living/ninja = ninja_ref?.resolve()
+	if(!ninja || QDELETED(ninja))
+		return
+	var/obj/item/mod/module/stealth/stealth_mod = locate() in mod?.modules
+	if(stealth_mod?.active)
+		ninja.alpha = stealth_mod.stealth_alpha
+	else
+		ninja.alpha = initial(ninja.alpha)
+	REMOVE_TRAIT(ninja, TRAIT_SILENT_FOOTSTEPS, REF(src))
+	ninja.remove_movespeed_modifier(/datum/movespeed_modifier/ninja_decoy_speed)
+
+/datum/movespeed_modifier/ninja_decoy_speed
+	multiplicative_slowdown = -0.4
+
+/mob/living/basic/illusion/ninja_decoy
+	name = "holographic decoy"
+	desc = "A flickering cybernetic hologram projecting the appearance of a Space Ninja."
+	ai_controller = null
+	maxHealth = 25
+	health = 25
+	speed = -0.3
+	density = TRUE
+	var/detonated = FALSE
+	var/datum/weakref/creator_ref
+
+/mob/living/basic/illusion/ninja_decoy/Initialize(mapload)
+	. = ..()
+	RegisterSignals(src, list(COMSIG_MOB_ITEM_ATTACK, COMSIG_ATOM_ATTACKBY, COMSIG_ATOM_ATTACK_HAND, COMSIG_ATOM_BULLET_ACT, COMSIG_ATOM_HITBY, COMSIG_ATOM_HULK_ATTACK), PROC_REF(on_attacked))
+	addtimer(CALLBACK(src, PROC_REF(detonate)), 5 SECONDS)
+
+/mob/living/basic/illusion/ninja_decoy/proc/on_attacked()
+	SIGNAL_HANDLER
+	INVOKE_ASYNC(src, PROC_REF(detonate))
+
+/mob/living/basic/illusion/ninja_decoy/on_damage_taken(mob/living/source)
+	detonate()
+
+/mob/living/basic/illusion/ninja_decoy/death(gibbed)
+	detonate()
 	return ..()
 
-/obj/projectile/shadow_bind/Destroy()
-	QDEL_NULL(line)
-	return ..()
-
-/obj/projectile/shadow_bind/on_hit(mob/living/target, blocked = 0, pierce_hit)
+/mob/living/basic/illusion/ninja_decoy/Bump(atom/obstacle)
 	. = ..()
-	if(!istype(target))
+	if(isliving(obstacle))
+		var/mob/living/target = obstacle
+		var/mob/living/creator = creator_ref?.resolve()
+		if(target != creator && (!target.mind || !IS_SPACE_NINJA(target)))
+			detonate()
+
+/mob/living/basic/illusion/ninja_decoy/proc/setup_decoy(mob/living/creator)
+	creator_ref = WEAKREF(creator)
+	parent_mob_ref = WEAKREF(creator)
+	appearance = creator.appearance
+	setDir(creator.dir)
+	transform = initial(transform)
+	pixel_x = base_pixel_x
+	pixel_y = base_pixel_y
+	makeHologram(opacity = 0.85, color_override = "#00e5ff")
+
+	var/mob/living/closest_target = null
+	var/closest_dist = 8
+	for(var/mob/living/candidate in range(7, src))
+		if(candidate == creator || candidate == src || candidate.stat == DEAD)
+			continue
+		if(candidate.mind && IS_SPACE_NINJA(candidate))
+			continue
+		var/dist = get_dist(src, candidate)
+		if(dist < closest_dist)
+			closest_dist = dist
+			closest_target = candidate
+
+	if(closest_target)
+		walk_towards(src, closest_target, 3)
+	else
+		walk(src, creator.dir, 3)
+
+/mob/living/basic/illusion/ninja_decoy/proc/detonate()
+	if(detonated || QDELETED(src))
 		return
-	firer?.visible_message(span_danger("[firer] binds [target] with shadowy nanite tendrils!"), span_notice("You bind [target] with shadowy nanite tendrils!"))
-	target.drop_all_held_items()
-	target.electrocute_act(25, src, flags = SHOCK_NOGLOVES)
-	do_sparks(4, TRUE, target)
-	target.apply_status_effect(/datum/status_effect/silenced, 8 SECONDS)
-	if(locate(/obj/structure/shadow_bind_trap) in get_turf(target))
-		return
-	var/obj/structure/shadow_bind_trap/trap = new(target.drop_location())
-	if(target.buckled)
-		target.buckled.unbuckle_mob(target, force = TRUE)
-	trap.buckle_mob(target, force = TRUE)
-
-/obj/structure/shadow_bind_trap
-	name = "shadow tendrils"
-	desc = "A vortex of solid shadowy nanites and grasping tendrils anchoring everything on the tile."
-	icon = 'icons/effects/effects.dmi'
-	icon_state = "shadow_bind_trap"
-	density = FALSE
-	anchored = TRUE
-	layer = ABOVE_ALL_MOB_LAYER
-	plane = ABOVE_GAME_PLANE
-	max_integrity = 50
-	can_buckle = TRUE
-	buckle_lying = 0
-	buckle_prevents_pull = TRUE
-
-/obj/structure/shadow_bind_trap/Initialize(mapload)
-	. = ..()
-	var/image/underlay = image(icon, "shadow_bind_underlay")
-	underlay.layer = BELOW_MOB_LAYER
-	SET_PLANE_EXPLICIT(underlay, GAME_PLANE, src)
-	add_overlay(underlay)
-	ADD_TRAIT(src, TRAIT_DANGEROUS_BUCKLE, INNATE_TRAIT)
-	addtimer(CALLBACK(src, TYPE_PROC_REF(/atom, atom_destruction)), 12 SECONDS)
-
-/obj/structure/shadow_bind_trap/play_attack_sound(damage, damage_type = BRUTE, damage_flag = 0)
-	if(damage_type == BRUTE || damage_type == BURN)
-		playsound(src, 'sound/items/weapons/slash.ogg', 80, TRUE)
-
-/obj/structure/shadow_bind_trap/atom_destruction(damage_flag)
-	for(var/mob/recovered_mob as anything in buckled_mobs)
-		recovered_mob.visible_message(span_notice("[recovered_mob] breaks free from the shadowy tendrils!"), span_notice("You break free from the shadowy tendrils!"))
-	new /obj/effect/temp_visual/dir_setting/ninja/shadow(get_turf(src), dir)
-	return ..()
-
-/obj/structure/shadow_bind_trap/attack_paw(mob/user, list/modifiers)
-	return attack_hand(user, modifiers)
-
-/obj/structure/shadow_bind_trap/user_buckle_mob(mob/living/buckled_mob, mob/user, check_loc = TRUE)
-	return
-
-/obj/structure/shadow_bind_trap/user_unbuckle_mob(mob/living/buckled_mob, mob/living/user)
-	return
+	detonated = TRUE
+	walk(src, 0)
+	var/turf/epicenter = get_turf(src)
+	if(epicenter)
+		playsound(epicenter, 'sound/effects/empulse.ogg', 75, TRUE)
+		playsound(epicenter, 'sound/items/weapons/flash.ogg', 75, TRUE)
+		do_sparks(5, TRUE, epicenter)
+		new /obj/effect/temp_visual/emp/pulse(epicenter)
+		empulse(epicenter, heavy_range = 0, light_range = 2, emp_source = src)
+		var/mob/living/creator = creator_ref?.resolve()
+		for(var/mob/living/victim in viewers(2, epicenter))
+			if(victim == src || victim == creator)
+				continue
+			if(victim.mind && IS_SPACE_NINJA(victim))
+				continue
+			victim.flash_act(1, affect_silicon = TRUE)
+			victim.adjust_confusion(2 SECONDS)
+			victim.adjust_dizzy(4 SECONDS)
+	qdel(src)
 
 ///Adrenaline Boost - Stops all stuns the ninja is affected with, increases his speed.
 /obj/item/mod/module/adrenaline_boost

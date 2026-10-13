@@ -10,6 +10,7 @@
 #define NINJA_SLOT_HEAL_NANITE 2
 
 #define NINJA_SLOT_TRAP_DEFAULT 1
+#define NINJA_SLOT_TRAP_DECOY 2
 #define NINJA_SLOT_TRAP_SHADOW 2
 
 /datum/antagonist/ninja
@@ -105,11 +106,11 @@
 	else
 		swap_module(mod, /obj/item/mod/module/nanite_repair/ninja, /obj/item/mod/module/adrenaline_boost)
 
-	// Slot 4: Energy Net vs Shadow Bind
-	if(loadout_trap == NINJA_SLOT_TRAP_SHADOW)
-		swap_module(mod, /obj/item/mod/module/energy_net, /obj/item/mod/module/shadow_bind/ninja)
+	// Slot 4: Energy Net vs Holographic Decoy
+	if(loadout_trap == NINJA_SLOT_TRAP_DECOY)
+		swap_module(mod, /obj/item/mod/module/energy_net, /obj/item/mod/module/hologram_decoy/ninja)
 	else
-		swap_module(mod, /obj/item/mod/module/shadow_bind/ninja, /obj/item/mod/module/energy_net)
+		swap_module(mod, /obj/item/mod/module/hologram_decoy/ninja, /obj/item/mod/module/energy_net)
 
 	loadout_confirmed = TRUE
 

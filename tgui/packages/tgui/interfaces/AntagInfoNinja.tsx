@@ -199,15 +199,15 @@ export const AntagInfoNinja = () => {
         },
         {
           value: 2,
-          title: 'Shadow Bind Module',
+          title: 'Holographic Decoy Module',
           badge: 'ALTERNATIVE',
-          typeTag: 'VOID RESTRICTION',
-          iconState: 'shadow_bind',
-          accentColor: '#a855f7',
-          accentBg: 'rgba(168, 85, 247, 0.12)',
+          typeTag: 'CYBER DECOY',
+          iconState: 'decoy_ninja',
+          accentColor: '#00e5ff',
+          accentBg: 'rgba(0, 229, 255, 0.12)',
           description:
-            'Launches dark void nanites that erupt into shadowy tendrils: roots victim on tile, forces disarm, shocks & silences.',
-          statBadge: 'ROOT // DISARM // SILENCE',
+            'Projects a lifelike holographic decoy charging targets and absorbing attacks. Grants 2.5s cloaking & speed. Decoy overloads with an EMP flash pulse.',
+          statBadge: 'CLONE // CLOAK // EMP FLASH',
         },
       ],
     },
@@ -298,17 +298,17 @@ export const AntagInfoNinja = () => {
         },
     slot_trap === 2
       ? {
-          title: 'Shadow Bind Module',
+          title: 'Holographic Decoy Module',
           badge: 'SLOT 4',
-          typeTag: 'VOID RESTRICTION // SUBJUGATION',
-          iconState: 'shadow_bind',
-          accentColor: '#a855f7',
-          controls: 'Aim and fire shadow projectile at target mob',
-          power: 'Moderate suit power (12s cooldown)',
+          typeTag: 'CYBER DECOY // MISDIRECTION',
+          iconState: 'decoy_ninja',
+          accentColor: '#00e5ff',
+          controls: 'Pinned Suit Action or Suit Menu (Instant Use)',
+          power: 'Default charge drain x 6 (12s cooldown)',
           description:
-            'Launches dark matter nanites that blossom into a dark shadow tendril snare beneath the victim. Roots them to the spot, forces them to drop all held weapons, shocks them, and silences their vocal cords.',
+            'A state-of-the-art Spider Clan misdirection system. When activated, projects a lifelike holographic decoy of the user that charges towards targets, drawing enemy fire and attacks. The ninja enters brief optical camouflage (alpha = 25, silent footsteps, and movement speed bonus) for 2.5 seconds to reposition. Upon taking damage or after 5 seconds, the holographic decoy overloads with an electromagnetic flash pulse, detonating an EMP and blinding/disorienting pursuers in a 2-tile radius.',
           tacticalTip:
-            'Silenced targets cannot call for security over the radio. Root them from range to easily close distance for an execution with your energy katana.',
+            'Trigger the decoy when ambushed or breaching high-threat areas. The decoy will absorb attacks while you sprint invisibly to the enemy rear or slip past security defenses. The overload flash will disorient nearby enemies, opening them up for lethal katana strikes.',
         }
       : {
           title: 'Energy Net Projector',
