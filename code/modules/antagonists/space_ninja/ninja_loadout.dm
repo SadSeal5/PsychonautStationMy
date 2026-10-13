@@ -197,6 +197,7 @@
 	data["slot_heal"] = ninja_antag.loadout_heal
 	data["slot_trap"] = ninja_antag.loadout_trap
 	data["confirmed"] = ninja_antag.loadout_confirmed
+	data["mod_icon"] = 'icons/obj/clothing/modsuit/mod_modules.dmi'
 	return data
 
 /datum/ninja_loadout_menu/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)

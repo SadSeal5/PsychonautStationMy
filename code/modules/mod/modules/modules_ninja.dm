@@ -181,6 +181,7 @@
 		using the nanites already hosted in the wearer's suit to transmute into monomolecular shuriken. \
 		While these lack the intense bleeding edge of conventional throwing stars, \
 		they have been set to electrify fleeing targets; and branded with the Spider Clan symbol."
+	icon_state = "dispenser_ninja"
 	dispense_type = /obj/item/throwing_star/stamina/ninja
 	cooldown_time = 0.5 SECONDS
 
