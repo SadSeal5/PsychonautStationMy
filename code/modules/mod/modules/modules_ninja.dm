@@ -81,21 +81,153 @@
 	. = ..()
 	REMOVE_TRAIT(mod.wearer, TRAIT_SILENT_FOOTSTEPS, REF(src))
 
-///Pure Phasing Module - Allows movement through walls and obstacles without invisibility.
+///Phase Module - Allows movement through walls and obstacles without invisibility.
 /obj/item/mod/module/phase/ninja
-	name = "\improper MOD pure phasing module"
+	name = "\improper MOD phase module"
 	desc = "A bleeding-edge Spider Clan modulation unit employing quantum-phase displacement fields. \
 		When engaged, it allows the wearer to phase unobstructed through dense matter and reinforced walls, \
 		at the cost of rapid power consumption on phase steps. \
-		Unlike mimetic stealth, it produces visible shadow flickers and emits phazon particles instead of concealing the user."
+		Unlike mimetic stealth, it produces visible shadow flickers instead of concealing the user."
 	icon_state = "phase_ninja"
 	module_type = MODULE_TOGGLE
 	complexity = 4
-	active_power_cost = DEFAULT_CHARGE_DRAIN * 2
-	use_energy_cost = DEFAULT_CHARGE_DRAIN * 5
+	active_power_cost = DEFAULT_CHARGE_DRAIN * 6
+	use_energy_cost = DEFAULT_CHARGE_DRAIN * 15
 	incompatible_modules = list(/obj/item/mod/module/stealth, /obj/item/mod/module/phase)
-	cooldown_time = 3 SECONDS
+	cooldown_time = 10 SECONDS
 	required_slots = list(ITEM_SLOT_HEAD|ITEM_SLOT_MASK, ITEM_SLOT_OCLOTHING|ITEM_SLOT_ICLOTHING, ITEM_SLOT_GLOVES, ITEM_SLOT_FEET)
+	/// Whether we are currently in the 3-second startup channel
+	var/starting_up = FALSE
+	/// Whether the startup channel was interrupted by damage
+	var/startup_interrupted = FALSE
+	/// Active timed action for startup channel so it can be cancelled on damage
+	var/datum/timed_action/startup_action
+
+/obj/item/mod/module/phase/ninja/Destroy()
+	if(startup_action)
+		startup_action.cancel()
+		startup_action = null
+	if(mod?.wearer)
+		UnregisterSignal(mod.wearer, COMSIG_MOB_APPLY_DAMAGE)
+		unregister_attack_restrictions(mod.wearer)
+	return ..()
+
+/obj/item/mod/module/phase/ninja/on_part_deactivation(deleting = FALSE)
+	if(startup_action)
+		startup_action.cancel()
+	return ..()
+
+/obj/item/mod/module/phase/ninja/on_uninstall()
+	if(startup_action)
+		startup_action.cancel()
+	return ..()
+
+/obj/item/mod/module/phase/ninja/activate(mob/activator)
+	if(starting_up)
+		balloon_alert(activator, "calibration in progress!")
+		return FALSE
+	if(!COOLDOWN_FINISHED(src, cooldown_timer))
+		balloon_alert(activator, "on cooldown!")
+		return FALSE
+	if(!mod.active || mod.activating || !mod.get_charge())
+		balloon_alert(activator, "unpowered!")
+		return FALSE
+	if(!(allow_flags & MODULE_ALLOW_PHASEOUT) && istype(mod.wearer.loc, /obj/effect/dummy/phased_mob))
+		to_chat(activator, span_warning("You cannot activate this right now."))
+		return FALSE
+	if(SEND_SIGNAL(src, COMSIG_MODULE_TRIGGERED, mod.wearer) & MOD_ABORT_USE)
+		return FALSE
+
+	INVOKE_ASYNC(src, PROC_REF(startup_channel), activator)
+	return TRUE
+
+/obj/item/mod/module/phase/ninja/proc/startup_channel(mob/activator)
+	starting_up = TRUE
+	startup_interrupted = FALSE
+	balloon_alert(mod.wearer, "calibrating phase shift...")
+	register_attack_restrictions(mod.wearer)
+	RegisterSignal(mod.wearer, COMSIG_MOB_APPLY_DAMAGE, PROC_REF(on_startup_damage))
+
+	var/datum/timed_action/action = new(mod.wearer, mod.wearer, 3 SECONDS, show_progress = TRUE, timed_action_flags = IGNORE_USER_LOC_CHANGE | IGNORE_HELD_ITEM, extra_checks = CALLBACK(src, PROC_REF(check_startup_validity)))
+	startup_action = action
+	var/success = action.await()
+	startup_action = null
+
+	if(mod?.wearer)
+		UnregisterSignal(mod.wearer, COMSIG_MOB_APPLY_DAMAGE)
+
+	if(!success || startup_interrupted)
+		if(mod?.wearer)
+			unregister_attack_restrictions(mod.wearer)
+		starting_up = FALSE
+		if(startup_interrupted)
+			if(mod?.wearer)
+				to_chat(mod.wearer, span_warning("Damage disrupts your phase calibration sequence!"))
+				do_sparks(3, TRUE, mod.wearer)
+			start_cooldown(10 SECONDS)
+			startup_interrupted = FALSE
+		return
+
+	starting_up = FALSE
+	active = TRUE
+	SEND_SIGNAL(src, COMSIG_MODULE_ACTIVATED)
+	SEND_SIGNAL(mod, COMSIG_MOD_MODULE_ACTIVATED, src)
+	on_activation(activator)
+	update_clothing_slots()
+
+/obj/item/mod/module/phase/ninja/proc/check_startup_validity()
+	if(startup_interrupted)
+		return FALSE
+	if(!mod || !mod.wearer || HAS_TRAIT(mod.wearer, TRAIT_INCAPACITATED))
+		return FALSE
+	if(!mod.active || mod.activating || !mod.get_charge())
+		return FALSE
+	if(loc != mod)
+		return FALSE
+	return TRUE
+
+/obj/item/mod/module/phase/ninja/proc/on_startup_damage(mob/living/source, damage_amount, damagetype, def_zone)
+	SIGNAL_HANDLER
+
+	if(damage_amount <= 0 || startup_interrupted)
+		return
+	startup_interrupted = TRUE
+	if(startup_action)
+		startup_action.cancel()
+
+/obj/item/mod/module/phase/ninja/proc/register_attack_restrictions(mob/living/wearer)
+	if(!wearer)
+		return
+	RegisterSignal(wearer, COMSIG_LIVING_UNARMED_ATTACK, PROC_REF(on_unarmed_attack))
+	RegisterSignal(wearer, COMSIG_MOB_ITEM_ATTACK, PROC_REF(on_item_attack))
+	RegisterSignal(wearer, COMSIG_MOB_ATTACK_RANGED, PROC_REF(on_ranged_attack))
+
+/obj/item/mod/module/phase/ninja/proc/unregister_attack_restrictions(mob/living/wearer)
+	if(!wearer)
+		return
+	UnregisterSignal(wearer, list(COMSIG_LIVING_UNARMED_ATTACK, COMSIG_MOB_ITEM_ATTACK, COMSIG_MOB_ATTACK_RANGED))
+
+/obj/item/mod/module/phase/ninja/proc/on_unarmed_attack(mob/living/source, atom/attack_target, proximity_flag, modifiers)
+	SIGNAL_HANDLER
+
+	if(!isliving(attack_target) || attack_target == mod?.wearer)
+		return
+	to_chat(mod.wearer, span_warning("Dimensional phase interference prevents you from attacking while out of phase!"))
+	return COMPONENT_CANCEL_ATTACK_CHAIN
+
+/obj/item/mod/module/phase/ninja/proc/on_item_attack(mob/living/source, mob/living/target_mob, mob/living/user, list/modifiers, list/attack_modifiers)
+	SIGNAL_HANDLER
+
+	to_chat(mod.wearer, span_warning("Dimensional phase interference prevents you from attacking while out of phase!"))
+	return COMPONENT_CANCEL_ATTACK_CHAIN
+
+/obj/item/mod/module/phase/ninja/proc/on_ranged_attack(mob/living/source, atom/target, modifiers)
+	SIGNAL_HANDLER
+
+	if(!isliving(target) || target == mod?.wearer)
+		return
+	to_chat(mod.wearer, span_warning("Dimensional phase interference prevents you from attacking while out of phase!"))
+	return COMPONENT_CANCEL_ATTACK_CHAIN
 
 /obj/item/mod/module/phase/ninja/on_activation(mob/activator)
 	ADD_TRAIT(mod.wearer, TRAIT_MOVE_PHASING, REF(src))
@@ -106,9 +238,10 @@
 	drain_power(use_energy_cost)
 
 /obj/item/mod/module/phase/ninja/on_deactivation(mob/activator, display_message = TRUE, deleting = FALSE)
-	REMOVE_TRAIT(mod.wearer, TRAIT_MOVE_PHASING, REF(src))
-	UnregisterSignal(mod.wearer, list(COMSIG_MOVABLE_MOVED, COMSIG_MOVABLE_CAN_PASS_THROUGH))
-	if(mod.wearer)
+	if(mod?.wearer)
+		REMOVE_TRAIT(mod.wearer, TRAIT_MOVE_PHASING, REF(src))
+		UnregisterSignal(mod.wearer, list(COMSIG_MOVABLE_MOVED, COMSIG_MOVABLE_CAN_PASS_THROUGH))
+		unregister_attack_restrictions(mod.wearer)
 		new /obj/effect/temp_visual/dir_setting/ninja/phase/out(get_turf(mod.wearer), mod.wearer.dir)
 		playsound(mod.wearer, 'sound/effects/phasein.ogg', 50, TRUE)
 		var/turf/current_turf = get_turf(mod.wearer)
@@ -122,6 +255,8 @@
 				safe = find_safe_turf(mod.wearer.z)
 			if(safe)
 				mod.wearer.forceMove(safe)
+	if(!deleting)
+		start_cooldown(10 SECONDS)
 
 /obj/item/mod/module/phase/ninja/proc/on_wearer_moved(mob/living/source, atom/oldloc, direction, forced, list/old_locs)
 	SIGNAL_HANDLER
@@ -242,7 +377,7 @@
 		or anchors into walls and structures to haul the wearer rapidly forward."
 	icon_state = "dispenser_kunai"
 	dispense_type = /obj/item/throwing_star/kunai/ninja
-	cooldown_time = 1 SECONDS
+	cooldown_time = 7 SECONDS
 
 /obj/item/throwing_star/kunai/ninja
 	name = "grappling kunai"
@@ -251,43 +386,62 @@
 	icon = 'icons/obj/weapons/thrown.dmi'
 	icon_state = "kunai_ninja"
 	inhand_icon_state = "kunai"
-	force = 10
-	throwforce = 15
-	armour_penetration = 60
+	force = 8
+	throwforce = 12
+	armour_penetration = 75
 	item_flags = DROPDEL
 	custom_materials = null
 	resistance_flags = FIRE_PROOF | ACID_PROOF | UNACIDABLE
 	/// Reference to the thrower mob
 	var/datum/weakref/thrower_ref
+	/// Visual tether cable beam connecting thrower to kunai
+	var/datum/beam/tether_beam
 
 /obj/item/throwing_star/kunai/ninja/Initialize(mapload)
 	. = ..()
 	ADD_TRAIT(src, TRAIT_UNCATCHABLE, INNATE_TRAIT)
 
+/obj/item/throwing_star/kunai/ninja/Destroy()
+	QDEL_NULL(tether_beam)
+	return ..()
+
 /obj/item/throwing_star/kunai/ninja/on_thrown(mob/living/carbon/user, atom/target)
 	item_flags &= ~DROPDEL
 	thrower_ref = WEAKREF(user)
+	tether_beam = user.Beam(src, icon_state = "chain", maxdistance = 15)
 	return ..()
+
+/proc/ninja_kunai_smooth_landing(mob/living/ninja, datum/beam/zip_beam)
+	qdel(zip_beam)
+	if(QDELETED(ninja))
+		return
+	ninja.SetKnockdown(0)
+	ninja.SetParalyzed(0)
+	ninja.SetStun(0)
+	ninja.set_resting(FALSE)
 
 /obj/item/throwing_star/kunai/ninja/throw_impact(atom/hit_atom, datum/thrownthing/throwingdatum)
 	. = ..()
 	item_flags |= DROPDEL
+	QDEL_NULL(tether_beam)
 	var/mob/living/thrower = thrower_ref?.resolve()
 	if(isliving(hit_atom))
 		var/mob/living/victim = hit_atom
 		playsound(src, 'sound/items/weapons/pierce.ogg', 60, TRUE)
-		victim.apply_damage(15, STAMINA)
-		victim.Knockdown(2 SECONDS)
+		victim.apply_damage(10, STAMINA)
+		victim.Knockdown(2.5 SECONDS)
 		do_sparks(2, TRUE, victim)
 		if(thrower && thrower != victim && get_dist(thrower, victim) > 1)
 			victim.visible_message(span_danger("[thrower] snags [victim] with [src] and yanks [victim.p_them()] close!"), span_userdanger("[thrower] hooks you with [src] and yanks you across the room!"))
 			playsound(victim, 'sound/items/fulton/fultext_deploy.ogg', 50, TRUE)
-			victim.throw_at(thrower, get_dist(victim, thrower), 3, thrower)
+			var/datum/beam/pull_beam = thrower.Beam(victim, icon_state = "chain", maxdistance = 15, time = 3 SECONDS)
+			victim.throw_at(target = thrower, range = get_dist(victim, thrower), speed = 3, thrower = thrower, spin = FALSE, gentle = TRUE, callback = CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(qdel), pull_beam))
 	else if(hit_atom.density || istype(hit_atom, /turf/closed) || isstructure(hit_atom) || ismachinery(hit_atom))
 		if(thrower && get_dist(thrower, hit_atom) > 1)
 			thrower.visible_message(span_danger("[thrower] grapples onto [hit_atom] and zips forward!"), span_notice("You hook [hit_atom] with [src] and haul yourself forward!"))
 			playsound(thrower, 'sound/items/fulton/fultext_deploy.ogg', 50, TRUE)
-			thrower.throw_at(get_turf(hit_atom), get_dist(thrower, hit_atom), 3, thrower)
+			var/datum/beam/zip_beam = thrower.Beam(hit_atom, icon_state = "chain", maxdistance = 15, time = 3 SECONDS)
+			thrower.throw_at(target = get_turf(hit_atom), range = get_dist(thrower, hit_atom), speed = 3, thrower = thrower, spin = FALSE, gentle = TRUE, callback = CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(ninja_kunai_smooth_landing), thrower, zip_beam))
 	if(isturf(loc))
 		qdel(src)
 

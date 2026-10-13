@@ -103,15 +103,15 @@ export const AntagInfoNinja = () => {
         },
         {
           value: 2,
-          title: 'Pure Phasing Module',
+          title: 'Phase Module',
           badge: 'ALTERNATIVE',
           typeTag: 'QUANTUM PHASE',
           iconState: 'phase_ninja',
           accentColor: '#22d3ee',
           accentBg: 'rgba(34, 211, 238, 0.12)',
           description:
-            'Displaces suit matter to ghost through solid bulkheads and reinforced walls. Consumes suit power per step.',
-          statBadge: 'NO-CLIP // DRAIN',
+            'Displaces suit matter to ghost through solid bulkheads and reinforced walls. Requires a 3s startup channel; cannot attack while active. Heavy power drain.',
+          statBadge: '3S WINDUP // 10S CD // PACIFIST',
         },
       ],
     },
@@ -142,8 +142,8 @@ export const AntagInfoNinja = () => {
           accentColor: '#c4b5fd',
           accentBg: 'rgba(196, 181, 253, 0.12)',
           description:
-            'Throws high-tensile tethered kunai. Stuns and drags targets close, or reels the user rapidly to walls.',
-          statBadge: 'PULL // STUN // ZIP',
+            'Throws tethered kunai. Knocks victims down and reels them in prone, or pulls the user to walls with a smooth landing.',
+          statBadge: '7S CD // PRONE REEL // ZIP',
         },
       ],
     },
@@ -217,17 +217,17 @@ export const AntagInfoNinja = () => {
   const chosenDossier: DossierItem[] = [
     slot_stealth === 2
       ? {
-          title: 'Pure Phasing Module',
+          title: 'Phase Module',
           badge: 'SLOT 1',
           typeTag: 'QUANTUM PHASE // MOBILITY',
           iconState: 'phase_ninja',
           accentColor: '#22d3ee',
           controls: 'Pinned Suit Action or Suit Menu (Toggle)',
-          power: '5 units per phase step (Suit Battery)',
+          power: '6 units/sec active drain + 15 units per phase step (Suit Battery)',
           description:
-            'Displaces the MODsuit into quantum subspace, granting the ability to ghost directly through reinforced bulkheads, airlocks, and solid terrain without restriction. Emits phazon particle trails and dark ripples while active.',
+            'Displaces the MODsuit into quantum subspace, granting the ability to ghost directly through reinforced bulkheads, airlocks, and solid terrain without restriction. Requires a 3-second calibration channel to activate (interrupted if damaged, triggering a 10s cooldown). While out of phase or calibrating, dimensional interference prevents attacking any targets. Incurs a 10-second cooldown upon deactivating.',
           tacticalTip:
-            'If suit power is depleted or the module is turned off while inside a dense wall, you will be automatically shunted to the nearest open tile. Keep a close watch on your power reserves.',
+            'If suit power is depleted or the module is turned off while inside a dense wall, you will be automatically shunted to the nearest open tile. Keep a close watch on your power reserves and remember you cannot attack while phased.',
         }
       : {
           title: 'Advanced Mimetic Stealth',
@@ -250,11 +250,11 @@ export const AntagInfoNinja = () => {
           iconState: 'dispenser_kunai',
           accentColor: '#c4b5fd',
           controls: 'Click pinned action to synthesize // Throw at target or structure',
-          power: 'Nanite synthesis (1.0s cooldown)',
+          power: 'Nanite synthesis (7.0s cooldown)',
           description:
-            'Fabricates high-tensile titanium kunai linked by monomolecular nanite tow cables. Striking living targets knocks them down for 2 seconds, inflicts 15 stamina damage, and violently drags them across rooms directly to you. Striking dense walls or machinery grapples and hauls you rapidly forward.',
+            'Fabricates lightweight titanium kunai linked by high-tensile nanite tow cables (8 force, 12 throwforce, 75 AP, 10 stamina damage). Striking living targets knocks them prone for 2.5 seconds and reels them across the room directly to your feet along a visible tether beam. Striking dense walls or machinery hauls you forward with a smooth, upright landing.',
           tacticalTip:
-            'Snatch isolated personnel into dark corridors for silent assassinations, or slingshot across wide corridors and hull breaches to bypass barriers.',
+            'Snatch isolated personnel into dark corridors for silent assassinations while they remain prone, or slingshot across wide corridors and hull breaches to bypass barriers.',
         }
       : {
           title: 'EMP Shuriken Dispenser',
