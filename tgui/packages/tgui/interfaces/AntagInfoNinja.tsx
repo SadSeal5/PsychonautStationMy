@@ -99,7 +99,7 @@ export const AntagInfoNinja = () => {
           accentBg: 'rgba(192, 132, 252, 0.12)',
           description:
             'Mimetic light-bending field. Zero bump disruption, silent footsteps, minimal suit power draw.',
-          statBadge: 'SILENT // 0-BUMP',
+          statBadge: '50 EN. + 10/S // CLOAK',
         },
         {
           value: 2,
@@ -111,7 +111,7 @@ export const AntagInfoNinja = () => {
           accentBg: 'rgba(34, 211, 238, 0.12)',
           description:
             'Displaces suit matter to ghost through solid bulkheads and reinforced walls. Requires a 3s startup channel; cannot attack while active. Heavy power drain.',
-          statBadge: '3S WINDUP // 10S CD // PACIFIST',
+          statBadge: '150 EN. + 150/STEP // PHASE',
         },
       ],
     },
@@ -131,7 +131,7 @@ export const AntagInfoNinja = () => {
           accentBg: 'rgba(251, 191, 36, 0.12)',
           description:
             'Synthesizes monomolecular energy shurikens that discharge high-grade EMP bursts upon impact.',
-          statBadge: 'EMP BURST // RANGED',
+          statBadge: '20 ENERGY // 0.5S CD // EMP',
         },
         {
           value: 2,
@@ -143,7 +143,7 @@ export const AntagInfoNinja = () => {
           accentBg: 'rgba(196, 181, 253, 0.12)',
           description:
             'Throws tethered kunai. Knocks victims down and reels them in prone, or pulls the user to walls with a smooth landing.',
-          statBadge: '7S CD // PRONE REEL // ZIP',
+          statBadge: '20 ENERGY // 7S CD // TETHER',
         },
       ],
     },
@@ -163,19 +163,19 @@ export const AntagInfoNinja = () => {
           accentBg: 'rgba(251, 113, 133, 0.12)',
           description:
             'Emergency chemical surge. Instantly clears stuns, total paralysis, and stamina drain while injecting stimulants.',
-          statBadge: 'ANTI-STUN // SPEED',
+          statBadge: '0 ENERGY // 20U RADIUM // ANTI-STUN',
         },
         {
           value: 2,
-          title: 'Nanite Cellular Repair',
+          title: 'Nanite Cellular Repair Matrix',
           badge: 'ALTERNATIVE',
           typeTag: 'BIOMEDICAL MATRIX',
           iconState: 'nanite_repair',
           accentColor: '#34d399',
           accentBg: 'rgba(52, 211, 153, 0.12)',
           description:
-            'Medical nanite matrix rapidly seals lacerations and repairs heavy brute and thermal burn trauma over 5 seconds.',
-          statBadge: '150 BRUTE+BURN // SUIT PWR',
+            'Medical nanite matrix injects 2u Sanguirite coagulant and heals 75 Brute + 75 Burn over 15 seconds (5/sec). Consumes 0 suit power; holds 3 charges, refilled with 15u Radium.',
+          statBadge: '0 ENERGY // 3 CHARGES // 15U RADIUM',
         },
       ],
     },
@@ -187,7 +187,7 @@ export const AntagInfoNinja = () => {
       options: [
         {
           value: 1,
-          title: 'Energy Net Module',
+          title: 'Energy Net Projector',
           badge: 'DEFAULT',
           typeTag: 'HARDLIGHT RESTRAINT',
           iconState: 'energy_net',
@@ -195,7 +195,7 @@ export const AntagInfoNinja = () => {
           accentBg: 'rgba(56, 189, 248, 0.12)',
           description:
             'Fires an active hardlight projector deploying a reinforced capture barrier to securely anchor targets.',
-          statBadge: 'HARDLIGHT // TILE LOCK',
+          statBadge: '100 ENERGY // 15S CD // HARDLIGHT',
         },
         {
           value: 2,
@@ -207,7 +207,7 @@ export const AntagInfoNinja = () => {
           accentBg: 'rgba(0, 229, 255, 0.12)',
           description:
             'Projects a lifelike holographic decoy charging targets and absorbing attacks. Grants 2.5s cloaking & speed. Decoy overloads with an EMP flash pulse.',
-          statBadge: 'CLONE // CLOAK // EMP FLASH',
+          statBadge: '60 ENERGY // 12S CD // DECOY',
         },
       ],
     },
@@ -223,7 +223,7 @@ export const AntagInfoNinja = () => {
           iconState: 'phase_ninja',
           accentColor: '#22d3ee',
           controls: 'Pinned Suit Action or Suit Menu (Toggle)',
-          power: '6 units/sec active drain + 15 units per phase step (Suit Battery)',
+          power: '150 energy units on activation + 150 units per phase step // 10s cooldown',
           description:
             'Displaces the MODsuit into quantum subspace, granting the ability to ghost directly through reinforced bulkheads, airlocks, and solid terrain without restriction. Requires a 3-second calibration channel to activate (interrupted if damaged, triggering a 10s cooldown). While out of phase or calibrating, dimensional interference prevents attacking any targets. Incurs a 10-second cooldown upon deactivating.',
           tacticalTip:
@@ -236,7 +236,7 @@ export const AntagInfoNinja = () => {
           iconState: 'cloak_ninja',
           accentColor: '#c084fc',
           controls: 'Pinned Suit Action or Suit Menu (Toggle)',
-          power: '1 unit/sec passive drain, 5 units on activation',
+          power: '50 energy units on activation + 10 units/sec while active',
           description:
             'Projects a refractive light-bending shield with dynamic chameleonic skin adaptation. Renders the wearer virtually invisible (alpha 20) and completely silences footsteps. Equipped with stabilization dampeners that do NOT break cloak on bumping into objects or crew.',
           tacticalTip:
@@ -250,7 +250,7 @@ export const AntagInfoNinja = () => {
           iconState: 'dispenser_kunai',
           accentColor: '#c4b5fd',
           controls: 'Click pinned action to synthesize // Throw at target or structure',
-          power: 'Nanite synthesis (7.0s cooldown)',
+          power: '20 energy units per synthesis // 7.0s cooldown',
           description:
             'Fabricates lightweight titanium kunai linked by high-tensile nanite tow cables (8 force, 12 throwforce, 75 AP, 10 stamina damage). Striking living targets knocks them prone for 2.5 seconds and reels them across the room directly to your feet along a visible tether beam. Striking dense walls or machinery hauls you forward with a smooth, upright landing.',
           tacticalTip:
@@ -263,7 +263,7 @@ export const AntagInfoNinja = () => {
           iconState: 'dispenser_ninja',
           accentColor: '#fbbf24',
           controls: 'Click pinned action to synthesize // Throw at target',
-          power: 'Nanite synthesis (0.5s cooldown)',
+          power: '20 energy units per synthesis // 0.5s cooldown',
           description:
             'Synthesizes monomolecular energy shurikens with embedded electromagnetic discharge emitters. On impact, releases a heavy EMP burst. If embedded in carbon prey, continues pulsing periodically with secondary EMP shocks.',
           tacticalTip:
@@ -277,11 +277,11 @@ export const AntagInfoNinja = () => {
           iconState: 'nanite_repair',
           accentColor: '#34d399',
           controls: 'Click pinned action to engage (Usable while incapacitated)',
-          power: '10 units activation + 2 units/sec over 5s (Suit Battery)',
+          power: '0 Energy (Does not consume suit power // 3 charges, refillable with 15u Radium // 15s cooldown)',
           description:
-            'Floods your bloodstream with emergency medical nanites over a 5-second cycle. Rapidly repairs 15 brute damage and 15 burn damage every second (total 75 brute / 75 burn) and replenishes lost blood volume directly from suit battery reserves.',
+            'Floods your bloodstream with emergency medical nanites and 2u Sanguirite coagulant over a 15-second cycle. Rapidly stops internal bleeding and restores 5 brute and 5 burn damage every second (total 75 brute / 75 burn) along with lost blood volume. Consumes 0 suit power, utilizing internal chemical nanite charges (3 charges capacity, refilled with 15u Radium).',
           tacticalTip:
-            'Replaces conventional medical items. After taking damage, retreat into vents or maintenance, recharge on an APC, and run repair cycles to return to peak condition.',
+            'Replaces conventional medical items and operates without touching suit power reserves. After taking damage or bleeding heavily, activate the matrix to clot wounds and regenerate. When empty, reload the suit with 15u Radium.',
         }
       : {
           title: 'Combat Adrenaline Boost',
@@ -290,7 +290,7 @@ export const AntagInfoNinja = () => {
           iconState: 'adrenaline_boost',
           accentColor: '#fb7185',
           controls: 'Click pinned action to inject (Usable while incapacitated / cuffed)',
-          power: 'Chemical charge (Refillable with Radium in suit // 12s cooldown)',
+          power: '0 Energy (Does not consume suit power // Refillable with 20u Radium // 12s cooldown)',
           description:
             'Triggers an emergency autonomic neuro-chemical override. Instantly purges all stuns, knockdowns, paralysis, and up to 200 stamina damage while flooding the bloodstream with combat stimulants.',
           tacticalTip:
@@ -304,7 +304,7 @@ export const AntagInfoNinja = () => {
           iconState: 'decoy_ninja',
           accentColor: '#00e5ff',
           controls: 'Pinned Suit Action or Suit Menu (Instant Use)',
-          power: 'Default charge drain x 6 (12s cooldown)',
+          power: '60 energy units per deployment // 12s cooldown',
           description:
             'A state-of-the-art Spider Clan misdirection system. When activated, projects a lifelike holographic decoy of the user that charges towards targets, drawing enemy fire and attacks. The ninja enters brief optical camouflage (alpha = 25, silent footsteps, and movement speed bonus) for 2.5 seconds to reposition. Upon taking damage or after 5 seconds, the holographic decoy overloads with an electromagnetic flash pulse, detonating an EMP and blinding/disorienting pursuers in a 2-tile radius.',
           tacticalTip:
@@ -317,7 +317,7 @@ export const AntagInfoNinja = () => {
           iconState: 'energy_net',
           accentColor: '#38bdf8',
           controls: 'Select action and target mob with ranged projector',
-          power: 'Moderate suit power (15s cooldown)',
+          power: '100 energy units per shot // 15s cooldown',
           description:
             'Fires an expanding hardlight projector that establishes a reinforced capture cage around the target, locking them in place on the tile and preventing all movement until dismantled or destroyed.',
           tacticalTip:

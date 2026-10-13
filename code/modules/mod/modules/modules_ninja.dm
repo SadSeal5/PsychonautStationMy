@@ -1448,40 +1448,78 @@
 	reagents.trans_to(affected_mob, reagents.total_volume)
 	to_chat(affected_mob, span_danger("You are beginning to feel the after-effect of the injection."))
 
-///Nanite Cellular Repair Matrix - Rapidly regenerates heavy brute and burn damage using suit power.
+///Nanite Cellular Repair Matrix - Rapidly regenerates heavy brute and burn damage using nanite charges.
 /obj/item/mod/module/nanite_repair/ninja
 	name = "\improper MOD nanite cellular repair module"
 	desc = "An emergency biological restoration system holding concentrated Spider Clan medical nanites. \
-		When triggered, the matrix surges through the user's bloodstream to rapidly knit lacerations and restore \
-		thermal burns over several seconds in exchange for significant suit energy."
+		When triggered, the matrix surges through the user's bloodstream to rapidly clot bleeding with Sanguirite \
+		and knit lacerations and thermal burns over 15 seconds. Consumes no suit energy, but requires radium \
+		to reconstitute its nanite charges after depletion."
 	icon_state = "nanite_repair"
 	removable = FALSE
 	module_type = MODULE_USABLE
 	allow_flags = MODULE_ALLOW_INCAPACITATED
 	complexity = 0
 	cooldown_time = 15 SECONDS
-	use_energy_cost = DEFAULT_CHARGE_DRAIN * 10
+	use_energy_cost = 0
 	incompatible_modules = list(/obj/item/mod/module/adrenaline_boost, /obj/item/mod/module/nanite_repair)
 	required_slots = list(ITEM_SLOT_BACK|ITEM_SLOT_BELT)
+	/// Current remaining charges
+	var/charges = 3
+	/// Maximum charge capacity
+	var/max_charges = 3
+
+/obj/item/mod/module/nanite_repair/ninja/used(mob/activator)
+	if(charges <= 0)
+		balloon_alert(mod.wearer, "depleted! needs 15u radium")
+		return FALSE
+	return ..()
 
 /obj/item/mod/module/nanite_repair/ninja/on_use(mob/activator)
+	charges--
 	if(IS_SPACE_NINJA(mod.wearer))
 		mod.wearer.say("Engaging cellular reconstruction matrix!", forced = type)
-	to_chat(mod.wearer, span_notice("You engage the nanite cellular repair matrix. Medical nanites rapidly seal your wounds!"))
+	to_chat(mod.wearer, span_notice("You engage the nanite cellular repair matrix. Medical nanites rapidly seal your wounds! ([charges] / [max_charges] charges remaining)"))
+	if(charges <= 0)
+		balloon_alert(mod.wearer, "0 / [max_charges] charges remaining - needs 15u radium!")
+		to_chat(mod.wearer, span_warning("Nanite cellular repair matrix is now depleted! 15u Radium required to recharge."))
+	else
+		balloon_alert(mod.wearer, "[charges] / [max_charges] charges remaining")
 	playsound(mod.wearer, 'sound/items/hypospray.ogg', 50, TRUE)
-	drain_power(use_energy_cost)
+	mod.wearer.reagents?.add_reagent(/datum/reagent/medicine/coagulant, 2)
 	INVOKE_ASYNC(src, PROC_REF(cellular_repair_cycle), mod.wearer)
 
+/obj/item/mod/module/nanite_repair/ninja/on_install()
+	. = ..()
+	RegisterSignal(mod, COMSIG_ATOM_ITEM_INTERACTION, PROC_REF(try_reload))
+
+/obj/item/mod/module/nanite_repair/ninja/on_uninstall(deleting = FALSE)
+	. = ..()
+	UnregisterSignal(mod, COMSIG_ATOM_ITEM_INTERACTION)
+
+/obj/item/mod/module/nanite_repair/ninja/proc/try_reload(source, mob/user, obj/item/attacking_item)
+	SIGNAL_HANDLER
+
+	if(!attacking_item.is_open_container())
+		return NONE
+	if(charges >= max_charges)
+		balloon_alert(user, "already fully charged!")
+		return COMPONENT_NO_AFTERATTACK
+	if(attacking_item.reagents?.has_reagent(/datum/reagent/uranium/radium, 15))
+		attacking_item.reagents.remove_reagent(/datum/reagent/uranium/radium, 15)
+		charges = max_charges
+		balloon_alert(user, "nanite matrix refilled with 15u radium!")
+		playsound(user, 'sound/machines/click.ogg', 50, TRUE)
+		return COMPONENT_NO_AFTERATTACK
+	return NONE
+
 /obj/item/mod/module/nanite_repair/ninja/proc/cellular_repair_cycle(mob/living/carbon/human/target)
-	for(var/i in 1 to 5)
+	for(var/i in 1 to 15)
 		if(QDELETED(target) || !mod || !mod.wearer || target != mod.wearer)
 			break
-		if(!drain_power(DEFAULT_CHARGE_DRAIN * 2))
-			to_chat(target, span_warning("[src] repair sequence halted: insufficient suit power!"))
-			break
-		target.adjust_brute_loss(-15)
-		target.adjust_fire_loss(-15)
-		target.adjust_blood_volume(5)
+		target.adjust_brute_loss(-5)
+		target.adjust_fire_loss(-5)
+		target.adjust_blood_volume(2)
 		new /obj/effect/temp_visual/heal(get_turf(target), COLOR_HEALING_CYAN)
 		playsound(target, 'sound/effects/spray.ogg', 25, TRUE)
 		sleep(1 SECONDS)
