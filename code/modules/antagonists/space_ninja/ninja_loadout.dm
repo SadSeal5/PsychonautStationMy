@@ -27,7 +27,7 @@
 
 /**
  * Starts the ninja setup phase upon gaining the antag datum:
- * Sets alpha = 0, observer invisibility, godmode protection, registers break signals,
+ * Sets alpha = 0, observer invisibility, godmode protection, immobilizes and blocks hands,
  * and opens the AntagInfoNinja UI.
  */
 /datum/antagonist/ninja/proc/start_setup_phase()
@@ -40,32 +40,17 @@
 	in_setup_phase = TRUE
 	ninja.alpha = 0
 	ninja.invisibility = INVISIBILITY_OBSERVER
+	ADD_TRAIT(ninja, TRAIT_IMMOBILIZED, REF(src))
+	ADD_TRAIT(ninja, TRAIT_HANDS_BLOCKED, REF(src))
 	ADD_TRAIT(ninja, TRAIT_GODMODE, REF(src))
-
-	RegisterSignal(ninja, COMSIG_MOVABLE_MOVED, PROC_REF(on_setup_break_signal))
-	RegisterSignals(ninja, list(
-		COMSIG_LIVING_UNARMED_ATTACK,
-		COMSIG_MOB_ITEM_ATTACK,
-		COMSIG_MOB_ATTACK_RANGED,
-		COMSIG_ATOM_ATTACKBY,
-		COMSIG_ATOM_ATTACK_HAND,
-		COMSIG_ATOM_BULLET_ACT,
-	), PROC_REF(on_setup_break_signal))
 
 	setup_timer = addtimer(CALLBACK(src, PROC_REF(end_setup_phase)), 3 MINUTES, TIMER_STOPPABLE)
 
-	to_chat(ninja, span_boldnotice("Spider Clan temporal concealment field active. Shadows envelop your cybernetic form. You are shielded from vacuum and undetected by station sensors. Moving, attacking, or confirming your mission parameters will disengage the veil."))
+	to_chat(ninja, span_boldnotice("Spider Clan temporal concealment field active. Shadows envelop your cybernetic form. Movement and interaction are suspended while calibrating. Confirm your loadout parameters to disengage the veil."))
 	ui_interact(ninja)
 
 /**
- * Signal handler triggered when the ninja moves or attacks during setup phase.
- */
-/datum/antagonist/ninja/proc/on_setup_break_signal(datum/source)
-	SIGNAL_HANDLER
-	end_setup_phase()
-
-/**
- * Ends the setup phase: restores alpha, removes invisibility and protection, unregisters signals,
+ * Ends the setup phase: restores alpha, removes invisibility and protection/immobilization traits,
  * applies the chosen loadout, and updates open AntagInfoNinja interfaces.
  */
 /datum/antagonist/ninja/proc/end_setup_phase()
@@ -78,17 +63,10 @@
 
 	var/mob/living/carbon/human/ninja = owner?.current
 	if(istype(ninja))
-		UnregisterSignal(ninja, list(
-			COMSIG_MOVABLE_MOVED,
-			COMSIG_LIVING_UNARMED_ATTACK,
-			COMSIG_MOB_ITEM_ATTACK,
-			COMSIG_MOB_ATTACK_RANGED,
-			COMSIG_ATOM_ATTACKBY,
-			COMSIG_ATOM_ATTACK_HAND,
-			COMSIG_ATOM_BULLET_ACT,
-		))
 		ninja.alpha = 255
 		ninja.invisibility = INVISIBILITY_NONE
+		REMOVE_TRAIT(ninja, TRAIT_IMMOBILIZED, REF(src))
+		REMOVE_TRAIT(ninja, TRAIT_HANDS_BLOCKED, REF(src))
 		REMOVE_TRAIT(ninja, TRAIT_GODMODE, REF(src))
 		new /obj/effect/temp_visual/dir_setting/ninja(get_turf(ninja), ninja.dir)
 		to_chat(ninja, span_warning("The shadows recede as your cybernetic systems calibrate. You are now exposed to the void."))

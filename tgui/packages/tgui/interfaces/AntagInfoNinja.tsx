@@ -9,10 +9,9 @@ import {
   Stack,
   Tabs,
 } from 'tgui-core/components';
-import { useState } from 'react';
 import type { BooleanLike } from 'tgui-core/react';
 
-import { useBackend } from '../backend';
+import { useBackend, useSharedState } from '../backend';
 import { Window } from '../layouts';
 import {
   type Objective,
@@ -78,7 +77,8 @@ export const AntagInfoNinja = () => {
     mod_icon = 'icons/obj/clothing/modsuit/mod_modules.dmi',
   } = data;
 
-  const [selectedTab, setSelectedTab] = useState<'directives' | 'modsuit'>(
+  const [selectedTab, setSelectedTab] = useSharedState<'directives' | 'modsuit'>(
+    'ninja_info_selected_tab',
     !confirmed ? 'modsuit' : 'directives'
   );
 
