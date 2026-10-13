@@ -388,6 +388,7 @@
 	inhand_icon_state = "kunai"
 	force = 8
 	throwforce = 12
+	throw_speed = 1
 	armour_penetration = 75
 	item_flags = DROPDEL
 	custom_materials = null
@@ -405,10 +406,25 @@
 	QDEL_NULL(tether_beam)
 	return ..()
 
+/obj/item/throwing_star/kunai/ninja/safe_throw_at(atom/target, range, speed, atom/thrower, spin = FALSE, diagonals_first = FALSE, datum/callback/callback, force = MOVE_FORCE_STRONG, gentle = FALSE)
+	return ..(target, range, speed, thrower, FALSE, diagonals_first, callback, force, gentle)
+
+/obj/item/throwing_star/kunai/ninja/throw_at(atom/target, range, speed, mob/thrower, spin = FALSE, diagonals_first = FALSE, datum/callback/callback, force, gentle = FALSE, quickstart = TRUE, throw_type_path = /datum/thrownthing)
+	return ..(target, range, speed, thrower, FALSE, diagonals_first, callback, force, gentle, quickstart, throw_type_path)
+
+/obj/item/throwing_star/kunai/ninja/ranged_interact_with_atom(atom/target, mob/living/user, list/modifiers)
+	if(!target || target == user)
+		return NONE
+	user.throw_item(target)
+	return ITEM_INTERACT_SUCCESS
+
 /obj/item/throwing_star/kunai/ninja/on_thrown(mob/living/carbon/user, atom/target)
 	item_flags &= ~DROPDEL
 	thrower_ref = WEAKREF(user)
-	tether_beam = user.Beam(src, icon_state = "chain", maxdistance = 15)
+	icon_state = "kunai_projectile"
+	var/target_angle = get_angle(user, target)
+	transform = turn(matrix(), target_angle)
+	tether_beam = user.Beam(src, icon_state = "ninja_cable", maxdistance = 15)
 	return ..()
 
 /proc/ninja_kunai_smooth_landing(mob/living/ninja, datum/beam/zip_beam)
@@ -424,6 +440,8 @@
 	. = ..()
 	item_flags |= DROPDEL
 	QDEL_NULL(tether_beam)
+	transform = null
+	icon_state = "kunai_ninja"
 	var/mob/living/thrower = thrower_ref?.resolve()
 	if(isliving(hit_atom))
 		var/mob/living/victim = hit_atom
@@ -434,14 +452,14 @@
 		if(thrower && thrower != victim && get_dist(thrower, victim) > 1)
 			victim.visible_message(span_danger("[thrower] snags [victim] with [src] and yanks [victim.p_them()] close!"), span_userdanger("[thrower] hooks you with [src] and yanks you across the room!"))
 			playsound(victim, 'sound/items/fulton/fultext_deploy.ogg', 50, TRUE)
-			var/datum/beam/pull_beam = thrower.Beam(victim, icon_state = "chain", maxdistance = 15, time = 3 SECONDS)
-			victim.throw_at(target = thrower, range = get_dist(victim, thrower), speed = 3, thrower = thrower, spin = FALSE, gentle = TRUE, callback = CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(qdel), pull_beam))
+			var/datum/beam/pull_beam = thrower.Beam(victim, icon_state = "ninja_cable", maxdistance = 15, time = 3 SECONDS)
+			victim.throw_at(target = thrower, range = get_dist(victim, thrower), speed = 1.5, thrower = thrower, spin = FALSE, gentle = TRUE, callback = CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(qdel), pull_beam))
 	else if(hit_atom.density || istype(hit_atom, /turf/closed) || isstructure(hit_atom) || ismachinery(hit_atom))
 		if(thrower && get_dist(thrower, hit_atom) > 1)
 			thrower.visible_message(span_danger("[thrower] grapples onto [hit_atom] and zips forward!"), span_notice("You hook [hit_atom] with [src] and haul yourself forward!"))
 			playsound(thrower, 'sound/items/fulton/fultext_deploy.ogg', 50, TRUE)
-			var/datum/beam/zip_beam = thrower.Beam(hit_atom, icon_state = "chain", maxdistance = 15, time = 3 SECONDS)
-			thrower.throw_at(target = get_turf(hit_atom), range = get_dist(thrower, hit_atom), speed = 3, thrower = thrower, spin = FALSE, gentle = TRUE, callback = CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(ninja_kunai_smooth_landing), thrower, zip_beam))
+			var/datum/beam/zip_beam = thrower.Beam(hit_atom, icon_state = "ninja_cable", maxdistance = 15, time = 3 SECONDS)
+			thrower.throw_at(target = get_turf(hit_atom), range = get_dist(thrower, hit_atom), speed = 2, thrower = thrower, spin = FALSE, gentle = TRUE, callback = CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(ninja_kunai_smooth_landing), thrower, zip_beam))
 	if(isturf(loc))
 		qdel(src)
 
