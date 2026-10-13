@@ -116,6 +116,7 @@
 	owner.current.add_quirk(/datum/quirk/freerunning, announce = FALSE)
 	owner.current.add_quirk(/datum/quirk/light_step, announce = FALSE)
 	owner.current.mind.set_assigned_role(SSjob.get_job_type(/datum/job/space_ninja))
+	start_setup_phase()
 	return ..()
 
 /datum/antagonist/ninja/admin_add(datum/mind/new_owner,mob/admin)
@@ -129,4 +130,6 @@
 	var/turf/spawnpoint = find_space_spawn()
 	if(spawnpoint)
 		new_character.forceMove(spawnpoint)
+	start_setup_phase()
 	return TRUE
+

@@ -11,7 +11,7 @@
 	complexity = 4
 	active_power_cost = DEFAULT_CHARGE_DRAIN * 2
 	use_energy_cost = DEFAULT_CHARGE_DRAIN * 10
-	incompatible_modules = list(/obj/item/mod/module/stealth)
+	incompatible_modules = list(/obj/item/mod/module/stealth, /obj/item/mod/module/phase)
 	cooldown_time = 5 SECONDS
 	required_slots = list(ITEM_SLOT_HEAD|ITEM_SLOT_MASK, ITEM_SLOT_OCLOTHING|ITEM_SLOT_ICLOTHING, ITEM_SLOT_GLOVES, ITEM_SLOT_FEET)
 	custom_materials = list(/datum/material/iron = SMALL_MATERIAL_AMOUNT * 5, /datum/material/bluespace = SMALL_MATERIAL_AMOUNT * 5)
@@ -80,6 +80,65 @@
 /obj/item/mod/module/stealth/ninja/on_deactivation(mob/activator, display_message = TRUE, deleting = FALSE)
 	. = ..()
 	REMOVE_TRAIT(mod.wearer, TRAIT_SILENT_FOOTSTEPS, REF(src))
+
+///Pure Phasing Module - Allows movement through walls and obstacles without invisibility.
+/obj/item/mod/module/phase/ninja
+	name = "\improper MOD pure phasing module"
+	desc = "A bleeding-edge Spider Clan modulation unit employing quantum-phase displacement fields. \
+		When engaged, it allows the wearer to phase unobstructed through dense matter and reinforced walls, \
+		at the cost of rapid power consumption on phase steps. \
+		Unlike mimetic stealth, it produces visible shadow flickers and emits phazon particles instead of concealing the user."
+	icon_state = "phase_ninja"
+	module_type = MODULE_TOGGLE
+	complexity = 4
+	active_power_cost = DEFAULT_CHARGE_DRAIN * 2
+	use_energy_cost = DEFAULT_CHARGE_DRAIN * 5
+	incompatible_modules = list(/obj/item/mod/module/stealth, /obj/item/mod/module/phase)
+	cooldown_time = 3 SECONDS
+	required_slots = list(ITEM_SLOT_HEAD|ITEM_SLOT_MASK, ITEM_SLOT_OCLOTHING|ITEM_SLOT_ICLOTHING, ITEM_SLOT_GLOVES, ITEM_SLOT_FEET)
+
+/obj/item/mod/module/phase/ninja/on_activation(mob/activator)
+	ADD_TRAIT(mod.wearer, TRAIT_MOVE_PHASING, REF(src))
+	RegisterSignal(mod.wearer, COMSIG_MOVABLE_MOVED, PROC_REF(on_wearer_moved))
+	RegisterSignal(mod.wearer, COMSIG_MOVABLE_CAN_PASS_THROUGH, PROC_REF(on_can_pass_through))
+	new /obj/effect/temp_visual/dir_setting/ninja/phase(get_turf(mod.wearer), mod.wearer.dir)
+	playsound(mod.wearer, 'sound/effects/phasein.ogg', 50, TRUE)
+	drain_power(use_energy_cost)
+
+/obj/item/mod/module/phase/ninja/on_deactivation(mob/activator, display_message = TRUE, deleting = FALSE)
+	REMOVE_TRAIT(mod.wearer, TRAIT_MOVE_PHASING, REF(src))
+	UnregisterSignal(mod.wearer, list(COMSIG_MOVABLE_MOVED, COMSIG_MOVABLE_CAN_PASS_THROUGH))
+	if(mod.wearer)
+		new /obj/effect/temp_visual/dir_setting/ninja/phase/out(get_turf(mod.wearer), mod.wearer.dir)
+		playsound(mod.wearer, 'sound/effects/phasein.ogg', 50, TRUE)
+		var/turf/current_turf = get_turf(mod.wearer)
+		if(current_turf?.density || istype(current_turf, /turf/closed))
+			var/turf/open/safe
+			for(var/turf/open/candidate in orange(1, mod.wearer))
+				if(!candidate.density)
+					safe = candidate
+					break
+			if(!safe)
+				safe = find_safe_turf(mod.wearer.z)
+			if(safe)
+				mod.wearer.forceMove(safe)
+
+/obj/item/mod/module/phase/ninja/proc/on_wearer_moved(mob/living/source, atom/oldloc, direction, forced, list/old_locs)
+	SIGNAL_HANDLER
+
+	if(!mod || !mod.wearer)
+		return
+	new /obj/effect/temp_visual/dir_setting/ninja/shadow(oldloc, mod.wearer.dir)
+	new /obj/effect/temp_visual/dir_setting/ninja/phase(get_turf(mod.wearer), mod.wearer.dir)
+	if(!drain_power(use_energy_cost))
+		to_chat(mod.wearer, span_warning("[src] drains all available power and shuts down!"))
+		deactivate()
+
+/obj/item/mod/module/phase/ninja/proc/on_can_pass_through(datum/source, atom/blocker, movement_dir)
+	SIGNAL_HANDLER
+
+	return COMSIG_COMPONENT_PERMIT_PASSAGE
+
 
 ///Camera Vision - Prevents flashes, blocks tracking.
 /obj/item/mod/module/welding/camera_vision
@@ -173,6 +232,63 @@
 	playsound(owner, 'sound/effects/empulse.ogg', 30, TRUE, SHORT_RANGE_SOUND_EXTRARANGE)
 	owner.show_message("[parent] flares brightly, releasing an electromagnetic pulse!", MSG_VISUAL)
 	new /obj/effect/temp_visual/emp(get_turf(owner))
+
+//Grappling Kunai Dispenser - Dispenses tethered grappling kunai.
+/obj/item/mod/module/dispenser/ninja/kunai
+	name = "\improper MOD grappling kunai dispenser module"
+	desc = "An advanced rapid-fabrication module utilizing the suit's nanite reserves to synthesize weighted Spider Clan kunai \
+		tethered to monomolecular micro-cables. When thrown, the kunai drags struck adversaries directly to the user with a stunning shock, \
+		or anchors into walls and structures to haul the wearer rapidly forward."
+	icon_state = "dispenser_kunai"
+	dispense_type = /obj/item/throwing_star/kunai/ninja
+	cooldown_time = 1 SECONDS
+
+/obj/item/throwing_star/kunai/ninja
+	name = "grappling kunai"
+	desc = "A forged titanium-alloy kunai threaded with a high-tensile Spider Clan nanite cable. \
+		When thrown, it embeds violently, dragging living targets or reeling its thrower forward to solid walls."
+	icon = 'icons/obj/weapons/thrown.dmi'
+	icon_state = "kunai_ninja"
+	inhand_icon_state = "kunai"
+	force = 10
+	throwforce = 15
+	armour_penetration = 60
+	item_flags = DROPDEL
+	custom_materials = null
+	resistance_flags = FIRE_PROOF | ACID_PROOF | UNACIDABLE
+	/// Reference to the thrower mob
+	var/datum/weakref/thrower_ref
+
+/obj/item/throwing_star/kunai/ninja/Initialize(mapload)
+	. = ..()
+	ADD_TRAIT(src, TRAIT_UNCATCHABLE, INNATE_TRAIT)
+
+/obj/item/throwing_star/kunai/ninja/on_thrown(mob/living/carbon/user, atom/target)
+	item_flags &= ~DROPDEL
+	thrower_ref = WEAKREF(user)
+	return ..()
+
+/obj/item/throwing_star/kunai/ninja/throw_impact(atom/hit_atom, datum/thrownthing/throwingdatum)
+	. = ..()
+	item_flags |= DROPDEL
+	var/mob/living/thrower = thrower_ref?.resolve()
+	if(isliving(hit_atom))
+		var/mob/living/victim = hit_atom
+		playsound(src, 'sound/items/weapons/pierce.ogg', 60, TRUE)
+		victim.apply_damage(15, STAMINA)
+		victim.Knockdown(2 SECONDS)
+		do_sparks(2, TRUE, victim)
+		if(thrower && thrower != victim && get_dist(thrower, victim) > 1)
+			victim.visible_message(span_danger("[thrower] snags [victim] with [src] and yanks [victim.p_them()] close!"), span_userdanger("[thrower] hooks you with [src] and yanks you across the room!"))
+			playsound(victim, 'sound/items/fulton/fultext_deploy.ogg', 50, TRUE)
+			victim.throw_at(thrower, get_dist(victim, thrower), 3, thrower)
+	else if(hit_atom.density || istype(hit_atom, /turf/closed) || isstructure(hit_atom) || ismachinery(hit_atom))
+		if(thrower && get_dist(thrower, hit_atom) > 1)
+			thrower.visible_message(span_danger("[thrower] grapples onto [hit_atom] and zips forward!"), span_notice("You hook [hit_atom] with [src] and haul yourself forward!"))
+			playsound(thrower, 'sound/items/fulton/fultext_deploy.ogg', 50, TRUE)
+			thrower.throw_at(get_turf(hit_atom), get_dist(thrower, hit_atom), 3, thrower)
+	if(isturf(loc))
+		qdel(src)
 
 ///Hacker - This module hooks onto your right-clicks with empty hands and causes ninja actions.
 /obj/item/mod/module/hacker
@@ -833,7 +949,7 @@
 	removable = FALSE
 	module_type = MODULE_ACTIVE
 	use_energy_cost = DEFAULT_CHARGE_DRAIN * 6
-	incompatible_modules = list(/obj/item/mod/module/energy_net)
+	incompatible_modules = list(/obj/item/mod/module/energy_net, /obj/item/mod/module/shadow_bind)
 	cooldown_time = 5 SECONDS
 	required_slots = list(ITEM_SLOT_GLOVES)
 	/// List of all energy nets this module made.
@@ -945,6 +1061,112 @@
 /obj/structure/energy_net/user_unbuckle_mob(mob/living/buckled_mob, mob/living/user)
 	return//The net must be destroyed to free the target
 
+///Shadow Bind - Fires shadow nanites that root, force-drop held items, silence and shock the victim.
+/obj/item/mod/module/shadow_bind/ninja
+	name = "\improper MOD shadow bind module"
+	desc = "A specialized tactical restraint launcher. Instead of conventional energy fields, this module fires \
+		a dense cluster of shadow-nanites that rapidly expand into grasping tendrils upon impact, rooting the victim, \
+		disarming them, and conducting a paralyzing silencing shock without relocating them."
+	icon_state = "shadow_bind"
+	removable = FALSE
+	module_type = MODULE_ACTIVE
+	complexity = 0
+	cooldown_time = 6 SECONDS
+	use_energy_cost = DEFAULT_CHARGE_DRAIN * 6
+	incompatible_modules = list(/obj/item/mod/module/energy_net, /obj/item/mod/module/shadow_bind)
+	required_slots = list(ITEM_SLOT_GLOVES)
+
+/obj/item/mod/module/shadow_bind/ninja/on_select_use(atom/target)
+	. = ..()
+	if(!.)
+		return
+	if(IS_SPACE_NINJA(mod.wearer) && isliving(target))
+		mod.wearer.say("Shadows bind you!", forced = type)
+	var/obj/projectile/shadow_bind/projectile = new(mod.wearer.loc, src)
+	projectile.aim_projectile(target, mod.wearer)
+	projectile.firer = mod.wearer
+	playsound(src, 'sound/items/weapons/punchmiss.ogg', 25, TRUE)
+	INVOKE_ASYNC(projectile, TYPE_PROC_REF(/obj/projectile, fire))
+	drain_power(use_energy_cost)
+
+/obj/projectile/shadow_bind
+	name = "shadow bind"
+	icon_state = "shadow_bind_projectile"
+	icon = 'icons/obj/clothing/modsuit/mod_modules.dmi'
+	damage = 0
+	range = 9
+	hitsound = 'sound/items/weapons/zapbang.ogg'
+	hitsound_wall = 'sound/items/weapons/zapbang.ogg'
+	/// Reference to the beam following the projectile.
+	var/line
+
+/obj/projectile/shadow_bind/fire(setAngle)
+	if(firer)
+		line = firer.Beam(src, "shadow_beam", 'icons/obj/clothing/modsuit/mod_modules.dmi')
+	return ..()
+
+/obj/projectile/shadow_bind/Destroy()
+	QDEL_NULL(line)
+	return ..()
+
+/obj/projectile/shadow_bind/on_hit(mob/living/target, blocked = 0, pierce_hit)
+	. = ..()
+	if(!istype(target))
+		return
+	firer?.visible_message(span_danger("[firer] binds [target] with shadowy nanite tendrils!"), span_notice("You bind [target] with shadowy nanite tendrils!"))
+	target.drop_all_held_items()
+	target.electrocute_act(25, src, flags = SHOCK_NOGLOVES)
+	do_sparks(4, TRUE, target)
+	target.apply_status_effect(/datum/status_effect/silenced, 8 SECONDS)
+	if(locate(/obj/structure/shadow_bind_trap) in get_turf(target))
+		return
+	var/obj/structure/shadow_bind_trap/trap = new(target.drop_location())
+	if(target.buckled)
+		target.buckled.unbuckle_mob(target, force = TRUE)
+	trap.buckle_mob(target, force = TRUE)
+
+/obj/structure/shadow_bind_trap
+	name = "shadow tendrils"
+	desc = "A vortex of solid shadowy nanites and grasping tendrils anchoring everything on the tile."
+	icon = 'icons/effects/effects.dmi'
+	icon_state = "shadow_bind_trap"
+	density = FALSE
+	anchored = TRUE
+	layer = ABOVE_ALL_MOB_LAYER
+	plane = ABOVE_GAME_PLANE
+	max_integrity = 50
+	can_buckle = TRUE
+	buckle_lying = 0
+	buckle_prevents_pull = TRUE
+
+/obj/structure/shadow_bind_trap/Initialize(mapload)
+	. = ..()
+	var/image/underlay = image(icon, "shadow_bind_underlay")
+	underlay.layer = BELOW_MOB_LAYER
+	SET_PLANE_EXPLICIT(underlay, GAME_PLANE, src)
+	add_overlay(underlay)
+	ADD_TRAIT(src, TRAIT_DANGEROUS_BUCKLE, INNATE_TRAIT)
+	addtimer(CALLBACK(src, TYPE_PROC_REF(/atom, atom_destruction)), 12 SECONDS)
+
+/obj/structure/shadow_bind_trap/play_attack_sound(damage, damage_type = BRUTE, damage_flag = 0)
+	if(damage_type == BRUTE || damage_type == BURN)
+		playsound(src, 'sound/items/weapons/slash.ogg', 80, TRUE)
+
+/obj/structure/shadow_bind_trap/atom_destruction(damage_flag)
+	for(var/mob/recovered_mob as anything in buckled_mobs)
+		recovered_mob.visible_message(span_notice("[recovered_mob] breaks free from the shadowy tendrils!"), span_notice("You break free from the shadowy tendrils!"))
+	new /obj/effect/temp_visual/dir_setting/ninja/shadow(get_turf(src), dir)
+	return ..()
+
+/obj/structure/shadow_bind_trap/attack_paw(mob/user, list/modifiers)
+	return attack_hand(user, modifiers)
+
+/obj/structure/shadow_bind_trap/user_buckle_mob(mob/living/buckled_mob, mob/user, check_loc = TRUE)
+	return
+
+/obj/structure/shadow_bind_trap/user_unbuckle_mob(mob/living/buckled_mob, mob/living/user)
+	return
+
 ///Adrenaline Boost - Stops all stuns the ninja is affected with, increases his speed.
 /obj/item/mod/module/adrenaline_boost
 	name = "\improper MOD adrenaline boost module"
@@ -958,7 +1180,7 @@
 	removable = FALSE
 	module_type = MODULE_USABLE
 	allow_flags = MODULE_ALLOW_INCAPACITATED
-	incompatible_modules = list(/obj/item/mod/module/adrenaline_boost)
+	incompatible_modules = list(/obj/item/mod/module/adrenaline_boost, /obj/item/mod/module/nanite_repair)
 	cooldown_time = 12 SECONDS
 	required_slots = list(ITEM_SLOT_BACK|ITEM_SLOT_BELT)
 	/// What reagent we need to refill?
@@ -1018,3 +1240,44 @@
 		return
 	reagents.trans_to(affected_mob, reagents.total_volume)
 	to_chat(affected_mob, span_danger("You are beginning to feel the after-effect of the injection."))
+
+///Nanite Cellular Repair Matrix - Rapidly regenerates heavy brute and burn damage using suit power.
+/obj/item/mod/module/nanite_repair/ninja
+	name = "\improper MOD nanite cellular repair module"
+	desc = "An emergency biological restoration system holding concentrated Spider Clan medical nanites. \
+		When triggered, the matrix surges through the user's bloodstream to rapidly knit lacerations and restore \
+		thermal burns over several seconds in exchange for significant suit energy."
+	icon_state = "nanite_repair"
+	removable = FALSE
+	module_type = MODULE_USABLE
+	allow_flags = MODULE_ALLOW_INCAPACITATED
+	complexity = 0
+	cooldown_time = 15 SECONDS
+	use_energy_cost = DEFAULT_CHARGE_DRAIN * 10
+	incompatible_modules = list(/obj/item/mod/module/adrenaline_boost, /obj/item/mod/module/nanite_repair)
+	required_slots = list(ITEM_SLOT_BACK|ITEM_SLOT_BELT)
+
+/obj/item/mod/module/nanite_repair/ninja/on_use(mob/activator)
+	if(IS_SPACE_NINJA(mod.wearer))
+		mod.wearer.say("Engaging cellular reconstruction matrix!", forced = type)
+	to_chat(mod.wearer, span_notice("You engage the nanite cellular repair matrix. Medical nanites rapidly seal your wounds!"))
+	playsound(mod.wearer, 'sound/items/hypospray.ogg', 50, TRUE)
+	drain_power(use_energy_cost)
+	INVOKE_ASYNC(src, PROC_REF(cellular_repair_cycle), mod.wearer)
+
+/obj/item/mod/module/nanite_repair/ninja/proc/cellular_repair_cycle(mob/living/carbon/human/target)
+	for(var/i in 1 to 5)
+		if(QDELETED(target) || !mod || !mod.wearer || target != mod.wearer)
+			break
+		if(!drain_power(DEFAULT_CHARGE_DRAIN * 2))
+			to_chat(target, span_warning("[src] repair sequence halted: insufficient suit power!"))
+			break
+		target.adjust_brute_loss(-15)
+		target.adjust_fire_loss(-15)
+		target.adjust_blood_volume(5)
+		new /obj/effect/temp_visual/heal(get_turf(target), COLOR_HEALING_CYAN)
+		playsound(target, 'sound/effects/spray.ogg', 25, TRUE)
+		sleep(1 SECONDS)
+	if(!QDELETED(target) && target == mod?.wearer)
+		to_chat(target, span_notice("Nanite cellular repair complete."))
+
