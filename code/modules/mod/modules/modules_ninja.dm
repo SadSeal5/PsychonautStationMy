@@ -1241,14 +1241,15 @@
 	playsound(ninja, 'sound/effects/phasein.ogg', 50, TRUE)
 	do_sparks(2, TRUE, ninja)
 
+	var/mob/living/basic/illusion/ninja_decoy/decoy = new(ninja.loc)
+	decoy.setup_decoy(ninja)
+
+	animate(ninja, alpha = 25, time = 0.5 SECONDS)
 	ninja.alpha = 25
 	ADD_TRAIT(ninja, TRAIT_SILENT_FOOTSTEPS, REF(src))
 	ninja.add_movespeed_modifier(/datum/movespeed_modifier/ninja_decoy_speed)
 	to_chat(ninja, span_notice("You engage optical camouflage as a holographic decoy deploys!"))
 	addtimer(CALLBACK(src, PROC_REF(end_stealth), WEAKREF(ninja)), 2.5 SECONDS)
-
-	var/mob/living/basic/illusion/ninja_decoy/decoy = new(ninja.loc)
-	decoy.setup_decoy(ninja)
 
 /obj/item/mod/module/hologram_decoy/ninja/proc/end_stealth(datum/weakref/ninja_ref)
 	var/mob/living/ninja = ninja_ref?.resolve()
@@ -1256,8 +1257,10 @@
 		return
 	var/obj/item/mod/module/stealth/stealth_mod = locate() in mod?.modules
 	if(stealth_mod?.active)
+		animate(ninja, alpha = stealth_mod.stealth_alpha, time = 0.5 SECONDS)
 		ninja.alpha = stealth_mod.stealth_alpha
 	else
+		animate(ninja, alpha = initial(ninja.alpha), time = 0.5 SECONDS)
 		ninja.alpha = initial(ninja.alpha)
 	REMOVE_TRAIT(ninja, TRAIT_SILENT_FOOTSTEPS, REF(src))
 	ninja.remove_movespeed_modifier(/datum/movespeed_modifier/ninja_decoy_speed)
@@ -1303,12 +1306,15 @@
 /mob/living/basic/illusion/ninja_decoy/proc/setup_decoy(mob/living/creator)
 	creator_ref = WEAKREF(creator)
 	parent_mob_ref = WEAKREF(creator)
+	name = creator.name
 	appearance = creator.appearance
+	alpha = 255
+	invisibility = INVISIBILITY_NONE
+	mouse_opacity = MOUSE_OPACITY_OPAQUE
 	setDir(creator.dir)
 	transform = initial(transform)
 	pixel_x = base_pixel_x
 	pixel_y = base_pixel_y
-	makeHologram(opacity = 0.85, color_override = "#00e5ff")
 
 	var/mob/living/closest_target = null
 	var/closest_dist = 8
