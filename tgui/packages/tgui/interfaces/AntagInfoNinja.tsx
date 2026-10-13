@@ -162,8 +162,8 @@ export const AntagInfoNinja = () => {
           accentColor: '#fb7185',
           accentBg: 'rgba(251, 113, 133, 0.12)',
           description:
-            'Emergency chemical surge. Instantly clears stuns, total paralysis, and stamina drain while injecting stimulants. Deals 25 direct radiation/toxin damage after 7 seconds (without irradiating).',
-          statBadge: '0 ENERGY // 20U RADIUM // 25 RAD-TOX / 7S',
+            'Emergency chemical surge. Instantly clears stuns, total paralysis, and stamina drain while injecting stimulants.',
+          statBadge: '0 ENERGY // 20U RADIUM // ANTI-STUN',
         },
         {
           value: 2,
@@ -292,9 +292,9 @@ export const AntagInfoNinja = () => {
           controls: 'Click pinned action to inject (Usable while incapacitated / cuffed)',
           power: '0 Energy (Does not consume suit power // Refillable with 20u Radium // 12s cooldown)',
           description:
-            'Triggers an emergency autonomic neuro-chemical override. Instantly purges all stuns, knockdowns, paralysis, and up to 200 stamina damage while flooding the bloodstream with combat stimulants. After a 7-second grace period, deals 25 direct radiation/toxin damage directly to the user (without irradiating them).',
+            'Triggers an emergency autonomic neuro-chemical override. Instantly purges all stuns, knockdowns, paralysis, and up to 200 stamina damage while flooding the bloodstream with combat stimulants.',
           tacticalTip:
-            'The ultimate escape countermeasure. If ambushed by flashbangs, tasers, or stun batons, pop adrenaline immediately to regain control and retaliate before restraints can be placed. Be prepared to withstand the 25 radiation/toxin damage aftershock.',
+            'The ultimate escape countermeasure. If ambushed by flashbangs, tasers, or stun batons, pop adrenaline immediately to regain control and retaliate before restraints can be placed.',
         },
     slot_trap === 2
       ? {

@@ -1443,13 +1443,10 @@
 	return TRUE
 
 /obj/item/mod/module/adrenaline_boost/proc/boost_aftereffects(mob/affected_mob)
-	if(!isliving(affected_mob))
+	if(!affected_mob)
 		return
-	var/mob/living/living_mob = affected_mob
-	reagents.clear_reagents()
-	living_mob.apply_damage(25, TOX)
-	qdel(living_mob.GetComponent(/datum/component/irradiated))
-	to_chat(living_mob, span_danger("You are beginning to feel the after-effect of the injection."))
+	reagents.trans_to(affected_mob, reagents.total_volume)
+	to_chat(affected_mob, span_danger("You are beginning to feel the after-effect of the injection."))
 
 ///Nanite Cellular Repair Matrix - Rapidly regenerates heavy brute and burn damage using nanite charges.
 /obj/item/mod/module/nanite_repair/ninja
