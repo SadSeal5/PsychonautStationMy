@@ -206,6 +206,12 @@
 /datum/beam/proc/Draw(atom/movable/mover = null, atom/oldloc = null)
 	if(SEND_SIGNAL(src, COMSIG_BEAM_BEFORE_DRAW) & BEAM_CANCEL_DRAW)
 		return
+	if(!origin || !target || QDELETED(origin) || QDELETED(target))
+		return
+	var/turf/origin_turf = get_turf(origin)
+	var/turf/target_turf = get_turf(target)
+	if(!origin_turf || !target_turf || origin_turf.z != target_turf.z || !origin.x || !target.x)
+		return
 	var/animate_time = pending_animate_time
 	pending_animate_time = 0
 	if(!animate)
@@ -256,7 +262,6 @@
 			old_angle += 360
 	var/matrix/rot_matrix = matrix()
 	var/matrix/old_rot_matrix = matrix()
-	var/turf/origin_turf = get_turf(origin)
 	rot_matrix.Turn(Angle)
 	old_rot_matrix.Turn(old_angle)
 	var/raw_angle_delta = abs(Angle - old_angle)
@@ -321,7 +326,11 @@
 		if(abs(Pixel_y)>32)
 			final_y += Pixel_y > 0 ? round(Pixel_y/32) : ceil(Pixel_y/32)
 			Pixel_y %= 32
-		segment.forceMove(locate(final_x, final_y, segment.z))
+		var/turf/destination = locate(final_x, final_y, segment.z)
+		if(!destination)
+			qdel(segment)
+			continue
+		segment.forceMove(destination)
 		segment.alpha = alpha
 		segment.layer = beam_layer
 		var/new_pixel_x = origin_px + Pixel_x

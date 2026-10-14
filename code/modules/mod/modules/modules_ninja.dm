@@ -420,12 +420,18 @@
 
 /obj/item/throwing_star/kunai/ninja/on_thrown(mob/living/carbon/user, atom/target)
 	item_flags &= ~DROPDEL
+	. = ..()
+	if(!.)
+		return FALSE
+	QDEL_NULL(tether_beam)
+	item_flags &= ~DROPDEL
 	thrower_ref = WEAKREF(user)
 	icon_state = "kunai_projectile"
 	var/target_angle = get_angle(user, target)
 	transform = turn(matrix(), target_angle)
-	tether_beam = user.Beam(src, icon_state = "ninja_cable", maxdistance = 15)
-	return ..()
+	if(isturf(user.loc) && isturf(loc))
+		tether_beam = user.Beam(src, icon_state = "ninja_cable", maxdistance = 15)
+	return .
 
 /proc/ninja_kunai_smooth_landing(mob/living/ninja, datum/beam/zip_beam)
 	qdel(zip_beam)
