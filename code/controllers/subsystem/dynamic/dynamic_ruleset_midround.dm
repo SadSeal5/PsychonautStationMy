@@ -565,6 +565,32 @@
 	candidate.current.forceMove(find_maintenance_spawn(atmos_sensitive = TRUE, require_darkness = TRUE))
 	playsound(candidate.current, 'sound/effects/magic/ethereal_exit.ogg', 50, TRUE, -1)
 
+/datum/dynamic_ruleset/midround/from_ghosts/dreamweaver
+	name = "Dreamweaver"
+	config_tag = "Dreamweaver"
+	preview_antag_datum = /datum/antagonist/dreamweaver
+	midround_type = LIGHT_MIDROUND
+	pref_flag = ROLE_DREAMWEAVER
+	ruleset_flags = RULESET_INVADER
+	weight = 4
+	min_pop = 15
+	max_antag_cap = 1
+	signup_atom_appearance = /mob/living/carbon/human
+	track = EVENT_TRACK_MODERATE
+	tags = list(TAG_COMBAT, TAG_OUTSIDER_ANTAG, TAG_SPOOKY)
+
+/datum/dynamic_ruleset/midround/from_ghosts/dreamweaver/apply_prefs_to_body(mob/living/carbon/human/body)
+	return FALSE
+
+/datum/dynamic_ruleset/midround/from_ghosts/dreamweaver/can_be_selected()
+	return ..() && !isnull(find_maintenance_spawn(atmos_sensitive = TRUE, require_darkness = TRUE))
+
+/datum/dynamic_ruleset/midround/from_ghosts/dreamweaver/assign_role(datum/mind/candidate)
+	candidate.add_antag_datum(/datum/antagonist/dreamweaver)
+	candidate.current.set_species(/datum/species/shadow/dreamweaver)
+	candidate.current.forceMove(find_maintenance_spawn(atmos_sensitive = TRUE, require_darkness = TRUE))
+	playsound(candidate.current, 'sound/effects/magic/ethereal_exit.ogg', 50, TRUE, -1)
+
 /datum/dynamic_ruleset/midround/from_ghosts/space_dragon
 	name = "Space Dragon"
 	config_tag = "Space Dragon"
