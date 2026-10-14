@@ -110,7 +110,7 @@ export const AntagInfoNinja = () => {
           accentColor: '#22d3ee',
           accentBg: 'rgba(34, 211, 238, 0.12)',
           description:
-            'Displaces suit matter to ghost through solid bulkheads and reinforced walls. Requires a 3s startup channel; cannot attack while active. Heavy power drain.',
+            'Displaces suit matter to ghost through solid bulkheads and reinforced walls. Requires a 3s startup channel; cannot attack while active. Heavy power drain. Taking any damage or electromagnetic pulse (EMP) while active or during calibration disrupts the displacement field, immediately forcing the wearer back into phase and initiating a 10s cooldown.',
           statBadge: '150 EN. + 150/STEP // PHASE',
         },
       ],
@@ -206,8 +206,8 @@ export const AntagInfoNinja = () => {
           accentColor: '#00e5ff',
           accentBg: 'rgba(0, 229, 255, 0.12)',
           description:
-            'Projects a lifelike holographic decoy charging targets and absorbing attacks. Grants 2.5s cloaking & speed. Decoy overloads with an EMP flash pulse.',
-          statBadge: '60 ENERGY // 12S CD // DECOY',
+            'Projects a lifelike holographic decoy charging targets and absorbing attacks. Grants 2.5s cloaking. Decoy overloads with an EMP flash pulse.',
+          statBadge: '240 ENERGY // 24S CD // DECOY',
         },
       ],
     },
@@ -225,7 +225,7 @@ export const AntagInfoNinja = () => {
           controls: 'Pinned Suit Action or Suit Menu (Toggle)',
           power: '150 energy units on activation + 150 units per phase step // 10s cooldown',
           description:
-            'Displaces the MODsuit into quantum subspace, granting the ability to ghost directly through reinforced bulkheads, airlocks, and solid terrain without restriction. Requires a 3-second calibration channel to activate (interrupted if damaged, triggering a 10s cooldown). While out of phase or calibrating, dimensional interference prevents attacking any targets. Incurs a 10-second cooldown upon deactivating.',
+            'Displaces the MODsuit into quantum subspace, granting the ability to ghost directly through reinforced bulkheads, airlocks, and solid terrain without restriction. Requires a 3-second calibration channel to activate. Taking any damage or electromagnetic pulse (EMP) while active or during calibration disrupts the displacement field, immediately forcing the wearer back into phase and initiating a 10s cooldown. While out of phase or calibrating, dimensional interference prevents attacking any targets.',
           tacticalTip:
             'If suit power is depleted or the module is turned off while inside a dense wall, you will be automatically shunted to the nearest open tile. Keep a close watch on your power reserves and remember you cannot attack while phased.',
         }
@@ -304,11 +304,11 @@ export const AntagInfoNinja = () => {
           iconState: 'decoy_ninja',
           accentColor: '#00e5ff',
           controls: 'Pinned Suit Action or Suit Menu (Instant Use)',
-          power: '60 energy units per deployment // 12s cooldown',
+          power: '240 energy units per deployment // 24s cooldown',
           description:
-            'A state-of-the-art Spider Clan misdirection system. When activated, projects a lifelike holographic decoy of the user that charges towards targets, drawing enemy fire and attacks. The ninja enters brief optical camouflage (alpha = 25, silent footsteps, and movement speed bonus) for 2.5 seconds to reposition. Upon taking damage or after 5 seconds, the holographic decoy overloads with an electromagnetic flash pulse, detonating an EMP and blinding/disorienting pursuers in a 2-tile radius.',
+            'A state-of-the-art Spider Clan misdirection system. When activated, projects a lifelike holographic decoy of the user that charges towards targets, drawing enemy fire and attacks. The ninja enters brief optical camouflage (alpha = 25 and silent footsteps) for 2.5 seconds to reposition. Upon taking damage or after 5 seconds, the holographic decoy overloads with an electromagnetic flash pulse, detonating an EMP and blinding/disorienting pursuers in a 3-tile radius with an intense flashbang overload.',
           tacticalTip:
-            'Trigger the decoy when ambushed or breaching high-threat areas. The decoy will absorb attacks while you sprint invisibly to the enemy rear or slip past security defenses. The overload flash will disorient nearby enemies, opening them up for lethal katana strikes.',
+            'Trigger the decoy when ambushed or breaching high-threat areas. The decoy will absorb attacks while you slip away invisibly. The enhanced flash overload disorients and knocks down nearby enemies, opening them up for lethal katana strikes.',
         }
       : {
           title: 'Energy Net Projector',

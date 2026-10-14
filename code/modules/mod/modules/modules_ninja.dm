@@ -108,9 +108,18 @@
 		startup_action.cancel()
 		startup_action = null
 	if(mod?.wearer)
-		UnregisterSignal(mod.wearer, COMSIG_MOB_APPLY_DAMAGE)
+		UnregisterSignal(mod.wearer, list(COMSIG_MOB_APPLY_DAMAGE, COMSIG_ATOM_EMP_ACT))
 		unregister_attack_restrictions(mod.wearer)
+	if(mod)
+		UnregisterSignal(mod, COMSIG_ATOM_EMP_ACT)
 	return ..()
+
+/obj/item/mod/module/phase/ninja/emp_act(severity)
+	. = ..()
+	if(active)
+		on_active_emp(src, severity)
+	else if(starting_up)
+		on_startup_emp(src, severity)
 
 /obj/item/mod/module/phase/ninja/on_part_deactivation(deleting = FALSE)
 	if(startup_action)
@@ -147,6 +156,9 @@
 	balloon_alert(mod.wearer, "calibrating phase shift...")
 	register_attack_restrictions(mod.wearer)
 	RegisterSignal(mod.wearer, COMSIG_MOB_APPLY_DAMAGE, PROC_REF(on_startup_damage))
+	RegisterSignal(mod.wearer, COMSIG_ATOM_EMP_ACT, PROC_REF(on_startup_emp))
+	if(mod)
+		RegisterSignal(mod, COMSIG_ATOM_EMP_ACT, PROC_REF(on_startup_emp))
 
 	var/datum/timed_action/action = new(mod.wearer, mod.wearer, 3 SECONDS, show_progress = TRUE, timed_action_flags = IGNORE_USER_LOC_CHANGE | IGNORE_HELD_ITEM, extra_checks = CALLBACK(src, PROC_REF(check_startup_validity)))
 	startup_action = action
@@ -154,7 +166,9 @@
 	startup_action = null
 
 	if(mod?.wearer)
-		UnregisterSignal(mod.wearer, COMSIG_MOB_APPLY_DAMAGE)
+		UnregisterSignal(mod.wearer, list(COMSIG_MOB_APPLY_DAMAGE, COMSIG_ATOM_EMP_ACT))
+	if(mod)
+		UnregisterSignal(mod, COMSIG_ATOM_EMP_ACT)
 
 	if(!success || startup_interrupted)
 		if(mod?.wearer)
@@ -162,7 +176,7 @@
 		starting_up = FALSE
 		if(startup_interrupted)
 			if(mod?.wearer)
-				to_chat(mod.wearer, span_warning("Damage disrupts your phase calibration sequence!"))
+				to_chat(mod.wearer, span_warning("Disruption breaks your phase calibration sequence!"))
 				do_sparks(3, TRUE, mod.wearer)
 			start_cooldown(10 SECONDS)
 			startup_interrupted = FALSE
@@ -190,6 +204,15 @@
 	SIGNAL_HANDLER
 
 	if(damage_amount <= 0 || startup_interrupted)
+		return
+	startup_interrupted = TRUE
+	if(startup_action)
+		startup_action.cancel()
+
+/obj/item/mod/module/phase/ninja/proc/on_startup_emp(atom/source, severity, protection)
+	SIGNAL_HANDLER
+
+	if(startup_interrupted)
 		return
 	startup_interrupted = TRUE
 	if(startup_action)
@@ -233,6 +256,10 @@
 	ADD_TRAIT(mod.wearer, TRAIT_MOVE_PHASING, REF(src))
 	RegisterSignal(mod.wearer, COMSIG_MOVABLE_MOVED, PROC_REF(on_wearer_moved))
 	RegisterSignal(mod.wearer, COMSIG_MOVABLE_CAN_PASS_THROUGH, PROC_REF(on_can_pass_through))
+	RegisterSignal(mod.wearer, COMSIG_MOB_APPLY_DAMAGE, PROC_REF(on_active_damage))
+	RegisterSignal(mod.wearer, COMSIG_ATOM_EMP_ACT, PROC_REF(on_active_emp))
+	if(mod)
+		RegisterSignal(mod, COMSIG_ATOM_EMP_ACT, PROC_REF(on_active_emp))
 	new /obj/effect/temp_visual/dir_setting/ninja/phase(get_turf(mod.wearer), mod.wearer.dir)
 	playsound(mod.wearer, 'sound/effects/phasein.ogg', 50, TRUE)
 	drain_power(use_energy_cost)
@@ -240,7 +267,7 @@
 /obj/item/mod/module/phase/ninja/on_deactivation(mob/activator, display_message = TRUE, deleting = FALSE)
 	if(mod?.wearer)
 		REMOVE_TRAIT(mod.wearer, TRAIT_MOVE_PHASING, REF(src))
-		UnregisterSignal(mod.wearer, list(COMSIG_MOVABLE_MOVED, COMSIG_MOVABLE_CAN_PASS_THROUGH))
+		UnregisterSignal(mod.wearer, list(COMSIG_MOVABLE_MOVED, COMSIG_MOVABLE_CAN_PASS_THROUGH, COMSIG_MOB_APPLY_DAMAGE, COMSIG_ATOM_EMP_ACT))
 		unregister_attack_restrictions(mod.wearer)
 		new /obj/effect/temp_visual/dir_setting/ninja/phase/out(get_turf(mod.wearer), mod.wearer.dir)
 		playsound(mod.wearer, 'sound/effects/phasein.ogg', 50, TRUE)
@@ -255,8 +282,32 @@
 				safe = find_safe_turf(mod.wearer.z)
 			if(safe)
 				mod.wearer.forceMove(safe)
+	if(mod)
+		UnregisterSignal(mod, COMSIG_ATOM_EMP_ACT)
 	if(!deleting)
 		start_cooldown(10 SECONDS)
+
+/obj/item/mod/module/phase/ninja/proc/on_active_damage(mob/living/source, damage_amount, damagetype, def_zone)
+	SIGNAL_HANDLER
+
+	if(damage_amount <= 0 || !active)
+		return
+	if(mod?.wearer)
+		balloon_alert(mod.wearer, "phase disrupted by damage!")
+		to_chat(mod.wearer, span_warning("Taking damage disrupts your phase displacement field, forcing you back into phase!"))
+		do_sparks(4, TRUE, mod.wearer)
+	deactivate()
+
+/obj/item/mod/module/phase/ninja/proc/on_active_emp(atom/source, severity, protection)
+	SIGNAL_HANDLER
+
+	if(!active)
+		return
+	if(mod?.wearer)
+		balloon_alert(mod.wearer, "phase collapsed by EMP!")
+		to_chat(mod.wearer, span_warning("Electromagnetic interference collapses your phase displacement field!"))
+		do_sparks(5, TRUE, mod.wearer)
+	deactivate()
 
 /obj/item/mod/module/phase/ninja/proc/on_wearer_moved(mob/living/source, atom/oldloc, direction, forced, list/old_locs)
 	SIGNAL_HANDLER
@@ -1240,16 +1291,16 @@
 /obj/structure/energy_net/user_unbuckle_mob(mob/living/buckled_mob, mob/living/user)
 	return//The net must be destroyed to free the target
 
-///Holographic Decoy Module - Projects a lifelike hologram decoy while cloaking the user and buffing speed, then detonates in an EMP flash.
+///Holographic Decoy Module - Projects a lifelike hologram decoy while cloaking the user, then detonates in an EMP flash.
 /obj/item/mod/module/hologram_decoy
 	name = "\improper MOD holographic decoy module"
 	desc = "A state-of-the-art Spider Clan misdirection system. When activated, projects a lifelike holographic decoy of the user that runs towards targets, absorbing attacks. The user enters brief optical camouflage. Upon taking damage or after 5 seconds, the hologram overloads with an electromagnetic flash pulse, disorienting pursuers."
 	icon_state = "decoy_ninja"
 	module_type = MODULE_USABLE
 	complexity = 3
-	use_energy_cost = DEFAULT_CHARGE_DRAIN * 6
+	use_energy_cost = DEFAULT_CHARGE_DRAIN * 24
 	incompatible_modules = list(/obj/item/mod/module/energy_net, /obj/item/mod/module/hologram_decoy)
-	cooldown_time = 12 SECONDS
+	cooldown_time = 24 SECONDS
 	required_slots = list(ITEM_SLOT_GLOVES)
 
 /obj/item/mod/module/hologram_decoy/ninja
@@ -1271,7 +1322,6 @@
 	animate(ninja, alpha = 25, time = 0.5 SECONDS)
 	ninja.alpha = 25
 	ADD_TRAIT(ninja, TRAIT_SILENT_FOOTSTEPS, REF(src))
-	ninja.add_movespeed_modifier(/datum/movespeed_modifier/ninja_decoy_speed)
 	to_chat(ninja, span_notice("You engage optical camouflage as a holographic decoy deploys!"))
 	addtimer(CALLBACK(src, PROC_REF(end_stealth), WEAKREF(ninja)), 2.5 SECONDS)
 
@@ -1287,10 +1337,6 @@
 		animate(ninja, alpha = initial(ninja.alpha), time = 0.5 SECONDS)
 		ninja.alpha = initial(ninja.alpha)
 	REMOVE_TRAIT(ninja, TRAIT_SILENT_FOOTSTEPS, REF(src))
-	ninja.remove_movespeed_modifier(/datum/movespeed_modifier/ninja_decoy_speed)
-
-/datum/movespeed_modifier/ninja_decoy_speed
-	multiplicative_slowdown = -0.4
 
 /mob/living/basic/illusion/ninja_decoy
 	name = "holographic decoy"
@@ -1365,19 +1411,21 @@
 	var/turf/epicenter = get_turf(src)
 	if(epicenter)
 		playsound(epicenter, 'sound/effects/empulse.ogg', 75, TRUE)
-		playsound(epicenter, 'sound/items/weapons/flash.ogg', 75, TRUE)
+		playsound(epicenter, 'sound/items/weapons/flashbang.ogg', 75, TRUE)
 		do_sparks(5, TRUE, epicenter)
 		new /obj/effect/temp_visual/emp/pulse(epicenter)
+		new /obj/effect/dummy/lighting_obj(epicenter, 4, 3, COLOR_WHITE, 1)
 		empulse(epicenter, heavy_range = 0, light_range = 2, emp_source = src)
 		var/mob/living/creator = creator_ref?.resolve()
-		for(var/mob/living/victim in viewers(2, epicenter))
-			if(victim == src || victim == creator)
+		for(var/mob/living/victim in viewers(3, epicenter))
+			if(victim == src)
 				continue
-			if(victim.mind && IS_SPACE_NINJA(victim))
-				continue
-			victim.flash_act(1, affect_silicon = TRUE)
-			victim.adjust_confusion(2 SECONDS)
-			victim.adjust_dizzy(4 SECONDS)
+			victim.flash_act(intensity = 2, override_blindness_check = FALSE, affect_silicon = TRUE, visual = TRUE, length = 3 SECONDS)
+			if(victim != creator && (!victim.mind || !IS_SPACE_NINJA(victim)))
+				victim.adjust_confusion(3 SECONDS)
+				victim.adjust_dizzy(5 SECONDS)
+				victim.Knockdown(1.5 SECONDS)
+				victim.Paralyze(0.5 SECONDS)
 	qdel(src)
 
 ///Adrenaline Boost - Stops all stuns the ninja is affected with, increases his speed.
