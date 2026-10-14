@@ -1457,10 +1457,10 @@
 ///Nanite Cellular Repair Matrix - Rapidly regenerates heavy brute and burn damage using nanite charges.
 /obj/item/mod/module/nanite_repair/ninja
 	name = "\improper MOD nanite cellular repair module"
-	desc = "An emergency biological restoration system holding concentrated Spider Clan medical nanites. \
-		When triggered, the matrix surges through the user's bloodstream to rapidly clot bleeding with Sanguirite \
-		and knit lacerations and thermal burns over 15 seconds. Consumes no suit energy, but requires radium \
-		to reconstitute its nanite charges after depletion."
+	desc = "A specialized biomedical restoration system housing concentrated Spider Clan restorative nanomachines. \
+		When triggered, the matrix surges through the operative's bloodstream to rapidly clot open lacerations with synthetic \
+		coagulants, fuse damaged tissue, and regenerate burns. Consumes zero suit power, utilizing self-contained \
+		nanite charges refueled with radium."
 	icon_state = "nanite_repair"
 	removable = FALSE
 	module_type = MODULE_USABLE
@@ -1474,10 +1474,12 @@
 	var/charges = 3
 	/// Maximum charge capacity
 	var/max_charges = 3
+	/// Radium reagent required per charge
+	var/radium_per_charge = 5
 
 /obj/item/mod/module/nanite_repair/ninja/used(mob/activator)
 	if(charges <= 0)
-		balloon_alert(mod.wearer, "depleted! needs 15u radium")
+		balloon_alert(mod.wearer, "depleted! needs radium")
 		return FALSE
 	return ..()
 
@@ -1487,8 +1489,8 @@
 		mod.wearer.say("Engaging cellular reconstruction matrix!", forced = type)
 	to_chat(mod.wearer, span_notice("You engage the nanite cellular repair matrix. Medical nanites rapidly seal your wounds! ([charges] / [max_charges] charges remaining)"))
 	if(charges <= 0)
-		balloon_alert(mod.wearer, "0 / [max_charges] charges remaining - needs 15u radium!")
-		to_chat(mod.wearer, span_warning("Nanite cellular repair matrix is now depleted! 15u Radium required to recharge."))
+		balloon_alert(mod.wearer, "0 / [max_charges] charges remaining - needs radium!")
+		to_chat(mod.wearer, span_warning("Nanite cellular repair matrix is now depleted! Radium required to replenish nanite cartridges (5u per charge)."))
 	else
 		balloon_alert(mod.wearer, "[charges] / [max_charges] charges remaining")
 	playsound(mod.wearer, 'sound/items/hypospray.ogg', 50, TRUE)
@@ -1511,13 +1513,28 @@
 	if(charges >= max_charges)
 		balloon_alert(user, "already fully charged!")
 		return COMPONENT_NO_AFTERATTACK
-	if(attacking_item.reagents?.has_reagent(/datum/reagent/uranium/radium, 15))
-		attacking_item.reagents.remove_reagent(/datum/reagent/uranium/radium, 15)
-		charges = max_charges
-		balloon_alert(user, "nanite matrix refilled with 15u radium!")
-		playsound(user, 'sound/machines/click.ogg', 50, TRUE)
+	var/datum/reagents/reagent_holder = attacking_item.reagents
+	if(!reagent_holder)
+		return NONE
+	var/radium_available = reagent_holder.get_reagent_amount(/datum/reagent/uranium/radium)
+	if(radium_available < radium_per_charge)
+		balloon_alert(user, "needs at least [radium_per_charge]u radium per charge!")
 		return COMPONENT_NO_AFTERATTACK
-	return NONE
+
+	var/missing_charges = max_charges - charges
+	var/charges_to_restore = clamp(floor(radium_available / radium_per_charge), 1, missing_charges)
+	var/radium_to_consume = charges_to_restore * radium_per_charge
+	reagent_holder.remove_reagent(/datum/reagent/uranium/radium, radium_to_consume)
+	charges += charges_to_restore
+	playsound(user, 'sound/machines/click.ogg', 50, TRUE)
+
+	if(charges >= max_charges)
+		balloon_alert(user, "fully recharged! ([charges]/[max_charges])")
+		to_chat(user, span_notice("Nanite matrix fully replenished with [radium_to_consume]u radium. ([charges]/[max_charges] charges)"))
+	else
+		balloon_alert(user, "recharged +[charges_to_restore] charge\s! ([charges]/[max_charges])")
+		to_chat(user, span_notice("Nanite matrix partially replenished with [radium_to_consume]u radium. ([charges]/[max_charges] charges)"))
+	return COMPONENT_NO_AFTERATTACK
 
 /obj/item/mod/module/nanite_repair/ninja/proc/cellular_repair_cycle(mob/living/carbon/human/target)
 	for(var/i in 1 to 15)

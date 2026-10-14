@@ -174,8 +174,8 @@ export const AntagInfoNinja = () => {
           accentColor: '#34d399',
           accentBg: 'rgba(52, 211, 153, 0.12)',
           description:
-            'Medical nanite matrix injects 2u Sanguirite coagulant and heals 75 Brute + 75 Burn over 15 seconds (5/sec). Consumes 0 suit power; holds 3 charges, refilled with 15u Radium.',
-          statBadge: '0 ENERGY // 3 CHARGES // 15U RADIUM',
+            'Specialized Spider Clan biomedical matrix that deploys surgical nanomachines into the bloodstream to rapidly clot hemorrhaging wounds, knit damaged tissue, and regenerate burns. Consumes 0 suit power, utilizing self-contained nanite charges refilled with Radium.',
+          statBadge: '0 ENERGY // 3 CHARGES // 5U RADIUM/CHARGE',
         },
       ],
     },
@@ -277,11 +277,11 @@ export const AntagInfoNinja = () => {
           iconState: 'nanite_repair',
           accentColor: '#34d399',
           controls: 'Click pinned action to engage (Usable while incapacitated)',
-          power: '0 Energy (Does not consume suit power // 3 charges, refillable with 15u Radium // 15s cooldown)',
+          power: '0 Energy (Does not consume suit power // 3 charges, 5u Radium per charge // 15s cooldown)',
           description:
-            'Floods your bloodstream with emergency medical nanites and 2u Sanguirite coagulant over a 15-second cycle. Rapidly stops internal bleeding and restores 5 brute and 5 burn damage every second (total 75 brute / 75 burn) along with lost blood volume. Consumes 0 suit power, utilizing internal chemical nanite charges (3 charges capacity, refilled with 15u Radium).',
+            'Floods the operative\'s circulation with autonomous medical nanomachines and synthetic coagulants. The microscopic swarm seals internal hemorrhaging, reconstructs torn muscle and bone, and restores lost blood volume. Draws no power from the suit, relying on internal nanite reserves refueled with Radium.',
           tacticalTip:
-            'Replaces conventional medical items and operates without touching suit power reserves. After taking damage or bleeding heavily, activate the matrix to clot wounds and regenerate. When empty, reload the suit with 15u Radium.',
+            'Acts as an independent trauma response unit that keeps you fighting without eating into your cloak or mobility power. If charges are spent, top up directly from beakers or bottles containing Radium (5u per charge).',
         }
       : {
           title: 'Combat Adrenaline Boost',
