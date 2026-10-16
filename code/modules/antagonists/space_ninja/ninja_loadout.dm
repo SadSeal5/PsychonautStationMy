@@ -1,8 +1,5 @@
 // Space Ninja Loadout Selection & Spawn Invisibility Management
 
-#define NINJA_SLOT_STEALTH_DEFAULT 1
-#define NINJA_SLOT_STEALTH_PHASE 2
-
 #define NINJA_SLOT_STAR_DEFAULT 1
 #define NINJA_SLOT_STAR_KUNAI 2
 
@@ -11,11 +8,9 @@
 
 #define NINJA_SLOT_TRAP_DEFAULT 1
 #define NINJA_SLOT_TRAP_DECOY 2
-#define NINJA_SLOT_TRAP_SHADOW 2
 
 /datum/antagonist/ninja
 	/// Active slot selections
-	var/loadout_stealth = NINJA_SLOT_STEALTH_DEFAULT
 	var/loadout_star = NINJA_SLOT_STAR_DEFAULT
 	var/loadout_heal = NINJA_SLOT_HEAL_DEFAULT
 	var/loadout_trap = NINJA_SLOT_TRAP_DEFAULT
@@ -88,25 +83,26 @@
 	if(!istype(mod))
 		return
 
-	// Slot 1: Stealth vs Phasing
-	if(loadout_stealth == NINJA_SLOT_STEALTH_PHASE)
-		swap_module(mod, /obj/item/mod/module/stealth/ninja, /obj/item/mod/module/phase/ninja)
-	else
-		swap_module(mod, /obj/item/mod/module/phase/ninja, /obj/item/mod/module/stealth/ninja)
+	// Core Module: Ensure Advanced Mimetic Stealth is present and pinned
+	var/obj/item/mod/module/stealth/ninja/stealth_mod = locate(/obj/item/mod/module/stealth/ninja) in mod.modules
+	if(!stealth_mod)
+		stealth_mod = new(mod)
+		mod.install(stealth_mod)
+		stealth_mod.pin(ninja)
 
-	// Slot 2: Shuriken vs Kunai
+	// Slot 1: Shuriken vs Kunai
 	if(loadout_star == NINJA_SLOT_STAR_KUNAI)
 		swap_module(mod, /obj/item/mod/module/dispenser/ninja, /obj/item/mod/module/dispenser/ninja/kunai)
 	else
 		swap_module(mod, /obj/item/mod/module/dispenser/ninja/kunai, /obj/item/mod/module/dispenser/ninja)
 
-	// Slot 3: Adrenaline vs Nanite Repair
+	// Slot 2: Adrenaline vs Nanite Repair
 	if(loadout_heal == NINJA_SLOT_HEAL_NANITE)
 		swap_module(mod, /obj/item/mod/module/adrenaline_boost, /obj/item/mod/module/nanite_repair/ninja)
 	else
 		swap_module(mod, /obj/item/mod/module/nanite_repair/ninja, /obj/item/mod/module/adrenaline_boost)
 
-	// Slot 4: Energy Net vs Holographic Decoy
+	// Slot 3: Energy Net vs Holographic Decoy
 	if(loadout_trap == NINJA_SLOT_TRAP_DECOY)
 		swap_module(mod, /obj/item/mod/module/energy_net, /obj/item/mod/module/hologram_decoy/ninja)
 	else
@@ -140,7 +136,6 @@
 	data["objectives"] = get_objectives()
 	data["can_change_objective"] = can_assign_self_objectives
 	data["in_setup"] = in_setup_phase
-	data["slot_stealth"] = loadout_stealth
 	data["slot_star"] = loadout_star
 	data["slot_heal"] = loadout_heal
 	data["slot_trap"] = loadout_trap
@@ -157,8 +152,6 @@
 			var/slot = params["slot"]
 			var/value = text2num(params["value"])
 			switch(slot)
-				if("stealth")
-					loadout_stealth = value
 				if("star")
 					loadout_star = value
 				if("heal")

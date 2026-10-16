@@ -23,7 +23,6 @@ type NinjaInfo = {
   objectives: Objective[];
   can_change_objective: BooleanLike;
   in_setup?: BooleanLike;
-  slot_stealth?: number;
   slot_star?: number;
   slot_heal?: number;
   slot_trap?: number;
@@ -44,7 +43,7 @@ type OptionDef = {
 };
 
 type SlotDef = {
-  id: 'stealth' | 'star' | 'heal' | 'trap';
+  id: 'star' | 'heal' | 'trap';
   title: string;
   slotNum: number;
   currentValue: number;
@@ -69,7 +68,6 @@ export const AntagInfoNinja = () => {
     objectives = [],
     can_change_objective,
     in_setup,
-    slot_stealth = 1,
     slot_star = 1,
     slot_heal = 1,
     slot_trap = 1,
@@ -84,41 +82,9 @@ export const AntagInfoNinja = () => {
 
   const slots: SlotDef[] = [
     {
-      id: 'stealth',
-      title: 'INFILTRATION & MOBILITY',
-      slotNum: 1,
-      currentValue: slot_stealth,
-      options: [
-        {
-          value: 1,
-          title: 'Advanced Mimetic Stealth',
-          badge: 'DEFAULT',
-          typeTag: 'OPTICAL CLOAK',
-          iconState: 'cloak_ninja',
-          accentColor: '#c084fc',
-          accentBg: 'rgba(192, 132, 252, 0.12)',
-          description:
-            'Mimetic light-bending field. Zero bump disruption, silent footsteps, minimal suit power draw.',
-          statBadge: '50 EN. + 10/S // CLOAK',
-        },
-        {
-          value: 2,
-          title: 'Phase Module',
-          badge: 'ALTERNATIVE',
-          typeTag: 'QUANTUM PHASE',
-          iconState: 'phase_ninja',
-          accentColor: '#22d3ee',
-          accentBg: 'rgba(34, 211, 238, 0.12)',
-          description:
-            'Displaces suit matter to ghost through solid bulkheads and reinforced walls. Requires a 3s startup channel; cannot attack while active. Heavy power drain. Taking any damage or electromagnetic pulse (EMP) while active or during calibration disrupts the displacement field, immediately forcing the wearer back into phase and initiating a 10s cooldown.',
-          statBadge: '150 EN. + 150/STEP // PHASE',
-        },
-      ],
-    },
-    {
       id: 'star',
       title: 'RANGED ORDNANCE',
-      slotNum: 2,
+      slotNum: 1,
       currentValue: slot_star,
       options: [
         {
@@ -150,7 +116,7 @@ export const AntagInfoNinja = () => {
     {
       id: 'heal',
       title: 'BIOLOGICAL SUPPORT',
-      slotNum: 3,
+      slotNum: 2,
       currentValue: slot_heal,
       options: [
         {
@@ -182,7 +148,7 @@ export const AntagInfoNinja = () => {
     {
       id: 'trap',
       title: 'SUBJUGATION & CONTROL',
-      slotNum: 4,
+      slotNum: 3,
       currentValue: slot_trap,
       options: [
         {
@@ -215,37 +181,10 @@ export const AntagInfoNinja = () => {
 
   // Active loadout dossier specifications based on chosen slots
   const chosenDossier: DossierItem[] = [
-    slot_stealth === 2
-      ? {
-          title: 'Phase Module',
-          badge: 'SLOT 1',
-          typeTag: 'QUANTUM PHASE // MOBILITY',
-          iconState: 'phase_ninja',
-          accentColor: '#22d3ee',
-          controls: 'Pinned Suit Action or Suit Menu (Toggle)',
-          power: '150 energy units on activation + 150 units per phase step // 10s cooldown',
-          description:
-            'Displaces the MODsuit into quantum subspace, granting the ability to ghost directly through reinforced bulkheads, airlocks, and solid terrain without restriction. Requires a 3-second calibration channel to activate. Taking any damage or electromagnetic pulse (EMP) while active or during calibration disrupts the displacement field, immediately forcing the wearer back into phase and initiating a 10s cooldown. While out of phase or calibrating, dimensional interference prevents attacking any targets.',
-          tacticalTip:
-            'If suit power is depleted or the module is turned off while inside a dense wall, you will be automatically shunted to the nearest open tile. Keep a close watch on your power reserves and remember you cannot attack while phased.',
-        }
-      : {
-          title: 'Advanced Mimetic Stealth',
-          badge: 'SLOT 1',
-          typeTag: 'OPTICAL CLOAK // INFILTRATION',
-          iconState: 'cloak_ninja',
-          accentColor: '#c084fc',
-          controls: 'Pinned Suit Action or Suit Menu (Toggle)',
-          power: '50 energy units on activation + 10 units/sec while active',
-          description:
-            'Projects a refractive light-bending shield with dynamic chameleonic skin adaptation. Renders the wearer virtually invisible (alpha 20) and completely silences footsteps. Equipped with stabilization dampeners that do NOT break cloak on bumping into objects or crew.',
-          tacticalTip:
-            'Cloak only disengages when sustaining hostile damage or initiating attacks. Perfect for slipping past sentry turrets and lurking undetected in illuminated hallways.',
-        },
     slot_star === 2
       ? {
           title: 'Grappling Kunai Dispenser',
-          badge: 'SLOT 2',
+          badge: 'SLOT 1',
           typeTag: 'TETHER HOOK // REEL & DRAG',
           iconState: 'dispenser_kunai',
           accentColor: '#c4b5fd',
@@ -258,7 +197,7 @@ export const AntagInfoNinja = () => {
         }
       : {
           title: 'EMP Shuriken Dispenser',
-          badge: 'SLOT 2',
+          badge: 'SLOT 1',
           typeTag: 'ION DISRUPTOR // ORDNANCE',
           iconState: 'dispenser_ninja',
           accentColor: '#fbbf24',
@@ -272,7 +211,7 @@ export const AntagInfoNinja = () => {
     slot_heal === 2
       ? {
           title: 'Nanite Cellular Repair Matrix',
-          badge: 'SLOT 3',
+          badge: 'SLOT 2',
           typeTag: 'BIOMEDICAL MATRIX // RESTORATION',
           iconState: 'nanite_repair',
           accentColor: '#34d399',
@@ -285,7 +224,7 @@ export const AntagInfoNinja = () => {
         }
       : {
           title: 'Combat Adrenaline Boost',
-          badge: 'SLOT 3',
+          badge: 'SLOT 2',
           typeTag: 'STIMULANT SHOCK // NEURAL OVERRIDE',
           iconState: 'adrenaline_boost',
           accentColor: '#fb7185',
@@ -299,7 +238,7 @@ export const AntagInfoNinja = () => {
     slot_trap === 2
       ? {
           title: 'Holographic Decoy Module',
-          badge: 'SLOT 4',
+          badge: 'SLOT 3',
           typeTag: 'CYBER DECOY // MISDIRECTION',
           iconState: 'decoy_ninja',
           accentColor: '#00e5ff',
@@ -312,7 +251,7 @@ export const AntagInfoNinja = () => {
         }
       : {
           title: 'Energy Net Projector',
-          badge: 'SLOT 4',
+          badge: 'SLOT 3',
           typeTag: 'HARDLIGHT RESTRAINT // CAPTURE',
           iconState: 'energy_net',
           accentColor: '#38bdf8',
@@ -326,6 +265,19 @@ export const AntagInfoNinja = () => {
   ];
 
   const coreSystems: DossierItem[] = [
+    {
+      title: 'Advanced Mimetic Stealth',
+      badge: 'CORE INFILTRATION',
+      typeTag: 'OPTICAL CLOAK // CHAMELEONIC',
+      iconState: 'cloak_ninja',
+      accentColor: '#c084fc',
+      controls: 'Pinned Suit Action or Suit Menu (Toggle)',
+      power: '50 energy units on activation + 10 units/sec while active',
+      description:
+        'Projects a refractive light-bending field with dynamic chameleonic skin adaptation. Renders the wearer virtually invisible (alpha 20) and completely silences footsteps. Equipped with stabilization dampeners that do NOT break cloak on bumping into objects or crew.',
+      tacticalTip:
+        'Cloak only disengages when sustaining hostile damage or initiating attacks. Perfect for slipping past sentry turrets and lurking undetected in illuminated hallways.',
+    },
     {
       title: 'Energy Katana & Weapon Recall',
       badge: 'CORE WEAPON',
@@ -350,7 +302,7 @@ export const AntagInfoNinja = () => {
       description:
         'Sub-dermal induction emitters crack machine circuitry. Right-clicking an APC or power cell drains its energy to rapidly refill your MODsuit battery. Right-clicking airlocks doorjacks them open immediately. Hacking consoles executes sabotage objectives.',
       tacticalTip:
-        'Whenever battery levels dwindle after phasing or cloaking, slip into maintenance and drain the nearest APC.',
+        'Whenever battery levels dwindle after cloaking or combat, slip into maintenance and drain the nearest APC.',
     },
     {
       title: 'Multi-Spectrum Optical Visor',
@@ -457,7 +409,7 @@ export const AntagInfoNinja = () => {
                     <Flex align="center" justify="space-between">
                       <Flex.Item>
                         <Icon name="shield-alt" mr={1} />
-                        <strong>Spider Clan Temporal Infiltration Protocol:</strong> Phase-cloaking nanites and localized vacuum shielding are fully active. Your position is concealed from station sensors. Moving, engaging targets, or manual confirmation will calibrate suit systems.
+                        <strong>Spider Clan Temporal Infiltration Protocol:</strong> Mimetic-cloaking nanites and localized vacuum shielding are fully active. Your position is concealed from station sensors. Moving, engaging targets, or manual confirmation will calibrate suit systems.
                       </Flex.Item>
                       {!!in_setup && (
                         <Flex.Item>
@@ -481,7 +433,7 @@ export const AntagInfoNinja = () => {
                   </NoticeBox>
                 </Stack.Item>
 
-                {/* 4 Slot Selection Cards */}
+                {/* 3 Slot Selection Cards */}
                 {slots.map((slot) => (
                   <Stack.Item key={slot.id}>
                     <Box
