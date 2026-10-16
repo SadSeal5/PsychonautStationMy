@@ -1300,7 +1300,7 @@
 		balloon_alert(mod.wearer, "[charges] / [max_charges] charges remaining")
 	playsound(mod.wearer, 'sound/items/hypospray.ogg', 50, TRUE)
 	mod.wearer.reagents?.add_reagent(/datum/reagent/medicine/coagulant, 2)
-	INVOKE_ASYNC(src, PROC_REF(cellular_repair_cycle), mod.wearer)
+	mod.wearer.apply_status_effect(/datum/status_effect/ninja_nanite_repair)
 
 /obj/item/mod/module/nanite_repair/ninja/on_install()
 	. = ..()
@@ -1341,16 +1341,24 @@
 		to_chat(user, span_notice("Nanite matrix partially replenished with [radium_to_consume]u radium. ([charges]/[max_charges] charges)"))
 	return COMPONENT_NO_AFTERATTACK
 
-/obj/item/mod/module/nanite_repair/ninja/proc/cellular_repair_cycle(mob/living/carbon/human/target)
-	for(var/i in 1 to 15)
-		if(QDELETED(target) || !mod || !mod.wearer || target != mod.wearer)
-			break
-		target.adjust_brute_loss(-5)
-		target.adjust_fire_loss(-5)
-		target.adjust_blood_volume(2)
-		new /obj/effect/temp_visual/heal(get_turf(target), COLOR_HEALING_CYAN)
-		playsound(target, 'sound/effects/spray.ogg', 25, TRUE)
-		sleep(1 SECONDS)
-	if(!QDELETED(target) && target == mod?.wearer)
-		to_chat(target, span_notice("Nanite cellular repair complete."))
+/datum/status_effect/ninja_nanite_repair
+	id = "ninja_nanite_repair"
+	alert_type = null
+	duration = 15 SECONDS
+	tick_interval = 1 SECONDS
+	status_type = STATUS_EFFECT_REFRESH
+
+/datum/status_effect/ninja_nanite_repair/tick(seconds_between_ticks)
+	if(owner.stat == DEAD)
+		qdel(src)
+		return
+	owner.adjust_brute_loss(-5)
+	owner.adjust_fire_loss(-5)
+	owner.adjust_blood_volume(2)
+	new /obj/effect/temp_visual/heal(get_turf(owner), COLOR_HEALING_CYAN)
+
+/datum/status_effect/ninja_nanite_repair/on_remove()
+	if(!QDELETED(owner))
+		to_chat(owner, span_notice("Nanite cellular repair complete."))
+
 
