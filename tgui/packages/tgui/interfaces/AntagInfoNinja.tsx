@@ -409,7 +409,7 @@ export const AntagInfoNinja = () => {
                     <Flex align="center" justify="space-between">
                       <Flex.Item>
                         <Icon name="shield-alt" mr={1} />
-                        <strong>Spider Clan Temporal Infiltration Protocol:</strong> Mimetic-cloaking nanites and localized vacuum shielding are fully active. Your position is concealed from station sensors. Moving, engaging targets, or manual confirmation will calibrate suit systems.
+                        <strong>Spider Clan Temporal Infiltration Protocol:</strong> Mimetic-cloaking nanites and invulnerability shielding are fully active. Your position is completely concealed. The veil remains active until your loadout is confirmed (or this window is closed), or until the calibration timer expires.
                       </Flex.Item>
                       {!!in_setup && (
                         <Flex.Item>

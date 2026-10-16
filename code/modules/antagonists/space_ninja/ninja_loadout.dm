@@ -42,7 +42,7 @@
 
 	setup_timer = addtimer(CALLBACK(src, PROC_REF(end_setup_phase)), 3 MINUTES, TIMER_STOPPABLE)
 
-	to_chat(ninja, span_boldnotice("Spider Clan temporal concealment field active. Shadows envelop your cybernetic form. Movement and interaction are suspended while calibrating. Confirm your loadout parameters to disengage the veil."))
+	to_chat(ninja, span_boldnotice("Spider Clan temporal concealment field active. Shadows envelop your cybernetic form. Movement and interaction are suspended while calibrating. Confirm your loadout parameters or close this interface to disengage the veil."))
 	ui_interact(ninja)
 
 /**
@@ -165,3 +165,11 @@
 			to_chat(ui.user, span_notice("Spider Clan loadout synchronized."))
 			SStgui.update_uis(src)
 			return TRUE
+
+/datum/antagonist/ninja/ui_close(mob/user)
+	. = ..()
+	if(in_setup_phase)
+		end_setup_phase()
+		if(user)
+			to_chat(user, span_notice("Spider Clan loadout synchronized."))
+
