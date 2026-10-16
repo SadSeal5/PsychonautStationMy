@@ -281,15 +281,15 @@ export const AntagInfoNinja = () => {
     {
       title: 'Energy Katana & Weapon Recall',
       badge: 'CORE WEAPON',
-      typeTag: 'PLASMA BLADE // DNA-BONDED',
+      typeTag: 'PLASMA BLADE // QUANTUM RECALL',
       iconState: 'recall',
       accentColor: '#e11d48',
       controls: 'LMB strike // RMB teleport',
       power: 'None',
       description:
-        'Monomolecular plasma blade genetically bonded to your DNA. Slices through heavy armor and deflects incoming energy projectiles. Can be recalled directly to your hands or sheath across any distance.',
+        'Monomolecular plasma blade forged by the Spider Clan. Slices through heavy armor and deflects incoming energy projectiles. Can be recalled directly to your hands or sheath across any distance.',
       tacticalTip:
-        'Right-click any visible location within sight to instantaneously phase and teleport there. You can also throw your katana through windows or at fleeing targets and recall it across any distance.',
+        'Right-click any visible location within sight to instantaneously phase and teleport there. You can also throw your katana at fleeing targets and recall it across any distance.',
     },
     {
       title: 'Cybernetic Hacker Interface',
