@@ -191,7 +191,7 @@ export const AntagInfoNinja = () => {
           controls: 'Click pinned action to synthesize // Throw at target or structure',
           power: '20 energy units per synthesis // 7.0s cooldown',
           description:
-            'Fabricates lightweight titanium kunai linked by high-tensile nanite tow cables (8 force, 12 throwforce, 75 AP, 10 stamina damage). Striking living targets knocks them prone for 2.5 seconds and reels them across the room directly to your feet along a visible tether beam. Striking dense walls or machinery hauls you forward with a smooth, upright landing.',
+            'Fabricates lightweight titanium kunai linked by high-tensile nanite tow cables. Striking living targets knocks them down and reels them across the room directly to your feet along a visible tether beam. Striking dense walls or machinery hauls you forward with a smooth, upright landing.',
           tacticalTip:
             'Snatch isolated personnel into dark corridors for silent assassinations while they remain prone, or slingshot across wide corridors and hull breaches to bypass barriers.',
         }
@@ -274,7 +274,7 @@ export const AntagInfoNinja = () => {
       controls: 'Pinned Suit Action or Suit Menu (Toggle)',
       power: '50 energy units on activation + 10 units/sec while active',
       description:
-        'Projects a refractive light-bending field with dynamic chameleonic skin adaptation. Renders the wearer virtually invisible (alpha 20) and completely silences footsteps. Equipped with stabilization dampeners that do NOT break cloak on bumping into objects or crew.',
+        'Projects a refractive light-bending field with dynamic chameleonic skin adaptation. Renders the wearer virtually invisible and completely silences footsteps. Equipped with stabilization dampeners that do NOT break cloak on bumping into objects or crew.',
       tacticalTip:
         'Cloak only disengages when sustaining hostile damage or initiating attacks. Perfect for slipping past sentry turrets and lurking undetected in illuminated hallways.',
     },
@@ -284,12 +284,12 @@ export const AntagInfoNinja = () => {
       typeTag: 'PLASMA BLADE // DNA-BONDED',
       iconState: 'recall',
       accentColor: '#e11d48',
-      controls: 'RMB Recall action to summon blade // LMB strike & reflect // Combat Dash',
-      power: 'Low recall cost (0.5s cooldown)',
+      controls: 'LMB strike // RMB teleport',
+      power: 'None',
       description:
-        'Monomolecular plasma blade genetically bonded to your DNA. Slices through heavy armor and deflects incoming energy projectiles. Can be recalled directly to your hands or sheath across any distance. Forbids firearm usage.',
+        'Monomolecular plasma blade genetically bonded to your DNA. Slices through heavy armor and deflects incoming energy projectiles. Can be recalled directly to your hands or sheath across any distance.',
       tacticalTip:
-        'Throw your katana through windows or at fleeing targets, then recall it instantaneously to your hands. You can never be disarmed.',
+        'Right-click any visible location within sight to instantaneously phase and teleport there. You can also throw your katana through windows or at fleeing targets and recall it across any distance.',
     },
     {
       title: 'Cybernetic Hacker Interface',
