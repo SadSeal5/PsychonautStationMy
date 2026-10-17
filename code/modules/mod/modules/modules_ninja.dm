@@ -1291,7 +1291,7 @@
 /obj/item/mod/module/nanite_repair/ninja/on_use(mob/activator)
 	charges--
 	if(IS_SPACE_NINJA(mod.wearer))
-		mod.wearer.say("Engaging cellular reconstruction matrix!", forced = type)
+		mod.wearer.say(pick_list_replacements(NINJA_FILE, "nanite_lines"), forced = type)
 	to_chat(mod.wearer, span_notice("You engage the nanite cellular repair matrix. Medical nanites rapidly seal your wounds! ([charges] / [max_charges] charges remaining)"))
 	if(charges <= 0)
 		balloon_alert(mod.wearer, "0 / [max_charges] charges remaining - needs radium!")
