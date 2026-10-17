@@ -519,7 +519,7 @@ export const AntagInfoNinja = () => {
                                           border: `1px solid ${
                                             opt.badge === 'DEFAULT'
                                               ? 'rgba(255, 255, 255, 0.15)'
-                                              : opt.accentColor + '55'
+                                              : `${opt.accentColor}55`
                                           }`,
                                           padding: '1px 6px',
                                           borderRadius: '3px',

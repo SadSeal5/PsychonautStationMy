@@ -173,3 +173,9 @@
 		if(user)
 			to_chat(user, span_notice("Spider Clan loadout synchronized."))
 
+#undef NINJA_SLOT_STAR_DEFAULT
+#undef NINJA_SLOT_STAR_KUNAI
+#undef NINJA_SLOT_HEAL_DEFAULT
+#undef NINJA_SLOT_HEAL_NANITE
+#undef NINJA_SLOT_TRAP_DEFAULT
+#undef NINJA_SLOT_TRAP_DECOY
