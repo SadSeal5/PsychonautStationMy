@@ -152,15 +152,36 @@
 	if(!istype(H))
 		return FALSE
 
+	var/exited = FALSE
+	var/turf/end_turf = nearby || get_turf(H)
+
 	if(istype(H.loc, /obj/effect/dummy/phased_mob/shadowling))
 		var/obj/effect/dummy/phased_mob/shadowling/P = H.loc
 		if(istype(nearby))
 			P.forceMove(nearby)
+		end_turf = get_turf(P) || nearby
 		P.eject_jaunter(forced_out)
-		return TRUE
-
-	if(H.has_status_effect(/datum/status_effect/shadow/phase))
+		exited = TRUE
+	else if(H.has_status_effect(/datum/status_effect/shadow/phase))
+		if(istype(nearby))
+			H.forceMove(nearby)
 		H.remove_status_effect(/datum/status_effect/shadow/phase)
-		return TRUE
+		exited = TRUE
 
-	return FALSE
+	if(!exited)
+		return FALSE
+
+	if(end_turf)
+		new /obj/effect/temp_visual/shadow_phase_smoke(end_turf)
+
+	fade_in(H, 0.3 SECONDS)
+	to_chat(H, span_notice("You return to physical form."))
+	StartCooldown()
+
+	for(var/datum/action/cooldown/shadowling/shadow_phase/A in H.actions)
+		A.apply_button_overlay()
+
+	for(var/datum/action/cooldown/shadowling/A in H.actions)
+		A.build_all_button_icons(UPDATE_BUTTON_STATUS, TRUE)
+
+	return TRUE

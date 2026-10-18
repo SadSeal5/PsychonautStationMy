@@ -132,19 +132,7 @@
 	cleanse_quirk_datums()
 
 /mob/living/carbon/human/proc/refresh_eye_overlays()
-	remove_overlay(EYES_LAYER)
-
-	var/obj/item/organ/eyes/E = get_organ_slot(ORGAN_SLOT_EYES)
-	if(!E)
-		return
-
-	var/obj/item/bodypart/head/my_head = get_bodypart(BODY_ZONE_HEAD)
-	if(!my_head)
-		return
-
-	E.refresh(call_update = FALSE)
-	overlays_standing[EYES_LAYER] = E.generate_body_overlay(my_head)
-	apply_overlay(EYES_LAYER)
+	update_eyes(TRUE)
 
 /proc/is_robotic_bodypart(obj/item/bodypart/B)
 	return B.bodytype == BODYTYPE_ROBOTIC
@@ -206,6 +194,9 @@
 
 // MARK: Bodyparts
 /obj/item/bodypart/head/shadow/shadowling
+	icon = 'icons/mob/antagonists/shadowling/shadowling.dmi'
+	should_draw_greyscale = FALSE
+	head_flags = HEAD_EYESPRITES
 	limb_id = SPECIES_SHADOWLING
 	biological_state = BIO_INORGANIC
 	icon_static = 'icons/mob/antagonists/shadowling/shadowling.dmi'
@@ -214,6 +205,8 @@
 	brute_modifier = 0.7
 
 /obj/item/bodypart/chest/shadow/shadowling
+	icon = 'icons/mob/antagonists/shadowling/shadowling.dmi'
+	should_draw_greyscale = FALSE
 	limb_id = SPECIES_SHADOWLING
 	biological_state = BIO_INORGANIC
 	bodypart_traits = list(TRAIT_NO_JUMPSUIT)
@@ -223,6 +216,8 @@
 	brute_modifier = 0.7
 
 /obj/item/bodypart/leg/left/shadow/shadowling
+	icon = 'icons/mob/antagonists/shadowling/shadowling.dmi'
+	should_draw_greyscale = FALSE
 	limb_id = SPECIES_SHADOWLING
 	biological_state = BIO_INORGANIC
 	icon_static = 'icons/mob/antagonists/shadowling/shadowling.dmi'
@@ -231,6 +226,8 @@
 	brute_modifier = 0.7
 
 /obj/item/bodypart/leg/right/shadow/shadowling
+	icon = 'icons/mob/antagonists/shadowling/shadowling.dmi'
+	should_draw_greyscale = FALSE
 	limb_id = SPECIES_SHADOWLING
 	biological_state = BIO_INORGANIC
 	icon_static = 'icons/mob/antagonists/shadowling/shadowling.dmi'
@@ -239,6 +236,8 @@
 	brute_modifier = 0.7
 
 /obj/item/bodypart/arm/left/shadow/shadowling
+	icon = 'icons/mob/antagonists/shadowling/shadowling.dmi'
+	should_draw_greyscale = FALSE
 	limb_id = SPECIES_SHADOWLING
 	biological_state = BIO_INORGANIC
 	bodypart_effects = list(/datum/status_effect/grouped/bodypart_effect/nyxosynthesis/shadowling)
@@ -258,6 +257,8 @@
 	burn_modifier = 1.5
 
 /obj/item/bodypart/arm/right/shadow/shadowling
+	icon = 'icons/mob/antagonists/shadowling/shadowling.dmi'
+	should_draw_greyscale = FALSE
 	limb_id = SPECIES_SHADOWLING
 	biological_state = BIO_INORGANIC
 	bodypart_effects = list(/datum/status_effect/grouped/bodypart_effect/nyxosynthesis/shadowling)
@@ -277,36 +278,49 @@
 	burn_modifier = 1.5
 
 /obj/item/bodypart/head/shadow/shadowling/ascended
+	icon = 'icons/mob/antagonists/shadowling/shadowling_ascended.dmi'
+	should_draw_greyscale = FALSE
+	head_flags = HEAD_EYESPRITES
 	limb_id = SPECIES_SHADOWLING_ASCENDED
 	icon_static = 'icons/mob/antagonists/shadowling/shadowling_ascended.dmi'
 	burn_modifier = 0.5
 	brute_modifier = 0.5
 
 /obj/item/bodypart/chest/shadow/shadowling/ascended
+	icon = 'icons/mob/antagonists/shadowling/shadowling_ascended.dmi'
+	should_draw_greyscale = FALSE
 	limb_id = SPECIES_SHADOWLING_ASCENDED
 	icon_static = 'icons/mob/antagonists/shadowling/shadowling_ascended.dmi'
 	burn_modifier = 0.5
 	brute_modifier = 0.5
 
 /obj/item/bodypart/leg/left/shadow/shadowling/ascended
+	icon = 'icons/mob/antagonists/shadowling/shadowling_ascended.dmi'
+	should_draw_greyscale = FALSE
 	limb_id = SPECIES_SHADOWLING_ASCENDED
 	icon_static = 'icons/mob/antagonists/shadowling/shadowling_ascended.dmi'
 	burn_modifier = 0.5
 	brute_modifier = 0.5
 
 /obj/item/bodypart/leg/right/shadow/shadowling/ascended
+	icon = 'icons/mob/antagonists/shadowling/shadowling_ascended.dmi'
+	should_draw_greyscale = FALSE
 	limb_id = SPECIES_SHADOWLING_ASCENDED
 	icon_static = 'icons/mob/antagonists/shadowling/shadowling_ascended.dmi'
 	burn_modifier = 0.5
 	brute_modifier = 0.5
 
 /obj/item/bodypart/arm/left/shadow/shadowling/ascended
+	icon = 'icons/mob/antagonists/shadowling/shadowling_ascended.dmi'
+	should_draw_greyscale = FALSE
 	limb_id = SPECIES_SHADOWLING_ASCENDED
 	icon_static = 'icons/mob/antagonists/shadowling/shadowling_ascended.dmi'
 	burn_modifier = 0.5
 	brute_modifier = 0.5
 
 /obj/item/bodypart/arm/right/shadow/shadowling/ascended
+	icon = 'icons/mob/antagonists/shadowling/shadowling_ascended.dmi'
+	should_draw_greyscale = FALSE
 	limb_id = SPECIES_SHADOWLING_ASCENDED
 	icon_static = 'icons/mob/antagonists/shadowling/shadowling_ascended.dmi'
 	burn_modifier = 0.5
@@ -320,9 +334,9 @@
 	name = "freezing blue eyes"
 	desc = "Even without their shadowy owner, looking at these eyes gives you a sense of dread."
 	icon = 'icons/obj/medical/organs/shadow_organs.dmi'
-	iris_overlay = "eyes_cyber_glow_iris"
+	iris_overlay = null
 	eye_icon_state = "eyes_glow_gs"
-	eye_icon = 'icons/mob/human/human_face.dmi'
+	eye_icon = 'icons/mob/human/human_eyes.dmi'
 	organ_traits = list(TRAIT_THERMAL_VISION)
 	pepperspray_protect = TRUE
 	color_cutoffs = null
@@ -336,20 +350,17 @@
 	if(!islist(.))
 		return .
 
-	var/list/states_left = list("[eye_icon_state]_l", "[iris_overlay]_l")
-	var/list/states_right = list("[eye_icon_state]_r", "[iris_overlay]_r")
-
 	for(var/mutable_appearance/ov as anything in .)
 		if(!istype(ov))
 			continue
 		if(ov.icon != eye_icon)
 			continue
 
-		if(ov.icon_state in states_left)
+		if(ov.icon_state == "[eye_icon_state]_l")
 			ov.color = eye_color_left
 			continue
 
-		if(ov.icon_state in states_right)
+		if(ov.icon_state == "[eye_icon_state]_r")
 			ov.color = eye_color_right
 			continue
 

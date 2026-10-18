@@ -87,6 +87,10 @@
 			P.eject_jaunter(FALSE)
 		else
 			H.remove_status_effect(/datum/status_effect/shadow/phase)
+		H.alpha = 255
+
+	for(var/datum/action/cooldown/shadowling/A in H.actions)
+		A.build_all_button_icons(UPDATE_BUTTON_STATUS, TRUE)
 
 	if(get_dist(H, T) > 1)
 		step_towards(H, T)
