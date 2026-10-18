@@ -740,6 +740,24 @@ tags = [
 	"magical",
 ]
 
+["Roundstart Shadowlings"]
+weight = 3
+min_pop = 20
+blacklisted_roles = []
+min_antag_cap = 3
+max_antag_cap = 3
+repeatable_weight_decrease = 2
+repeatable = 0
+minimum_required_age = 0
+track = "major"
+tags = [
+	"combat",
+	"crew_antag",
+	"team_antag",
+	"alien",
+	"spooky",
+]
+
 ["Roundstart Wizard"]
 weight.1 = 0
 weight.2 = 0
