@@ -1,7 +1,7 @@
 /datum/action/cooldown/shadowling/commune
 	name = "Commune"
 	desc = "Transmit a telepathic message to all members of the hive."
-	button_icon_state = "shadow_commune"
+	button_icon_state = "shadow_talk"
 	cooldown_time = 0 SECONDS
 
 /datum/action/cooldown/shadowling/commune/is_action_active(atom/movable/screen/movable/action_button/_btn)

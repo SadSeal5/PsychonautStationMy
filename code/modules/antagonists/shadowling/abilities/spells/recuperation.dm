@@ -1,7 +1,7 @@
 /datum/action/cooldown/shadowling/recuperation
 	name = "Shadow Recuperation"
 	desc = "Channel dark power into a living thrall (within 1 tile and in darkness) to elevate them into a Lesser Shadowling."
-	button_icon_state = "shadow_reinforce"
+	button_icon_state = "shadow_recuperation"
 	cooldown_time = 50 SECONDS
 	channel_time = 10 SECONDS
 	click_to_activate = TRUE
@@ -61,12 +61,12 @@
 		unset_click_ability(clicker, TRUE)
 		return FALSE
 
-	if(!is_dark(clicker) || !is_dark(T))
+	if((!is_dark(clicker) || !is_dark(T)) && !GLOB.shadowling_debug_mode)
 		clicker.balloon_alert(clicker, "too bright")
 		unset_click_ability(clicker, TRUE)
 		return FALSE
 
-	if(!(T in hive.thralls) || !T.get_organ_slot(ORGAN_SLOT_BRAIN_THRALL))
+	if(!(T in hive.thralls) || (!T.get_organ_slot(ORGAN_SLOT_BRAIN_THRALL) && !GLOB.shadowling_debug_mode))
 		clicker.balloon_alert(clicker, "requires a thrall")
 		unset_click_ability(clicker, TRUE)
 		return FALSE
@@ -84,7 +84,8 @@
 	T.alpha = 0
 
 	var/start_loc = T.loc
-	if(!do_after(clicker, channel_time, T))
+	var/cast_time = (GLOB.shadowling_debug_mode ? (1 SECONDS) : channel_time)
+	if(!do_after(clicker, cast_time, T))
 		stop_beam()
 		detach_cover(T)
 		if(!QDELETED(T))

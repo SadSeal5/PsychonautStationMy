@@ -1,7 +1,7 @@
 /datum/action/cooldown/shadowling/election
 	name = "Elect Hive Leader"
 	desc = "Initiate an election for the Shadowling hive leader. The winner will be granted Engine Sabotage."
-	button_icon_state = "shadow_election"
+	button_icon_state = "shadow_vote"
 	cooldown_time = 0 SECONDS
 
 /datum/action/cooldown/shadowling/election/IsAvailable(feedback = FALSE)

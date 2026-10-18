@@ -111,7 +111,7 @@
 /datum/antagonist/shadow_thrall/on_gain()
 	. = ..()
 
-	var/mob/living/carbon/human/H = owner?.current
+	var/mob/living/carbon/H = owner?.current
 	if(istype(H) && !H.get_organ_slot(ORGAN_SLOT_BRAIN_THRALL))
 		var/obj/item/organ/brain/shadow/tumor_thrall/tumor = new
 		tumor.Insert(H)
@@ -272,3 +272,8 @@
 	SSshuttle.registerHostileEnvironment(hostile_ref)
 	SSshuttle.lockdown = TRUE
 	SSshuttle.requestEvac(ascended, "Emergency evacuation authorized due to paranormal threat.")
+
+ADMIN_VERB(toggle_shadowling_debug, R_DEBUG, "Toggle Shadowling Debug", "Toggles Shadowling test mode (mindless/carbon enthrall, fast cast, bypass lighting).", ADMIN_CATEGORY_DEBUG)
+	GLOB.shadowling_debug_mode = !GLOB.shadowling_debug_mode
+	to_chat(usr, span_boldnotice("Shadowling Debug Mode is now [GLOB.shadowling_debug_mode ? "ENABLED" : "DISABLED"]."))
+	message_admins("[ADMIN_LOOKUPFLW(usr)] toggled Shadowling Debug Mode to [GLOB.shadowling_debug_mode ? "ENABLED" : "DISABLED"].")
