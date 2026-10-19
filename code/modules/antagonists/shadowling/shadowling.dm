@@ -417,8 +417,7 @@
 	switch(action)
 		if("sync")
 			if(hive)
-				hive.grant_sync_action(H)
-				hive.sync_after_event(H)
+				hive.sync_hive(H)
 			return TRUE
 		if("commune")
 			for(var/datum/action/cooldown/shadowling/commune/C in H.actions)

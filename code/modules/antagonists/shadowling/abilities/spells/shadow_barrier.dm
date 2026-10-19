@@ -1,6 +1,6 @@
 /datum/action/cooldown/shadowling/shadow_barrier
 	name = "Shadow Barrier"
-	desc = "Raise an umbral barrier that reflects frontal energy projectiles."
+	desc = "Surround yourself in a pulsing umbral shroud that reflects energy projectiles."
 	button_icon_state = "shadow_barrier"
 	cooldown_time = 40 SECONDS
 	requires_dark_user = FALSE
@@ -35,51 +35,27 @@
 
 	barrier_active = TRUE
 	RegisterSignal(H, COMSIG_ATOM_PRE_BULLET_ACT, PROC_REF(on_barrier_bullet_act))
-	RegisterSignal(H, COMSIG_ATOM_DIR_CHANGE, PROC_REF(on_dir_change))
-	RegisterSignal(H, COMSIG_ATOM_UPDATE_OVERLAYS, PROC_REF(on_update_overlays))
-	H.update_appearance(UPDATE_OVERLAYS)
+
+	H.add_filter("shadow_barrier_aura", 2, outline_filter("color" = LIGHT_COLOR_PURPLE, "size" = 1.5))
+	var/the_filter = H.get_filter("shadow_barrier_aura")
+	if(the_filter)
+		animate(the_filter, alpha = 0)
+		animate(the_filter, alpha = 200, time = 1 SECONDS, loop = -1, easing = SINE_EASING)
+		animate(alpha = 60, time = 1 SECONDS, loop = -1, easing = SINE_EASING)
 
 	playsound(H, sfx_activate, 65, TRUE)
+	to_chat(H, span_notice("You manifest a protective umbral shroud around yourself!"))
 	addtimer(CALLBACK(src, PROC_REF(end_barrier), WEAKREF(H)), barrier_duration)
 	StartCooldown()
 	return TRUE
-
-/datum/action/cooldown/shadowling/shadow_barrier/proc/on_update_overlays(atom/source, list/overlays)
-	SIGNAL_HANDLER
-
-	var/mob/living/carbon/human/H = source
-	if(!H || QDELETED(H) || !barrier_active)
-		return
-
-	var/mutable_appearance/barrier = mutable_appearance('icons/mob/antagonists/shadowling/shadowling_objects.dmi', "shadow_barrier")
-	barrier.dir = H.dir
-	barrier.layer = ABOVE_MOB_LAYER
-
-	switch(H.dir)
-		if(NORTH)
-			barrier.pixel_y = 7
-		if(SOUTH)
-			barrier.pixel_y = -7
-		if(EAST)
-			barrier.pixel_x = 7
-		if(WEST)
-			barrier.pixel_x = -7
-
-	overlays += barrier
-
-/datum/action/cooldown/shadowling/shadow_barrier/proc/on_dir_change(datum/source, old_dir, new_dir)
-	SIGNAL_HANDLER
-
-	var/mob/living/carbon/human/H = source
-	if(H && barrier_active)
-		H.update_appearance(UPDATE_OVERLAYS)
 
 /datum/action/cooldown/shadowling/shadow_barrier/proc/end_barrier(datum/weakref/owner_ref)
 	var/mob/living/carbon/human/H = owner_ref?.resolve()
 	barrier_active = FALSE
 	if(H)
-		UnregisterSignal(H, list(COMSIG_ATOM_PRE_BULLET_ACT, COMSIG_ATOM_DIR_CHANGE, COMSIG_ATOM_UPDATE_OVERLAYS))
-		H.update_appearance(UPDATE_OVERLAYS)
+		UnregisterSignal(H, COMSIG_ATOM_PRE_BULLET_ACT)
+		H.remove_filter("shadow_barrier_aura")
+		to_chat(H, span_warning("Your umbral shroud dissipates."))
 
 /datum/action/cooldown/shadowling/shadow_barrier/proc/on_barrier_bullet_act(atom/source, obj/projectile/proj)
 	SIGNAL_HANDLER
@@ -87,8 +63,6 @@
 	if(!H || QDELETED(H) || !proj || QDELETED(proj) || !barrier_active)
 		return
 	if(!allowed_projectile_typecache[proj.type])
-		return
-	if(proj.dir != REVERSE_DIR(H.dir))
 		return
 	proj.reflect(H)
 	return COMPONENT_BULLET_PIERCED

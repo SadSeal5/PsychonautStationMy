@@ -136,14 +136,8 @@
 /datum/team/shadow_hive/proc/grant_sync_action(mob/living/carbon/human/H)
 	if(!istype(H))
 		return
-	var/check_thralls = (H in thralls)
-	var/check_lings = (H in lings)
-	if(!((isshadowling(H) && check_lings) || check_thralls))
-		return
 	for(var/datum/action/cooldown/shadowling/hive_sync/existing in H.actions)
-		return
-	var/datum/action/cooldown/shadowling/hive_sync/A = new
-	A.Grant(H)
+		qdel(existing)
 
 /datum/team/shadow_hive/proc/grant_comm_action(mob/living/carbon/human/H)
 	if(!istype(H))
@@ -230,9 +224,29 @@
 	return objectives
 
 /datum/team/shadow_hive/proc/sync_after_event(mob/living/carbon/human/actor)
-	for(var/datum/action/cooldown/shadowling/hive_sync/A in actor.actions)
-		if(A)
-			A.DoEffect(actor)
+	sync_hive(actor)
+
+/datum/team/shadow_hive/proc/sync_hive(mob/living/carbon/human/actor)
+	if(!istype(actor))
+		return
+	sanitize()
+	refresh_ascension_thralls_needed()
+	update_objective_explanations()
+
+	for(var/datum/action/cooldown/shadowling/hive_sync/existing in actor.actions)
+		qdel(existing)
+
+	var/nt = count_max_thralls()
+	last_sync_thrall_count = nt
+
+	var/datum/action/cooldown/shadowling/hive_sync/temp_sync = new
+	var/list/new_unlocks = temp_sync.grant_unlocks_for(actor, nt)
+	qdel(temp_sync)
+
+	if(length(new_unlocks))
+		to_chat(actor, span_notice("Hive synchronized: [nt] living thralls. New abilities unlocked: [jointext(new_unlocks, ", ")]."))
+	else
+		to_chat(actor, span_notice("Hive synchronized: [nt] living thralls. No new abilities unlocked."))
 
 /proc/get_shadow_hive()
 	if(GLOB.shadowling_hive)

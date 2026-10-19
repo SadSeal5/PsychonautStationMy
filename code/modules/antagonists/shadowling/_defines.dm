@@ -63,7 +63,6 @@ GLOBAL_LIST_INIT(shadowling_base_abilities, list(
 
 /// Abilities for Shadow thralls
 GLOBAL_LIST_INIT(shadowling_thrall_abilities, list(
-	/datum/action/cooldown/shadowling/hive_sync,
 	/datum/action/cooldown/shadowling/commune,
 	/datum/action/cooldown/shadowling/toggle_night_vision,
 	/datum/action/cooldown/shadowling/stealth,
