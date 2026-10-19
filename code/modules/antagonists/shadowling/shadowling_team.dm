@@ -9,6 +9,7 @@
 	var/list/thralls = list()
 	var/list/ling_roles = list()
 	var/last_sync_thrall_count = 0
+	var/is_ascended = FALSE
 
 /datum/team/shadow_hive/New()
 	. = ..()
@@ -195,6 +196,7 @@
 		return
 	if(ascended)
 		H.set_species(/datum/species/shadow/shadowling/ascended)
+		is_ascended = TRUE
 	else
 		H.set_species(/datum/species/shadow/shadowling)
 

@@ -280,7 +280,7 @@
 /obj/item/bodypart/head/shadow/shadowling/ascended
 	icon = 'icons/mob/antagonists/shadowling/shadowling_ascended.dmi'
 	should_draw_greyscale = FALSE
-	head_flags = HEAD_EYESPRITES
+	head_flags = NONE
 	limb_id = SPECIES_SHADOWLING_ASCENDED
 	icon_static = 'icons/mob/antagonists/shadowling/shadowling_ascended.dmi'
 	burn_modifier = 0.5
@@ -346,6 +346,8 @@
 	eye_color_right = "#ff0000"
 
 /obj/item/organ/eyes/shadow/shadowling/generate_body_overlay(obj/item/bodypart/head/my_head)
+	if(istype(my_head, /obj/item/bodypart/head/shadow/shadowling/ascended) || isshadowling_ascended(my_head?.owner))
+		return list()
 	. = ..()
 	if(!islist(.))
 		return .

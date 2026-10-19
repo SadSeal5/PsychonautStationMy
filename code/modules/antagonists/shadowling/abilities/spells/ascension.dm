@@ -163,6 +163,7 @@
 
 	H.shadowling_strip_quirks()
 	H.set_species(/datum/species/shadow/shadowling/ascended)
+	H.update_eyes(TRUE)
 
 	if(H.mind)
 		for(var/datum/antagonist/shadowling/AD in H.mind.antag_datums)
