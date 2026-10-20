@@ -87,30 +87,10 @@
 				visited[N] = dist + 1
 				queue += N
 
-// MARK: Ability
+// MARK: Deprecated Ability
+/// Shadow Smoke has been merged into Shadow Veil.
+/// Left-click triggers Shadow Veil, Right-click triggers Shadow Smoke.
 /datum/action/cooldown/shadowling/shadow_smoke
-	name = "Shadow Smoke"
-	desc = "Fills the area with shadowy smoke: heals allied shadowlings and thralls, blinding and staggering others."
+	name = "Shadow Smoke (Merged)"
+	desc = "Shadow Smoke has been merged into Shadow Veil. Use Shadow Veil with Right-Click to emit smoke."
 	button_icon_state = "shadow_smoke"
-	cooldown_time = 50 SECONDS
-	requires_dark_user = FALSE
-	requires_dark_target = FALSE
-	max_range = 0
-	channel_time = 0
-	min_req = 1
-	max_req = 5
-	required_thralls = 50
-	var/smoke_radius = 4
-	var/smoke_ticks = 6
-	var/heal_amount = 10
-	var/blind_time = 5 SECONDS
-	var/stun_chance = 50
-	var/stun_time = 2 SECONDS
-
-/datum/action/cooldown/shadowling/shadow_smoke/DoEffect(mob/living/carbon/human/H, atom/_)
-	var/turf/T = get_turf(H)
-	if(!T)
-		return FALSE
-	playsound(T, 'sound/effects/smoke.ogg', 50, TRUE, -3)
-	shadow_spawn_smoke(T, H, smoke_radius, smoke_ticks, heal_amount, blind_time, stun_chance, stun_time)
-	return TRUE

@@ -134,103 +134,10 @@
 	chain = null
 	return ..()
 
-// MARK: Ability
+// MARK: Deprecated Ability
+/// Shadow Hook has been merged into Shadow Roots.
+/// Left-click triggers Shadow Roots, Right-click triggers Shadow Hook.
 /datum/action/cooldown/shadowling/hook
-	parent_type = /datum/action/cooldown/shadowling
-
-	name = "Shadow Hook"
-	desc = "Fire a shadowy hand that pulls any target hit directly towards you."
+	name = "Shadow Hook (Merged)"
+	desc = "Shadow Hook has been merged into Shadow Roots. Use Shadow Roots with Right-Click to launch a hook."
 	button_icon_state = "shadow_hook"
-
-	cooldown_time = 10 SECONDS
-	max_range = 8
-	channel_time = 0
-	click_to_activate = TRUE
-	unset_after_click = TRUE
-
-	var/targeting = FALSE
-	var/static/sfx_fire = 'sound/effects/splat.ogg'
-	var/static/sfx_hit = 'sound/items/weapons/shove.ogg'
-
-/datum/action/cooldown/shadowling/hook/DoEffect(mob/living/carbon/human/H, atom/target)
-	to_chat(H, span_notice("Click in a direction or target to launch the shadowy hand."))
-	return FALSE
-
-/datum/action/cooldown/shadowling/hook/is_action_active(atom/movable/screen/movable/action_button/_btn)
-	return targeting
-
-/datum/action/cooldown/shadowling/hook/unset_click_ability(mob/on_who, refund_cooldown)
-	. = ..()
-	targeting = FALSE
-	apply_button_overlay()
-
-/datum/action/cooldown/shadowling/hook/set_click_ability(mob/on_who, refund_cooldown)
-	. = ..()
-	targeting = TRUE
-	apply_button_overlay()
-
-/datum/action/cooldown/shadowling/hook/InterceptClickOn(mob/living/clicker, params, atom/target)
-	if(clicker.has_status_effect(/datum/status_effect/shadow/phase))
-		unset_click_ability(clicker, TRUE)
-		return FALSE
-
-	if(!istype(clicker))
-		unset_click_ability(clicker, TRUE)
-		return FALSE
-
-	if(!IsAvailable(TRUE))
-		unset_click_ability(clicker, TRUE)
-		return FALSE
-
-	if(!can_use(clicker))
-		unset_click_ability(clicker, TRUE)
-		return FALSE
-
-	var/mob/living/carbon/human/H = clicker
-	var/turf/start_turf = get_turf(H)
-	var/turf/click_turf = get_turf(target)
-	if(!istype(start_turf) || !istype(click_turf))
-		unset_click_ability(clicker, TRUE)
-		return TRUE
-
-	var/turf/end_turf = hook_compute_endpoint(start_turf, click_turf, max_range)
-	if(!istype(end_turf))
-		H.balloon_alert(H, "too close")
-		unset_click_ability(clicker, TRUE)
-		return TRUE
-
-	var/obj/projectile/magic/shadow_hand_sl/P = new(start_turf)
-	P.firer = H
-	P.range = max_range
-	P.hitsound = sfx_hit
-
-	P.aim_projectile(end_turf, H)
-
-	playsound(start_turf, sfx_fire, 55, TRUE)
-	P.fire()
-
-	StartCooldown()
-	unset_click_ability(clicker, FALSE)
-	return TRUE
-
-/datum/action/cooldown/shadowling/hook/proc/hook_compute_endpoint(turf/start_turf, turf/aim_turf, max_steps)
-	if(!istype(start_turf) || !istype(aim_turf))
-		return null
-
-	var/turf/current = start_turf
-	var/step_i = 1
-	while(step_i <= max_steps)
-		var/turf/next_step = get_step_towards(current, aim_turf)
-		if(!istype(next_step))
-			break
-		if(next_step == current)
-			break
-		if(next_step.density)
-			break
-		current = next_step
-		step_i += 1
-
-	if(current == start_turf)
-		return null
-
-	return current

@@ -99,13 +99,19 @@
 // MARK: Ability
 /datum/action/cooldown/shadowling/root
 	name = "Shadow Roots"
-	desc = "Entangle a target in living shadow roots for 10 seconds. Only works if the target is standing in darkness."
+	desc = "Harness the grasping tendrils of the dark. Left-Click an enemy in darkness to ensnare them with shadow roots. Right-Click in any direction to launch a shadow hook and pull targets or objects to you."
 	button_icon_state = "shadow_grasp"
 	check_flags = AB_CHECK_CONSCIOUS
-	cooldown_time = 25 SECONDS
+	cooldown_time = 20 SECONDS
 	click_to_activate = TRUE
 	unset_after_click = TRUE
+	requires_dark_user = FALSE
+	requires_dark_target = FALSE
+	channel_time = 0
+	max_range = 8
 	var/targeting = FALSE
+	var/static/sfx_fire = 'sound/effects/splat.ogg'
+	var/static/sfx_hit = 'sound/items/weapons/shove.ogg'
 
 /datum/action/cooldown/shadowling/root/is_action_active(atom/movable/screen/movable/action_button/_btn)
 	return targeting
@@ -120,38 +126,117 @@
 	targeting = TRUE
 	apply_button_overlay()
 
-/datum/action/cooldown/shadowling/root/Activate(atom/target)
-	var/mob/living/carbon/human/H = owner
-	if(!istype(H))
+/datum/action/cooldown/shadowling/root/can_use(mob/living/carbon/human/H)
+	if(!..())
+		return FALSE
+	if(istype(H.loc, /obj/effect/dummy/phased_mob/shadowling) || H.has_status_effect(/datum/status_effect/shadow/phase))
+		owner.balloon_alert(owner, "ability unavailable while phased")
+		return FALSE
+	return TRUE
+
+/datum/action/cooldown/shadowling/root/Trigger(mob/clicker, trigger_flags, atom/target)
+	if(!istype(owner))
+		return FALSE
+	if(!can_use(owner))
+		return FALSE
+	return ..()
+
+/datum/action/cooldown/shadowling/root/InterceptClickOn(mob/living/clicker, params, atom/target)
+	if(!istype(clicker))
+		unset_click_ability(clicker, TRUE)
 		return FALSE
 
-	var/mob/living/carbon/human/T = target
-	if(!istype(T))
-		owner.balloon_alert(owner, "invalid target")
+	if(!can_use(clicker))
+		unset_click_ability(clicker, TRUE)
 		return FALSE
+
+	var/mob/living/carbon/human/H = clicker
+	var/list/modifiers = params2list(params)
+	var/is_hook = LAZYACCESS(modifiers, RIGHT_CLICK)
+
+	var/turf/start_turf = get_turf(H)
+	var/turf/click_turf = get_turf(target)
+	if(!istype(start_turf) || !istype(click_turf))
+		return FALSE
+
+	if(is_hook)
+		var/turf/end_turf = hook_compute_endpoint(start_turf, click_turf, max_range)
+		if(!istype(end_turf))
+			H.balloon_alert(H, "too close")
+			return FALSE
+
+		var/obj/projectile/magic/shadow_hand_sl/P = new(start_turf)
+		P.firer = H
+		P.range = max_range
+		P.hitsound = sfx_hit
+		P.aim_projectile(end_turf, H)
+		playsound(start_turf, sfx_fire, 55, TRUE)
+		P.fire()
+
+		unset_click_ability(clicker, FALSE)
+		StartCooldown()
+		return TRUE
+
+	var/mob/living/carbon/human/T
+	if(ishuman(target))
+		T = target
+	else if(istype(target?.loc, /mob/living/carbon/human))
+		T = target.loc
+
+	if(!istype(T))
+		H.balloon_alert(H, "invalid target")
+		return FALSE
+
 	if(T == H)
-		owner.balloon_alert(owner, "cannot target yourself")
+		H.balloon_alert(H, "cannot target yourself")
+		return FALSE
+
+	if(T.stat == DEAD)
+		H.balloon_alert(H, "target is dead")
 		return FALSE
 
 	var/datum/team/shadow_hive/hive = get_shadow_hive()
 	if(hive)
 		if(T in hive.lings)
-			owner.balloon_alert(owner, "allies cannot be targeted")
+			H.balloon_alert(H, "allies cannot be targeted")
 			return FALSE
 		if(T in hive.thralls)
-			owner.balloon_alert(owner, "allies cannot be targeted")
+			H.balloon_alert(H, "allies cannot be targeted")
 			return FALSE
 
 	var/turf/tturf = get_turf(T)
 	if(!tturf || tturf.get_lumcount() >= SHADOWLING_DIM_THRESHOLD)
-		owner.balloon_alert(owner, "target not in darkness")
+		H.balloon_alert(H, "target not in darkness")
 		return FALSE
 
 	var/obj/effect/shadow_bind_anchor/A = new /obj/effect/shadow_bind_anchor(tturf, H)
 	if(!A.apply_to(T))
 		qdel(A)
-		owner.balloon_alert(owner, "failed to ensnare")
+		H.balloon_alert(H, "failed to ensnare")
 		return FALSE
 
+	unset_click_ability(clicker, FALSE)
 	StartCooldown()
 	return TRUE
+
+/datum/action/cooldown/shadowling/root/proc/hook_compute_endpoint(turf/start_turf, turf/aim_turf, max_steps)
+	if(!istype(start_turf) || !istype(aim_turf))
+		return null
+
+	var/turf/current = start_turf
+	var/step_i = 1
+	while(step_i <= max_steps)
+		var/turf/next_step = get_step_towards(current, aim_turf)
+		if(!istype(next_step))
+			break
+		if(next_step == current)
+			break
+		if(next_step.density)
+			break
+		current = next_step
+		step_i += 1
+
+	if(current == start_turf)
+		return null
+
+	return current

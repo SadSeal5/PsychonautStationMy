@@ -238,6 +238,10 @@
 
 	for(var/datum/action/cooldown/shadowling/shadow_grab/old_grab in actor.actions)
 		qdel(old_grab)
+	for(var/datum/action/cooldown/shadowling/hook/old_hook in actor.actions)
+		qdel(old_hook)
+	for(var/datum/action/cooldown/shadowling/shadow_smoke/old_smoke in actor.actions)
+		qdel(old_smoke)
 
 	if(isshadowling_ascended(actor) || is_ascended)
 		for(var/datum/action/cooldown/shadowling/ascend/old_asc in actor.actions)

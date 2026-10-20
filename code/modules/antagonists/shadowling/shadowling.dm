@@ -324,7 +324,6 @@
 		/datum/action/cooldown/shadowling/cold_wave = 30,
 		/datum/action/cooldown/shadowling/shadow_barrier = 30,
 		/datum/action/cooldown/shadowling/shreek = 40,
-		/datum/action/cooldown/shadowling/shadow_smoke = 50,
 		/datum/action/cooldown/shadowling/labyrinth = 60,
 		/datum/action/cooldown/shadowling/ascend = 100,
 	)
@@ -332,7 +331,6 @@
 	var/list/ascended_types = list(
 		/datum/action/cooldown/shadowling/shadow_strike,
 		/datum/action/cooldown/shadowling/root,
-		/datum/action/cooldown/shadowling/hook,
 	)
 
 	var/list/owned_action_types = list()

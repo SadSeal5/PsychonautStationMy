@@ -8,18 +8,57 @@
 // MARK: Ability
 /datum/action/cooldown/shadowling/veil
 	name = "Shadow Veil"
-	desc = "Extinguish lights and flames nearby; enemies caught in the darkness are weakened, APCs lose charge, and glowshrooms perish."
+	desc = "Harness umbral darkness. Left-Click to extinguish lights and disable APCs nearby (Veil). Right-Click to emit a cloud of shadow smoke that heals allies and blinds enemies (Smoke)."
 	button_icon_state = "shadow_veil"
-	cooldown_time = 20 SECONDS
+	cooldown_time = 25 SECONDS
 	min_req = 1
 	max_req = 10
 	required_thralls = 0
 	var/dark_square_radius = 4
 	var/shroom_square_radius = 2
 	var/blind_duration = 3 SECONDS
+	var/smoke_radius = 4
+	var/smoke_ticks = 6
+	var/heal_amount = 10
+	var/smoke_blind_time = 5 SECONDS
+	var/smoke_stun_chance = 25
+	var/smoke_stun_time = 2 SECONDS
 	var/static/sfx_emp = 'sound/effects/empulse.ogg'
 
-/datum/action/cooldown/shadowling/veil/DoEffect(mob/living/carbon/human/H, atom/_)
+/datum/action/cooldown/shadowling/veil/Trigger(mob/clicker, trigger_flags, atom/target)
+	if(!istype(owner))
+		return FALSE
+	var/mob/living/carbon/human/H = owner
+	if(!can_use(H))
+		return FALSE
+
+	var/is_smoke = (trigger_flags & TRIGGER_SECONDARY_ACTION)
+	if(is_smoke)
+		return do_smoke(H)
+	return do_veil(H)
+
+/datum/action/cooldown/shadowling/veil/proc/do_smoke(mob/living/carbon/human/H)
+	var/datum/antagonist/shadowling/antag_datum = H?.mind?.has_antag_datum(/datum/antagonist/shadowling)
+	var/ascended = (antag_datum?.is_ascended || isshadowling_ascended(H))
+	var/datum/team/shadow_hive/hive = get_shadow_hive()
+	var/thrall_count = hive ? hive.count_max_thralls() : 0
+	var/req_thralls = hive ? ceil(hive.get_ascension_thralls_needed() * 0.5) : 8
+
+	if(!ascended && !GLOB.shadowling_debug_mode && (thrall_count < req_thralls))
+		H.balloon_alert(H, "smoke requires 50% thralls ([thrall_count]/[req_thralls])")
+		return FALSE
+
+	var/turf/T = get_turf(H)
+	if(!T)
+		return FALSE
+
+	playsound(T, 'sound/effects/smoke.ogg', 50, TRUE, -3)
+	shadow_spawn_smoke(T, H, smoke_radius, smoke_ticks, heal_amount, smoke_blind_time, smoke_stun_chance, smoke_stun_time)
+	to_chat(H, span_notice("You exhale a surging shroud of shadow smoke!"))
+	StartCooldown()
+	return TRUE
+
+/datum/action/cooldown/shadowling/veil/proc/do_veil(mob/living/carbon/human/H)
 	var/turf/center = get_turf(H)
 	if(!center)
 		return FALSE
@@ -37,6 +76,7 @@
 	new /obj/effect/temp_visual/circle_wave/shadow_veil(center)
 
 	to_chat(H, span_notice("A shroud of darkness sweeps across the area."))
+	StartCooldown()
 	return TRUE
 
 /datum/action/cooldown/shadowling/veil/proc/_is_dark(atom/A)
