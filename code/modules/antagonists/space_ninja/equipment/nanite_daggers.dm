@@ -10,8 +10,8 @@
 	desc = "A pair of twin high-frequency nanite daggers designed for silent infiltration. Wielded in one hand, they strike in rapid succession. Slashes from behind inflict grievous critical damage and silence the victim's vocal cords."
 	desc_controls = "Right-click target to shadow step behind them."
 	icon = 'icons/obj/weapons/sword.dmi'
-	icon_state = "energy_katana"
-	inhand_icon_state = "edagger"
+	icon_state = "nanite_daggers"
+	inhand_icon_state = "nanite_daggers"
 	worn_icon_state = "energy_katana"
 	icon_angle = 35
 	lefthand_file = 'icons/mob/inhands/weapons/swords_lefthand.dmi'

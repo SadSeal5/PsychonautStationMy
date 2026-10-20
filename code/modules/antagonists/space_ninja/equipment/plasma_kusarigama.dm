@@ -9,8 +9,8 @@
 	desc = "A Spider Clan chained scythe and heavy ballast infused with superheated plasma. Features extended reach, and can wrap around enemy limbs to trip and disarm targets at a distance."
 	desc_controls = "Right-click target to trip and disarm."
 	icon = 'icons/obj/weapons/sword.dmi'
-	icon_state = "energy_katana"
-	inhand_icon_state = "energy_katana"
+	icon_state = "plasma_kusarigama"
+	inhand_icon_state = "plasma_kusarigama"
 	worn_icon_state = "energy_katana"
 	icon_angle = 35
 	lefthand_file = 'icons/mob/inhands/weapons/swords_lefthand.dmi'
