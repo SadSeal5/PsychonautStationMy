@@ -331,7 +331,6 @@
 
 	var/list/ascended_types = list(
 		/datum/action/cooldown/shadowling/shadow_strike,
-		/datum/action/cooldown/shadowling/shadow_grab,
 		/datum/action/cooldown/shadowling/root,
 		/datum/action/cooldown/shadowling/hook,
 	)

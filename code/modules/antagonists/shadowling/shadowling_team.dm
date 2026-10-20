@@ -236,6 +236,9 @@
 	for(var/datum/action/cooldown/shadowling/hive_sync/existing in actor.actions)
 		qdel(existing)
 
+	for(var/datum/action/cooldown/shadowling/shadow_grab/old_grab in actor.actions)
+		qdel(old_grab)
+
 	if(isshadowling_ascended(actor) || is_ascended)
 		for(var/datum/action/cooldown/shadowling/ascend/old_asc in actor.actions)
 			qdel(old_asc)

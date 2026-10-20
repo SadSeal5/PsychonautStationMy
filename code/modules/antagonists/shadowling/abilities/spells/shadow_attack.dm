@@ -1,16 +1,35 @@
 // MARK: Ability
 /datum/action/cooldown/shadowling/shadow_strike
 	name = "Shadow Strike"
-	desc = "Teleport out of the shadows adjacent to a nearby enemy and strike them with a devastating blow."
+	desc = "Target a mortal while incorporeal. Left-Click to teleport and deliver a devastating strike (25 brute damage). Right-Click to teleport and grab them by the neck."
 	button_icon_state = "shadow_strike"
+	check_flags = AB_CHECK_CONSCIOUS
 	cooldown_time = 5 SECONDS
+	click_to_activate = TRUE
+	unset_after_click = TRUE
 	requires_dark_user = FALSE
 	requires_dark_target = FALSE
 	channel_time = 0
 	max_range = 3
 
+	var/grab_range = 2
 	var/attack_value = 25
+	var/target_grab_level = GRAB_NECK
 	var/static/sfx_activate = 'sound/effects/magic/demon_attack1.ogg'
+	var/targeting = FALSE
+
+/datum/action/cooldown/shadowling/shadow_strike/is_action_active(atom/movable/screen/movable/action_button/_btn)
+	return targeting
+
+/datum/action/cooldown/shadowling/shadow_strike/unset_click_ability(mob/on_who, refund_cooldown)
+	. = ..()
+	targeting = FALSE
+	apply_button_overlay()
+
+/datum/action/cooldown/shadowling/shadow_strike/set_click_ability(mob/on_who, refund_cooldown)
+	. = ..()
+	targeting = TRUE
+	apply_button_overlay()
 
 /datum/action/cooldown/shadowling/shadow_strike/can_use(mob/living/carbon/human/H)
 	if(!..())
@@ -24,53 +43,60 @@
 
 /datum/action/cooldown/shadowling/shadow_strike/Trigger(mob/clicker, trigger_flags, atom/target)
 	if(!istype(owner))
-		return
-	var/mob/living/carbon/human/H = owner
-	if(!can_use(H))
-		return
-	var/mob/living/carbon/human/target_mob = find_closest_target(H)
-	if(!target_mob)
-		owner.balloon_alert(owner, "no valid targets")
-		return
-	if(DoEffect(H, target_mob))
-		StartCooldown()
+		return FALSE
+	if(!can_use(owner))
+		return FALSE
+	return ..()
 
-/datum/action/cooldown/shadowling/shadow_strike/proc/find_closest_target(mob/living/carbon/human/H)
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
-	var/turf/center = get_turf(H)
-	if(!center)
-		return null
-	var/mob/living/carbon/human/best
-	var/best_dist = 999
-	for(var/mob/living/carbon/human/L in range(max_range, center))
-		if(L == H)
-			continue
-		if(L.stat == DEAD)
-			continue
-		if(hive)
-			if(L in hive.lings)
-				continue
-			if(L in hive.thralls)
-				continue
-		var/d = get_dist(H, L)
-		if(d < best_dist)
-			best = L
-			best_dist = d
-	return best
-
-/datum/action/cooldown/shadowling/shadow_strike/DoEffect(mob/living/carbon/human/H, atom/target)
-	if(!istype(H))
+/datum/action/cooldown/shadowling/shadow_strike/InterceptClickOn(mob/living/clicker, params, atom/target)
+	if(!istype(clicker))
+		unset_click_ability(clicker, TRUE)
 		return FALSE
 
-	var/mob/living/carbon/human/T = null
-	if(istype(target, /mob/living/carbon/human))
+	if(!can_use(clicker))
+		unset_click_ability(clicker, TRUE)
+		return FALSE
+
+	var/mob/living/carbon/human/H = clicker
+	var/mob/living/carbon/human/T
+	if(ishuman(target))
 		T = target
-	else
-		T = find_closest_target(H)
+	else if(istype(target?.loc, /mob/living/carbon/human))
+		T = target.loc
 
 	if(!istype(T))
-		owner.balloon_alert(owner, "no valid targets")
+		H.balloon_alert(H, "invalid target")
 		return FALSE
+
+	if(T == H)
+		H.balloon_alert(H, "cannot target yourself")
+		return FALSE
+
+	if(T.stat == DEAD)
+		H.balloon_alert(H, "target is dead")
+		return FALSE
+
+	var/datum/team/shadow_hive/hive = get_shadow_hive()
+	if(hive)
+		if(T in hive.lings)
+			H.balloon_alert(H, "allies cannot be targeted")
+			return FALSE
+		if(T in hive.thralls)
+			H.balloon_alert(H, "allies cannot be targeted")
+			return FALSE
+
+	var/list/modifiers = params2list(params)
+	var/is_grab = LAZYACCESS(modifiers, RIGHT_CLICK)
+
+	var/dist = get_dist(H, T)
+	if(is_grab)
+		if(dist > grab_range)
+			H.balloon_alert(H, "too far to grab")
+			return FALSE
+	else
+		if(dist > max_range)
+			H.balloon_alert(H, "too far to strike")
+			return FALSE
 
 	var/turf/nearby = pick_adjacent_open_turf(get_turf(T))
 	var/datum/action/cooldown/shadowling/shadow_phase/SP
@@ -96,17 +122,44 @@
 		step_towards(H, T)
 
 	if(QDELETED(H) || QDELETED(T) || get_dist(H, T) > 1)
-		owner.balloon_alert(owner, "too far to strike")
+		H.balloon_alert(H, is_grab ? "too far to grab" : "too far to strike")
+		unset_click_ability(H, TRUE)
 		return FALSE
 
-	H.visible_message(
-		span_boldwarning("[H] bursts from the shadows and strikes [T]!"),
-		span_userdanger("You burst from the shadows and strike [T]!"),
-		ignored_mobs = null
-	)
+	if(is_grab)
+		if(!H.grab(T))
+			unset_click_ability(H, TRUE)
+			return FALSE
 
-	T.apply_damage(attack_value, BRUTE, null, sharpness = SHARP_POINTY)
-	H.do_attack_animation(T)
-	playsound(get_turf(H), sfx_activate, 65, TRUE)
-	T.log_message("was hit by [H] with shadow strike for [attack_value] brute", LOG_ATTACK, color = "#8a2be2")
+		for(var/i in 1 to 3)
+			if(H.grab_state >= target_grab_level)
+				break
+			if(!H.pulling || H.pulling != T)
+				break
+			if(!T.grippedby(H, TRUE))
+				break
+
+		if(H.pulling != T)
+			unset_click_ability(H, TRUE)
+			return FALSE
+
+		H.visible_message(
+			span_boldwarning("[H] bursts from the shadows and lunges at [T]'s throat!"),
+			span_userdanger("You burst from the shadows and grab [T] by the neck!"),
+			ignored_mobs = null
+		)
+		T.log_message("was grabbed from shadows by [H]", LOG_ATTACK, color = "#8a2be2")
+	else
+		H.visible_message(
+			span_boldwarning("[H] bursts from the shadows and strikes [T]!"),
+			span_userdanger("You burst from the shadows and strike [T]!"),
+			ignored_mobs = null
+		)
+		T.apply_damage(attack_value, BRUTE, null, sharpness = SHARP_POINTY)
+		H.do_attack_animation(T)
+		playsound(get_turf(H), sfx_activate, 65, TRUE)
+		T.log_message("was hit by [H] with shadow strike for [attack_value] brute", LOG_ATTACK, color = "#8a2be2")
+
+	unset_click_ability(H, refund_cooldown = FALSE)
+	StartCooldown()
 	return TRUE
