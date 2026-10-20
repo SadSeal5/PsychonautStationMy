@@ -1031,6 +1031,27 @@
 	storage_type = /datum/storage/ninja_sheath
 	stored_blade = /obj/item/energy_katana
 
+/obj/item/storage/belt/sheath/ninja/kusarigama
+	name = "kusarigama sash"
+	desc = "A specialized waist sash and magnetic holster designed to secure the Spider Clan plasma kusarigama."
+	storage_type = /datum/storage/ninja_sheath/kusarigama
+	stored_blade = /obj/item/plasma_kusarigama
+
+/datum/storage/ninja_sheath/kusarigama/New(atom/parent, max_slots, max_specific_storage, max_total_storage, rustle_sound, remove_rustle_sound)
+	. = ..()
+	set_holdable(list(/obj/item/plasma_kusarigama))
+
+/obj/item/storage/belt/sheath/ninja/daggers
+	name = "twin dagger harness"
+	desc = "A pair of reinforced magnetic thigh scabbards engineered for the Spider Clan nanite daggers."
+	storage_type = /datum/storage/ninja_sheath/daggers
+	stored_blade = /obj/item/nanite_daggers
+
+/datum/storage/ninja_sheath/daggers/New(atom/parent, max_slots, max_specific_storage, max_total_storage, rustle_sound, remove_rustle_sound)
+	. = ..()
+	set_holdable(list(/obj/item/nanite_daggers))
+
+
 /obj/item/storage/belt/sheath/hanzo_katana
 	name = "hanzo katana sheath"
 	desc = "A normal black sheath meant to house the legendary hanzo steel."

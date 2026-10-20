@@ -23,11 +23,23 @@ type NinjaInfo = {
   objectives: Objective[];
   can_change_objective: BooleanLike;
   in_setup?: BooleanLike;
+  loadout_weapon?: number;
   slot_star?: number;
   slot_heal?: number;
   slot_trap?: number;
   confirmed?: BooleanLike;
   mod_icon?: string;
+};
+
+type WeaponDef = {
+  value: number;
+  title: string;
+  tag: string;
+  icon: string;
+  accentColor: string;
+  accentBg: string;
+  description: string;
+  statBadge: string;
 };
 
 type OptionDef = {
@@ -68,6 +80,7 @@ export const AntagInfoNinja = () => {
     objectives = [],
     can_change_objective,
     in_setup,
+    loadout_weapon = 1,
     slot_star = 1,
     slot_heal = 1,
     slot_trap = 1,
@@ -80,9 +93,46 @@ export const AntagInfoNinja = () => {
     !confirmed ? 'modsuit' : 'directives'
   );
 
+  const weapons: WeaponDef[] = [
+    {
+      value: 1,
+      title: 'Energy Katana',
+      tag: 'ALL-ROUNDER // DASH',
+      icon: 'katana',
+      accentColor: '#e11d48',
+      accentBg: 'rgba(225, 29, 72, 0.12)',
+      description:
+        'Spider Clan monomolecular plasma blade. Balanced offense and defense with blade reflection. RMB combat dash to instantly phase to targets or positions.',
+      statBadge: '30 FORCE // 50% BLOCK // PHASE DASH',
+    },
+    {
+      value: 2,
+      title: 'Plasma Kusarigama',
+      tag: 'REACH 2 // TRIP & DISARM',
+      icon: 'link',
+      accentColor: '#f97316',
+      accentBg: 'rgba(249, 115, 22, 0.12)',
+      description:
+        'Spider Clan chained scythe and heavy plasma ballast. Extended 2-tile melee reach. RMB lashes tether chain to trip and disarm targets at up to 4 tiles range.',
+      statBadge: '24 FORCE // REACH 2 // 6S TRIP CD',
+    },
+    {
+      value: 3,
+      title: 'Dual Nanite Daggers',
+      tag: 'DUAL STAB // SHADOW STEP',
+      icon: 'shield-alt',
+      accentColor: '#a855f7',
+      accentBg: 'rgba(168, 85, 247, 0.12)',
+      description:
+        'Twin high-frequency nanite daggers. Attacks deliver rapid double strikes. Backstabs deal +16 critical damage and silence victims. RMB shadow step blink (2 charges).',
+      statBadge: '16x2 FORCE // 60 AP // 2 BLINK CHARGES',
+    },
+  ];
+
   const slots: SlotDef[] = [
     {
       id: 'star',
+
       title: 'RANGED ORDNANCE',
       slotNum: 1,
       currentValue: slot_star,
@@ -264,6 +314,53 @@ export const AntagInfoNinja = () => {
         },
   ];
 
+  const getCoreWeaponDossier = (): DossierItem => {
+    switch (loadout_weapon) {
+      case 2:
+        return {
+          title: 'Plasma Kusarigama & Weapon Recall',
+          badge: 'CORE WEAPON',
+          typeTag: 'CHAINED SCYTHE // REACH 2',
+          iconState: 'recall',
+          accentColor: '#f97316',
+          controls: 'LMB reach-2 strike // RMB chain trip & disarm',
+          power: 'None (6s trip cooldown)',
+          description:
+            'A Spider Clan chained scythe and heavy ballast infused with superheated plasma. Features extended 2-tile reach to cleave through enemies beyond normal strike distance. Right-clicking a target wraps a nanite chain around their limbs to trip and disarm them at a distance.',
+          tacticalTip:
+            'Keep enemies at 2 tiles distance for spacing and crowd control. Right-click armed opponents up to 4 tiles away to wrench weapons straight from their hands and send them tumbling to the deck.',
+        };
+      case 3:
+        return {
+          title: 'Dual Nanite Daggers & Weapon Recall',
+          badge: 'CORE WEAPON',
+          typeTag: 'TWIN DAGGERS // DUAL STAB',
+          iconState: 'recall',
+          accentColor: '#a855f7',
+          controls: 'LMB rapid dual stab // RMB shadow step blink',
+          power: '2 charges (8s recharge per charge)',
+          description:
+            'Twin high-frequency nanite daggers designed for silent infiltration. Striking in rapid succession, every hit delivers an immediate second strike for 16 brute damage. Striking targets from behind inflicts an extra +16 critical damage and silences their vocal cords for 3 seconds.',
+          tacticalTip:
+            'Right-click a living adversary in sight to consume a charge, instantly shadow step behind them, and automatically deliver a devastating backstab and vocal silence before they can scream.',
+        };
+      default:
+        return {
+          title: 'Energy Katana & Weapon Recall',
+          badge: 'CORE WEAPON',
+          typeTag: 'PLASMA BLADE // QUANTUM RECALL',
+          iconState: 'recall',
+          accentColor: '#e11d48',
+          controls: 'LMB strike // RMB combat dash',
+          power: 'None',
+          description:
+            'Monomolecular plasma blade forged by the Spider Clan. Slices through heavy armor and deflects incoming energy projectiles. An all-rounder weapon featuring combat dash to instantly phase across tiles and strike adversaries.',
+          tacticalTip:
+            'Right-click any visible location within sight to combat dash and reposition instantaneously. You can also throw your katana at fleeing targets and recall it across any distance.',
+        };
+    }
+  };
+
   const coreSystems: DossierItem[] = [
     {
       title: 'Advanced Mimetic Stealth',
@@ -278,21 +375,10 @@ export const AntagInfoNinja = () => {
       tacticalTip:
         'Cloak only disengages when sustaining hostile damage or initiating attacks. Perfect for slipping past sentry turrets and lurking undetected in illuminated hallways.',
     },
-    {
-      title: 'Energy Katana & Weapon Recall',
-      badge: 'CORE WEAPON',
-      typeTag: 'PLASMA BLADE // QUANTUM RECALL',
-      iconState: 'recall',
-      accentColor: '#e11d48',
-      controls: 'LMB strike // RMB teleport',
-      power: 'None',
-      description:
-        'Monomolecular plasma blade forged by the Spider Clan. Slices through heavy armor and deflects incoming energy projectiles. Can be recalled directly to your hands or sheath across any distance.',
-      tacticalTip:
-        'Right-click any visible location within sight to instantaneously phase and teleport there. You can also throw your katana at fleeing targets and recall it across any distance.',
-    },
+    getCoreWeaponDossier(),
     {
       title: 'Cybernetic Hacker Interface',
+
       badge: 'CORE GLOVES',
       typeTag: 'ELECTRONIC WARFARE // SIFTER',
       iconState: 'hacker',
@@ -433,8 +519,216 @@ export const AntagInfoNinja = () => {
                   </NoticeBox>
                 </Stack.Item>
 
+                {/* Primary Weapon Slot */}
+                <Stack.Item>
+                  <Box
+                    style={{
+                      backgroundColor: 'rgba(15, 18, 26, 0.75)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      borderRadius: '6px',
+                      padding: '10px',
+                    }}
+                  >
+                    {/* Header */}
+                    <Flex align="center" justify="space-between" mb={1}>
+                      <Flex.Item>
+                        <Flex align="center">
+                          <Box
+                            bold
+                            fontSize="0.75em"
+                            color="label"
+                            mr={1}
+                            style={{
+                              backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                              padding: '2px 6px',
+                              borderRadius: '3px',
+                              letterSpacing: '1px',
+                            }}
+                          >
+                            PRIMARY WEAPON
+                          </Box>
+                          <Box bold fontSize="0.95em" style={{ letterSpacing: '0.8px' }}>
+                            PRIMARY ARSENAL
+                          </Box>
+                        </Flex>
+                      </Flex.Item>
+                      <Flex.Item>
+                        <Box fontSize="0.75em" color="label">
+                          SELECT 1 OF 3
+                        </Box>
+                      </Flex.Item>
+                    </Flex>
+
+                    {/* 3 Weapon Option Cards */}
+                    <Stack fill g={2}>
+                      {weapons.map((wep) => {
+                        const isSelected = loadout_weapon === wep.value;
+                        return (
+                          <Stack.Item key={wep.value} grow basis={0}>
+                            <Box
+                              onClick={() => act('select_weapon', { choice: wep.value })}
+                              style={{
+                                cursor: 'pointer',
+                                backgroundColor: isSelected
+                                  ? 'rgba(18, 24, 36, 0.95)'
+                                  : 'rgba(13, 16, 24, 0.6)',
+                                border: isSelected
+                                  ? `2px solid ${wep.accentColor}`
+                                  : '1px solid rgba(255, 255, 255, 0.1)',
+                                borderRadius: '5px',
+                                boxShadow: isSelected
+                                  ? `0 0 14px ${wep.accentColor}33, inset 0 0 10px ${wep.accentColor}11`
+                                  : 'none',
+                                padding: '10px',
+                                transition: 'all 0.15s ease',
+                                opacity: isSelected ? 1 : 0.72,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                minHeight: '120px',
+                              }}
+                            >
+                              <Flex align="center" justify="space-between" mb={1}>
+                                <Flex.Item>
+                                  <Flex align="center" g={1}>
+                                    <Box
+                                      bold
+                                      fontSize="0.7em"
+                                      style={{
+                                        backgroundColor:
+                                          wep.value === 1
+                                            ? 'rgba(255, 255, 255, 0.08)'
+                                            : wep.accentBg,
+                                        color:
+                                          wep.value === 1 ? '#94a3b8' : wep.accentColor,
+                                        border: `1px solid ${
+                                          wep.value === 1
+                                            ? 'rgba(255, 255, 255, 0.15)'
+                                            : `${wep.accentColor}55`
+                                        }`,
+                                        padding: '1px 6px',
+                                        borderRadius: '3px',
+                                        letterSpacing: '0.5px',
+                                      }}
+                                    >
+                                      {wep.value === 1 ? 'DEFAULT' : 'ALTERNATIVE'}
+                                    </Box>
+                                    <Box fontSize="0.7em" color="label">
+                                      {wep.tag}
+                                    </Box>
+                                  </Flex>
+                                </Flex.Item>
+                                <Flex.Item>
+                                  {isSelected ? (
+                                    <Box
+                                      bold
+                                      fontSize="0.75em"
+                                      style={{
+                                        backgroundColor: wep.accentColor,
+                                        color: '#0a0d14',
+                                        padding: '2px 8px',
+                                        borderRadius: '3px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                      }}
+                                    >
+                                      <Icon name="check" />
+                                      ACTIVE
+                                    </Box>
+                                  ) : (
+                                    <Box
+                                      fontSize="0.7em"
+                                      color="label"
+                                      style={{
+                                        padding: '2px 6px',
+                                        borderRadius: '3px',
+                                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                                      }}
+                                    >
+                                      CLICK TO EQUIP
+                                    </Box>
+                                  )}
+                                </Flex.Item>
+                              </Flex>
+
+                              <Flex align="flex-start" g={1.5} style={{ flexGrow: 1 }}>
+                                <Flex.Item>
+                                  <Box
+                                    style={{
+                                      width: '42px',
+                                      height: '42px',
+                                      backgroundColor: '#0a0c12',
+                                      border: isSelected
+                                        ? `1px solid ${wep.accentColor}88`
+                                        : '1px solid rgba(255, 255, 255, 0.08)',
+                                      borderRadius: '5px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      boxShadow: isSelected
+                                        ? `0 0 8px ${wep.accentColor}22`
+                                        : 'none',
+                                    }}
+                                  >
+                                    <Icon
+                                      name={wep.icon}
+                                      size={2}
+                                      color={isSelected ? wep.accentColor : '#94a3b8'}
+                                    />
+                                  </Box>
+                                </Flex.Item>
+
+                                <Flex.Item grow style={{ minWidth: 0 }}>
+                                  <Box
+                                    bold
+                                    fontSize="1.05em"
+                                    style={{
+                                      color: isSelected ? '#ffffff' : '#cbd5e1',
+                                      letterSpacing: '0.3px',
+                                    }}
+                                  >
+                                    {wep.title}
+                                  </Box>
+                                  <Box
+                                    fontSize="0.82em"
+                                    color="label"
+                                    mt={0.5}
+                                    style={{ lineHeight: '1.35' }}
+                                  >
+                                    {wep.description}
+                                  </Box>
+                                </Flex.Item>
+                              </Flex>
+
+                              <Box
+                                mt={1}
+                                pt={0.8}
+                                fontSize="0.75em"
+                                bold
+                                style={{
+                                  borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                                  color: isSelected ? wep.accentColor : '#64748b',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                }}
+                              >
+                                <span>SPEC: {wep.statBadge}</span>
+                                {isSelected && (
+                                  <span style={{ fontSize: '0.9em' }}>● SYNCHRONIZED</span>
+                                )}
+                              </Box>
+                            </Box>
+                          </Stack.Item>
+                        );
+                      })}
+                    </Stack>
+                  </Box>
+                </Stack.Item>
+
                 {/* 3 Slot Selection Cards */}
                 {slots.map((slot) => (
+
                   <Stack.Item key={slot.id}>
                     <Box
                       style={{

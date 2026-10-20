@@ -800,6 +800,8 @@
 	var/obj/item/linked_weapon
 	/// The accepted typepath we can link to.
 	var/accepted_type = /obj/item/energy_katana
+	/// Allowed weapon types for weapon recall.
+	var/list/allowed_weapon_types = list(/obj/item/energy_katana, /obj/item/plasma_kusarigama, /obj/item/nanite_daggers)
 
 /obj/item/mod/module/weapon_recall/on_part_activation()
 	mod.wearer.add_traits(list(TRAIT_NOGUNS, TRAIT_TOSS_GUN_HARD), REF(src))
@@ -809,7 +811,11 @@
 
 /obj/item/mod/module/weapon_recall/on_use()
 	if(!linked_weapon)
-		var/obj/item/weapon_to_link = mod.wearer.is_holding_item_of_type(accepted_type)
+		var/obj/item/weapon_to_link
+		for(var/obj/item/held in mod.wearer.held_items)
+			if(is_type_in_list(held, list(/obj/item/energy_katana, /obj/item/plasma_kusarigama, /obj/item/nanite_daggers)))
+				weapon_to_link = held
+				break
 		if(!weapon_to_link)
 			balloon_alert(mod.wearer, "no linked weapon!")
 			return
@@ -833,9 +839,12 @@
 		recall_weapon()
 
 /obj/item/mod/module/weapon_recall/proc/set_weapon(obj/item/weapon)
+	if(linked_weapon)
+		UnregisterSignal(linked_weapon, list(COMSIG_MOVABLE_PRE_IMPACT, COMSIG_QDELETING))
 	linked_weapon = weapon
 	RegisterSignal(linked_weapon, COMSIG_MOVABLE_PRE_IMPACT, PROC_REF(catch_weapon))
 	RegisterSignal(linked_weapon, COMSIG_QDELETING, PROC_REF(deleted_weapon))
+
 
 /obj/item/mod/module/weapon_recall/proc/recall_weapon(caught = FALSE)
 	linked_weapon.forceMove(get_turf(src))

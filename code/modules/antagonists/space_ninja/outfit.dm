@@ -22,10 +22,15 @@
 	var/obj/item/mod/module/dna_lock/reinforced/lock = locate(/obj/item/mod/module/dna_lock/reinforced) in mod.modules
 	lock.dna = ninja.dna.unique_enzymes
 	var/obj/item/mod/module/weapon_recall/recall = locate(/obj/item/mod/module/weapon_recall) in mod.modules
-	var/obj/item/weapon = locate(recall.accepted_type) in ninja.get_all_contents()
-	if(!weapon)
-		return
-	recall.set_weapon(weapon)
+	if(recall)
+		var/obj/item/weapon
+		for(var/obj/item/check_item in ninja.get_all_contents())
+			if(is_type_in_list(check_item, list(/obj/item/energy_katana, /obj/item/plasma_kusarigama, /obj/item/nanite_daggers)))
+				weapon = check_item
+				break
+		if(weapon)
+			recall.set_weapon(weapon)
+
 
 /datum/outfit/ninja_preview
 	name = "Space Ninja (Preview only)"
