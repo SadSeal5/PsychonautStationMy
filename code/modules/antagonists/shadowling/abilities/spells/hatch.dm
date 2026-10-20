@@ -188,4 +188,6 @@
 	detach_cover()
 	cleanup(walls)
 	H.alpha = prev_alpha
+	src.Remove(H)
+	qdel(src)
 	return TRUE

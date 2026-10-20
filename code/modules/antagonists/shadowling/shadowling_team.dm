@@ -236,6 +236,15 @@
 	for(var/datum/action/cooldown/shadowling/hive_sync/existing in actor.actions)
 		qdel(existing)
 
+	if(isshadowling_ascended(actor) || is_ascended)
+		for(var/datum/action/cooldown/shadowling/ascend/old_asc in actor.actions)
+			qdel(old_asc)
+		for(var/datum/action/cooldown/shadowling/hatch/old_hatch in actor.actions)
+			qdel(old_hatch)
+	else if(isshadowling(actor))
+		for(var/datum/action/cooldown/shadowling/hatch/old_hatch in actor.actions)
+			qdel(old_hatch)
+
 	var/nt = count_max_thralls()
 	last_sync_thrall_count = nt
 
@@ -262,10 +271,13 @@
 /datum/team/shadow_hive/proc/shadowling_grant_hatch(mob/living/carbon/human/H)
 	if(!istype(H))
 		return null
+	if(isshadowling(H) || isshadowling_ascended(H))
+		return null
 	for(var/datum/action/cooldown/shadowling/hatch/X in H.actions)
 		return X
 	var/datum/action/cooldown/shadowling/hatch/A = new
 	A.Grant(H)
+	return A
 
 /datum/team/shadow_hive/proc/shadowling_grant_nightvision(mob/living/carbon/human/H)
 	if(!istype(H))

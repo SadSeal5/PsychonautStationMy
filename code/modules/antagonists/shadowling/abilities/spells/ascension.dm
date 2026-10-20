@@ -182,10 +182,11 @@
 		if(istype(ability, /datum/action/cooldown/shadowling/engine_sabotage))
 			continue
 		ability.Remove(H)
+		if(istype(ability, /datum/action/cooldown/shadowling/ascend) || istype(ability, /datum/action/cooldown/shadowling/hatch))
+			qdel(ability)
 
 	var/datum/team/shadow_hive/hive = get_shadow_hive()
 	if(hive)
-		hive.grant_sync_action(H)
 		hive.sync_after_event(H)
 
 	_end_levitate(H)
@@ -193,7 +194,8 @@
 	if(circle)
 		circle.stop_and_fade()
 	shadowling_begin_roundender(H)
-	StartCooldown()
+	if(!QDELETED(src))
+		qdel(src)
 	return TRUE
 
 /datum/action/cooldown/shadowling/ascend/proc/_begin_levitate(mob/living/carbon/human/H, total_time)

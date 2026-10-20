@@ -41,12 +41,24 @@
 		return role || SHADOWLING_ROLE_MAIN
 	return null
 
-/datum/action/cooldown/shadowling/hive_sync/proc/role_allowed(datum/action/cooldown/shadowling/A, ling_role)
+/datum/action/cooldown/shadowling/hive_sync/proc/role_allowed(datum/action/cooldown/shadowling/A, ling_role, mob/living/carbon/human/H)
 	var/datum/team/shadow_hive/hive = get_shadow_hive()
 	if(!hive)
 		return FALSE
 	if(istype(A, /datum/action/cooldown/shadowling/election))
 		if(hive.is_shadowling_vote_finished)
+			return FALSE
+
+	var/datum/antagonist/shadowling/antag_datum = H?.mind?.has_antag_datum(/datum/antagonist/shadowling)
+	var/ascended = (antag_datum?.is_ascended || (H && isshadowling_ascended(H)) || (hive && hive.is_ascended && isshadowling(H)))
+
+	if(ascended)
+		if(istype(A, /datum/action/cooldown/shadowling/ascend) || istype(A, /datum/action/cooldown/shadowling/hatch))
+			return FALSE
+		return (A.type in GLOB.shadowling_ascended_abilities)
+
+	if(isshadowling(H))
+		if(istype(A, /datum/action/cooldown/shadowling/hatch))
 			return FALSE
 
 	var/list/check_list = list()
@@ -56,10 +68,9 @@
 		if(SHADOWLING_ROLE_LESSER)
 			check_list = GLOB.shadowling_lesser_abilities
 		else
-			var/datum/antagonist/shadowling/antag_datum = get_shadowling_antag_of(owner)
-			check_list = antag_datum?.is_ascended ? GLOB.shadowling_ascended_abilities : GLOB.shadowling_base_abilities
+			check_list = GLOB.shadowling_base_abilities
 
-	return A.type in check_list
+	return (A.type in check_list)
 
 /datum/action/cooldown/shadowling/hive_sync/proc/get_required_thralls(datum/action/cooldown/shadowling/A)
 	var/percent = clamp(A.required_thralls, 0, 100)
@@ -80,6 +91,10 @@
 	if(!ling_class)
 		return list()
 
+	var/datum/antagonist/shadowling/antag_datum = H?.mind?.has_antag_datum(/datum/antagonist/shadowling)
+	var/datum/team/shadow_hive/hive = get_shadow_hive()
+	var/ascended = (antag_datum?.is_ascended || (H && isshadowling_ascended(H)) || (hive && hive.is_ascended && isshadowling(H)))
+
 	var/list/unlocked_names = list()
 
 	for(var/path in typesof(/datum/action/cooldown/shadowling))
@@ -90,15 +105,21 @@
 		if(has_action_of_type(H, path))
 			continue
 
+		if(path == /datum/action/cooldown/shadowling/hatch && (isshadowling(H) || isshadowling_ascended(H)))
+			continue
+		if(path == /datum/action/cooldown/shadowling/ascend && ascended)
+			continue
+
 		var/datum/action/cooldown/shadowling/A = new path()
-		if(!role_allowed(A, ling_class))
+		if(!role_allowed(A, ling_class, H))
 			qdel(A)
 			continue
 
-		var/req_count = get_required_thralls(A)
-		if(thrall_count < req_count)
-			qdel(A)
-			continue
+		if(!ascended)
+			var/req_count = get_required_thralls(A)
+			if(thrall_count < req_count)
+				qdel(A)
+				continue
 
 		A.Grant(H)
 		var/n = initial(A.name)
