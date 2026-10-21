@@ -99,8 +99,8 @@ export const AntagInfoNinja = () => {
       title: 'Energy Katana',
       tag: 'ALL-ROUNDER // DASH',
       icon: 'katana',
-      accentColor: '#e11d48',
-      accentBg: 'rgba(225, 29, 72, 0.12)',
+      accentColor: '#22c55e',
+      accentBg: 'rgba(34, 197, 94, 0.12)',
       description:
         'Spider Clan monomolecular plasma blade. Balanced offense and defense with blade reflection. RMB combat dash to instantly phase to targets or positions.',
       statBadge: '30 FORCE // 50% BLOCK // PHASE DASH',
@@ -110,8 +110,8 @@ export const AntagInfoNinja = () => {
       title: 'Plasma Kusarigama',
       tag: 'REACH 2 // TRIP & DISARM',
       icon: 'link',
-      accentColor: '#f97316',
-      accentBg: 'rgba(249, 115, 22, 0.12)',
+      accentColor: '#10b981',
+      accentBg: 'rgba(16, 185, 129, 0.12)',
       description:
         'Spider Clan chained scythe and heavy plasma ballast. Extended 2-tile melee reach. RMB lashes tether chain to trip and disarm targets at up to 4 tiles range.',
       statBadge: '24 FORCE // REACH 2 // 6S TRIP CD',
@@ -121,8 +121,8 @@ export const AntagInfoNinja = () => {
       title: 'Dual Nanite Daggers',
       tag: 'DUAL STAB // SHADOW STEP',
       icon: 'shield-alt',
-      accentColor: '#a855f7',
-      accentBg: 'rgba(168, 85, 247, 0.12)',
+      accentColor: '#84cc16',
+      accentBg: 'rgba(132, 204, 22, 0.12)',
       description:
         'Twin high-frequency nanite daggers. Attacks deliver rapid double strikes. Backstabs deal +16 critical damage and silence victims. RMB shadow step blink (2 charges).',
       statBadge: '16x2 FORCE // 60 AP // 2 BLINK CHARGES',
@@ -322,7 +322,7 @@ export const AntagInfoNinja = () => {
           badge: 'CORE WEAPON',
           typeTag: 'CHAINED SCYTHE // REACH 2',
           iconState: 'recall',
-          accentColor: '#f97316',
+          accentColor: '#10b981',
           controls: 'LMB reach-2 strike // RMB chain trip & disarm',
           power: 'None (6s trip cooldown)',
           description:
@@ -336,7 +336,7 @@ export const AntagInfoNinja = () => {
           badge: 'CORE WEAPON',
           typeTag: 'TWIN DAGGERS // DUAL STAB',
           iconState: 'recall',
-          accentColor: '#a855f7',
+          accentColor: '#84cc16',
           controls: 'LMB rapid dual stab // RMB shadow step blink',
           power: '2 charges (8s recharge per charge)',
           description:
@@ -350,7 +350,7 @@ export const AntagInfoNinja = () => {
           badge: 'CORE WEAPON',
           typeTag: 'PLASMA BLADE // QUANTUM RECALL',
           iconState: 'recall',
-          accentColor: '#e11d48',
+          accentColor: '#22c55e',
           controls: 'LMB strike // RMB combat dash',
           power: 'None',
           description:
@@ -594,17 +594,9 @@ export const AntagInfoNinja = () => {
                                       bold
                                       fontSize="0.7em"
                                       style={{
-                                        backgroundColor:
-                                          wep.value === 1
-                                            ? 'rgba(255, 255, 255, 0.08)'
-                                            : wep.accentBg,
-                                        color:
-                                          wep.value === 1 ? '#94a3b8' : wep.accentColor,
-                                        border: `1px solid ${
-                                          wep.value === 1
-                                            ? 'rgba(255, 255, 255, 0.15)'
-                                            : `${wep.accentColor}55`
-                                        }`,
+                                        backgroundColor: wep.accentBg,
+                                        color: wep.accentColor,
+                                        border: `1px solid ${wep.accentColor}55`,
                                         padding: '1px 6px',
                                         borderRadius: '3px',
                                         letterSpacing: '0.5px',
