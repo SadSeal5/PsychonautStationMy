@@ -74,15 +74,15 @@
 		to_chat(ninja, span_warning("The shadows recede as your cybernetic systems calibrate. You are now exposed to the void."))
 
 		if(loadout_weapon != NINJA_SLOT_WEAPON_KATANA)
-			var/new_sheath_type
+			var/new_weapon_type
 			switch(loadout_weapon)
 				if(NINJA_SLOT_WEAPON_KUSARIGAMA)
-					new_sheath_type = /obj/item/storage/belt/sheath/ninja/kusarigama
+					new_weapon_type = /obj/item/plasma_kusarigama
 				if(NINJA_SLOT_WEAPON_DAGGERS)
-					new_sheath_type = /obj/item/storage/belt/sheath/ninja/daggers
-			if(new_sheath_type)
-				var/obj/item/storage/belt/sheath/ninja/old_sheath = locate(/obj/item/storage/belt/sheath/ninja) in ninja.get_all_contents()
+					new_weapon_type = /obj/item/nanite_daggers
+			if(new_weapon_type)
 				var/target_slot = ITEM_SLOT_SUITSTORE
+				var/obj/item/storage/belt/sheath/ninja/old_sheath = locate(/obj/item/storage/belt/sheath/ninja) in ninja.get_all_contents()
 				if(old_sheath)
 					var/slot = ninja.get_slot_by_item(old_sheath)
 					if(slot)
@@ -91,19 +91,17 @@
 				var/obj/item/energy_katana/old_katana = locate(/obj/item/energy_katana) in ninja.get_all_contents()
 				if(old_katana)
 					qdel(old_katana)
-				var/obj/item/storage/belt/sheath/ninja/new_sheath = new new_sheath_type(ninja)
-				ninja.equip_to_slot_if_possible(new_sheath, target_slot, disable_warning = TRUE)
+				var/obj/item/new_weapon = new new_weapon_type(ninja)
+				if(!ninja.equip_to_slot_if_possible(new_weapon, target_slot, disable_warning = TRUE))
+					if(!ninja.equip_to_slot_if_possible(new_weapon, ITEM_SLOT_BELT, disable_warning = TRUE))
+						ninja.put_in_hands(new_weapon)
 				var/obj/item/mod/control/mod = ninja.back
 				if(!istype(mod))
 					mod = locate(/obj/item/mod/control) in ninja.get_all_contents()
 				if(istype(mod))
 					var/obj/item/mod/module/weapon_recall/recall = locate(/obj/item/mod/module/weapon_recall) in mod.modules
 					if(recall)
-						var/obj/item/new_weapon = locate(new_sheath.stored_blade) in new_sheath.contents
-						if(!new_weapon)
-							new_weapon = locate(new_sheath.stored_blade) in ninja.get_all_contents()
-						if(new_weapon)
-							recall.set_weapon(new_weapon)
+						recall.set_weapon(new_weapon)
 
 	apply_loadout()
 	SStgui.update_uis(src)

@@ -851,6 +851,8 @@
 	var/alert = ""
 	if(mod.wearer.put_in_hands(linked_weapon))
 		alert = "[linked_weapon.name] teleports to your hand"
+	else if(mod.wearer.equip_to_slot_if_possible(linked_weapon, ITEM_SLOT_SUITSTORE, disable_warning = TRUE))
+		alert = "[linked_weapon.name] docks into your armor"
 	else if(mod.wearer.equip_to_slot_if_possible(linked_weapon, ITEM_SLOT_BELT, disable_warning = TRUE))
 		alert = "[linked_weapon.name] sheathes itself in your belt"
 	else

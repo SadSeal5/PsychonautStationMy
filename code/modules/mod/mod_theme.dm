@@ -1673,6 +1673,10 @@
 		/obj/item/gun,
 		/obj/item/melee/baton,
 		/obj/item/restraints/handcuffs,
+		/obj/item/storage/belt/sheath/ninja,
+		/obj/item/energy_katana,
+		/obj/item/plasma_kusarigama,
+		/obj/item/nanite_daggers,
 	)
 	variants = list(
 		"ninja" = list(
