@@ -575,7 +575,7 @@
 	weight = 4
 	min_pop = 15
 	max_antag_cap = 1
-	signup_atom_appearance = /mob/living/carbon/human
+	signup_atom_appearance = /obj/item/organ/brain/shadow/dreamweaver
 	track = EVENT_TRACK_MODERATE
 	tags = list(TAG_COMBAT, TAG_OUTSIDER_ANTAG, TAG_SPOOKY)
 

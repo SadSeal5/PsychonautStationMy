@@ -517,7 +517,7 @@ ADMIN_VERB(secrets, R_ADMIN, "Secrets", "Abuse harder than you ever have before 
 				if(are_we_antagstacking != "Confirm")
 					return
 
-			var/chosen_antag = tgui_input_list(usr, "Choose antag", "Chose antag", list(ROLE_TRAITOR, ROLE_CHANGELING, ROLE_HERETIC, ROLE_CULTIST, ROLE_NINJA, ROLE_WIZARD, ROLE_NIGHTMARE))
+			var/chosen_antag = tgui_input_list(usr, "Choose antag", "Chose antag", list(ROLE_TRAITOR, ROLE_CHANGELING, ROLE_HERETIC, ROLE_CULTIST, ROLE_NINJA, ROLE_WIZARD, ROLE_NIGHTMARE, ROLE_DREAMWEAVER))
 			if(!chosen_antag)
 				return
 			var/objective = tgui_input_text(usr, "Enter an objective", "Objective")
@@ -842,6 +842,10 @@ ADMIN_VERB(secrets, R_ADMIN, "Secrets", "Abuse harder than you ever have before 
 				var/datum/antagonist/nightmare/antag_datum = new
 				assign_admin_objective_and_antag(player, antag_datum)
 				player.set_species(/datum/species/shadow/nightmare)
+			if(ROLE_DREAMWEAVER)
+				var/datum/antagonist/dreamweaver/antag_datum = new
+				assign_admin_objective_and_antag(player, antag_datum)
+				player.set_species(/datum/species/shadow/dreamweaver)
 
 	else if(isAI(player))
 		var/datum/antagonist/malf_ai/antag_datum = new
