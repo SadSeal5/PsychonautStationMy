@@ -25,20 +25,22 @@ GLOBAL_LIST_INIT(dreamweaver_names, list(
 		TRAIT_RADIMMUNE,
 		TRAIT_NOHUNGER,
 		TRAIT_NO_DNA_COPY,
+		TRAIT_NOBLOOD,
+		TRAIT_VIRUSIMMUNE,
 	)
 
 	mutantbrain = /obj/item/organ/brain/shadow/dreamweaver
-	mutantheart = null
+	mutantheart = /obj/item/organ/heart
 	bodypart_overrides = list(
-		BODY_ZONE_L_ARM = /obj/item/bodypart/arm/left/shadow/nightmare,
-		BODY_ZONE_R_ARM = /obj/item/bodypart/arm/right/shadow/nightmare,
+		BODY_ZONE_L_ARM = /obj/item/bodypart/arm/left/shadow,
+		BODY_ZONE_R_ARM = /obj/item/bodypart/arm/right/shadow,
 		BODY_ZONE_HEAD = /obj/item/bodypart/head/shadow,
 		BODY_ZONE_L_LEG = /obj/item/bodypart/leg/left/shadow,
 		BODY_ZONE_R_LEG = /obj/item/bodypart/leg/right/shadow,
 		BODY_ZONE_CHEST = /obj/item/bodypart/chest/shadow,
 	)
 
-/datum/species/shadow/dreamweaver/on_species_gain(mob/living/carbon/C, datum/species/old_species, pref_load, regenerate_icons)
+/datum/species/shadow/dreamweaver/on_species_gain(mob/living/carbon/human/C, datum/species/old_species, pref_load, regenerate_icons = TRUE, replace_missing = TRUE)
 	. = ..()
 	C.fully_replace_character_name(null, pick(GLOB.dreamweaver_names))
 

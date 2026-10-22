@@ -363,6 +363,22 @@ tags = [
 	"alien",
 ]
 
+["Dreamweaver"]
+weight = 4
+min_pop = 15
+blacklisted_roles = []
+min_antag_cap = 1
+max_antag_cap = 1
+repeatable_weight_decrease = 2
+repeatable = 1
+minimum_required_age = 0
+track = "moderate"
+tags = [
+	"combat",
+	"away_antag",
+	"spooky",
+]
+
 ["Nightmare"]
 weight = 5
 min_pop = 15
