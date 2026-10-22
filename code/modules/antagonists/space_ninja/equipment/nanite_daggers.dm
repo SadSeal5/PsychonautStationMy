@@ -32,8 +32,8 @@
 	attack_verb_simple = list("slash", "stab", "puncture", "carve")
 	item_flags = NEEDS_PERMIT
 	max_integrity = 200
-	var/charges = 2
-	var/max_charges = 2
+	var/charges = 1
+	var/max_charges = 1
 	var/charge_timer
 
 /obj/item/nanite_daggers/Destroy()

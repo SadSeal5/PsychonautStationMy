@@ -29,13 +29,14 @@ type NinjaInfo = {
   slot_trap?: number;
   confirmed?: BooleanLike;
   mod_icon?: string;
+  weapon_icon?: string;
 };
 
 type WeaponDef = {
   value: number;
   title: string;
   tag: string;
-  icon: string;
+  iconState: string;
   accentColor: string;
   accentBg: string;
   description: string;
@@ -67,6 +68,7 @@ type DossierItem = {
   badge: string;
   typeTag: string;
   iconState: string;
+  iconFile?: string;
   accentColor: string;
   controls: string;
   power: string;
@@ -86,6 +88,7 @@ export const AntagInfoNinja = () => {
     slot_trap = 1,
     confirmed,
     mod_icon = 'icons/obj/clothing/modsuit/mod_modules.dmi',
+    weapon_icon = 'icons/obj/weapons/sword.dmi',
   } = data;
 
   const [selectedTab, setSelectedTab] = useSharedState<'directives' | 'modsuit'>(
@@ -98,7 +101,7 @@ export const AntagInfoNinja = () => {
       value: 1,
       title: 'Energy Katana',
       tag: 'ALL-ROUNDER // DASH',
-      icon: 'katana',
+      iconState: 'energy_katana',
       accentColor: '#22c55e',
       accentBg: 'rgba(34, 197, 94, 0.12)',
       description:
@@ -109,7 +112,7 @@ export const AntagInfoNinja = () => {
       value: 2,
       title: 'Plasma Kusarigama',
       tag: 'REACH 2 // TRIP & DISARM',
-      icon: 'link',
+      iconState: 'plasma_kusarigama',
       accentColor: '#10b981',
       accentBg: 'rgba(16, 185, 129, 0.12)',
       description:
@@ -120,12 +123,12 @@ export const AntagInfoNinja = () => {
       value: 3,
       title: 'Dual Nanite Daggers',
       tag: 'DUAL STAB // SHADOW STEP',
-      icon: 'shield-alt',
+      iconState: 'nanite_daggers',
       accentColor: '#84cc16',
       accentBg: 'rgba(132, 204, 22, 0.12)',
       description:
-        'Twin high-frequency nanite daggers. Attacks deliver rapid double strikes. Backstabs deal +16 critical damage and silence victims. RMB shadow step blink (2 charges).',
-      statBadge: '16x2 FORCE // 60 AP // 2 BLINK CHARGES',
+        'Twin high-frequency nanite daggers. Attacks deliver rapid double strikes. Backstabs deal +16 critical damage and silence victims. RMB shadow step blink (1 charge).',
+      statBadge: '16x2 FORCE // 60 AP // 1 BLINK CHARGE',
     },
   ];
 
@@ -321,7 +324,8 @@ export const AntagInfoNinja = () => {
           title: 'Plasma Kusarigama & Weapon Recall',
           badge: 'CORE WEAPON',
           typeTag: 'CHAINED SCYTHE // REACH 2',
-          iconState: 'recall',
+          iconState: 'plasma_kusarigama',
+          iconFile: weapon_icon,
           accentColor: '#10b981',
           controls: 'LMB reach-2 strike // RMB chain trip & disarm',
           power: 'None (6s trip cooldown)',
@@ -335,10 +339,11 @@ export const AntagInfoNinja = () => {
           title: 'Dual Nanite Daggers & Weapon Recall',
           badge: 'CORE WEAPON',
           typeTag: 'TWIN DAGGERS // DUAL STAB',
-          iconState: 'recall',
+          iconState: 'nanite_daggers',
+          iconFile: weapon_icon,
           accentColor: '#84cc16',
           controls: 'LMB rapid dual stab // RMB shadow step blink',
-          power: '2 charges (8s recharge per charge)',
+          power: '1 charge (8s recharge)',
           description:
             'Twin high-frequency nanite daggers designed for silent infiltration. Striking in rapid succession, every hit delivers an immediate second strike for 16 brute damage. Striking targets from behind inflicts an extra +16 critical damage and silences their vocal cords for 3 seconds.',
           tacticalTip:
@@ -349,7 +354,8 @@ export const AntagInfoNinja = () => {
           title: 'Energy Katana & Weapon Recall',
           badge: 'CORE WEAPON',
           typeTag: 'PLASMA BLADE // QUANTUM RECALL',
-          iconState: 'recall',
+          iconState: 'energy_katana',
+          iconFile: weapon_icon,
           accentColor: '#22c55e',
           controls: 'LMB strike // RMB combat dash',
           power: 'None',
@@ -662,10 +668,11 @@ export const AntagInfoNinja = () => {
                                         : 'none',
                                     }}
                                   >
-                                    <Icon
-                                      name={wep.icon}
-                                      size={2}
-                                      color={isSelected ? wep.accentColor : '#94a3b8'}
+                                    <DmIcon
+                                      icon={weapon_icon}
+                                      icon_state={wep.iconState}
+                                      width="32px"
+                                      height="32px"
                                     />
                                   </Box>
                                 </Flex.Item>
@@ -1014,7 +1021,7 @@ export const AntagInfoNinja = () => {
                                   }}
                                 >
                                   <DmIcon
-                                    icon={mod_icon}
+                                    icon={item.iconFile || mod_icon}
                                     icon_state={item.iconState}
                                     width="34px"
                                     height="34px"
@@ -1132,7 +1139,7 @@ export const AntagInfoNinja = () => {
                                   }}
                                 >
                                   <DmIcon
-                                    icon={mod_icon}
+                                    icon={item.iconFile || mod_icon}
                                     icon_state={item.iconState}
                                     width="34px"
                                     height="34px"

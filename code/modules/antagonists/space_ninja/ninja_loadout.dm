@@ -181,6 +181,7 @@
 	data["slot_trap"] = loadout_trap
 	data["confirmed"] = loadout_confirmed
 	data["mod_icon"] = 'icons/obj/clothing/modsuit/mod_modules.dmi'
+	data["weapon_icon"] = 'icons/obj/weapons/sword.dmi'
 	return data
 
 /datum/antagonist/ninja/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
