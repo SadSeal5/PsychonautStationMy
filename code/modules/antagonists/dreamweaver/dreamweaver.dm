@@ -9,11 +9,13 @@
 	suicide_cry = "FOR THE COLLECTIVE UNCONSCIOUS!!"
 	preview_outfit = /datum/outfit/dreamweaver
 	stinger_sound = 'sound/effects/magic/ethereal_exit.ogg'
+	antag_hud_name = "dreamweaver"
 
 	var/psi_charges = 50
 	var/psi_max = 100
 	var/cascade_used = FALSE
 	var/list/mind_web_targets
+	var/static/mutable_appearance/dreamweaver_overlay = mutable_appearance('icons/mob/effects/dreamweaver_aura.dmi', "dreamweaver_aura")
 
 /datum/antagonist/dreamweaver/greet()
 	. = ..()
@@ -51,6 +53,7 @@
 	if(dreamweaver?.mob_mood)
 		dreamweaver.mob_mood.mood_modifier -= 1
 	dreamweaver.apply_status_effect(/datum/status_effect/dreamweaver_power)
+	dreamweaver.add_overlay(dreamweaver_overlay)
 
 /datum/antagonist/dreamweaver/remove_innate_effects(mob/living/mob_override)
 	. = ..()
@@ -58,6 +61,7 @@
 	if(dreamweaver?.mob_mood)
 		dreamweaver.mob_mood.mood_modifier += 1
 	dreamweaver.remove_status_effect(/datum/status_effect/dreamweaver_power)
+	dreamweaver.cut_overlay(dreamweaver_overlay)
 
 /datum/antagonist/dreamweaver/on_removal()
 	LAZYNULL(mind_web_targets)

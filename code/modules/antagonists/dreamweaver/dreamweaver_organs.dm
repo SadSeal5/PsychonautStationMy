@@ -7,8 +7,8 @@
 /obj/item/organ/brain/shadow/dreamweaver
 	name = "psionic mass"
 	desc = "A pulsating growth extracted from the skull of a Dreamweaver. It hums with psychic energy."
-	icon = 'icons/obj/medical/organs/organs.dmi'
-	icon_state = "brain-x-d"
+	icon = 'icons/obj/antags/dreamweaver.dmi'
+	icon_state = "psionic_node"
 	shade_color = "violet"
 
 	var/datum/action/cooldown/spell/touch/mind_touch/mind_touch_spell

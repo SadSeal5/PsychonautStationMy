@@ -8,10 +8,11 @@
 	cooldown_time = 15 SECONDS
 	invocation_type = INVOCATION_NONE
 	spell_requirements = NONE
-	button_icon = 'icons/mob/actions/actions_spells.dmi'
-	button_icon_state = "mindswap"
-	background_icon_state = "bg_spell"
-	overlay_icon_state = "bg_spell_border"
+	button_icon = 'icons/mob/actions/actions_dreamweaver.dmi'
+	button_icon_state = "mind_touch"
+	background_icon = 'icons/mob/actions/actions_dreamweaver.dmi'
+	background_icon_state = "bg_dreamweaver"
+	overlay_icon_state = null
 	hand_path = /obj/item/melee/touch_attack/mind_touch
 	var/psi_cost = 15
 
@@ -77,10 +78,11 @@
 	cooldown_time = 25 SECONDS
 	invocation_type = INVOCATION_NONE
 	spell_requirements = NONE
-	button_icon = 'icons/mob/actions/actions_spells.dmi'
-	button_icon_state = "terrify"
-	background_icon_state = "bg_spell"
-	overlay_icon_state = "bg_spell_border"
+	button_icon = 'icons/mob/actions/actions_dreamweaver.dmi'
+	button_icon_state = "dread_wave"
+	background_icon = 'icons/mob/actions/actions_dreamweaver.dmi'
+	background_icon_state = "bg_dreamweaver"
+	overlay_icon_state = null
 	aoe_radius = 4
 	var/psi_cost = 30
 
@@ -140,10 +142,11 @@
 	jaunt_duration = 5 SECONDS
 	invocation_type = INVOCATION_NONE
 	spell_requirements = NONE
-	button_icon = 'icons/mob/actions/actions_spells.dmi'
-	button_icon_state = "phaseshift"
-	background_icon_state = "bg_spell"
-	overlay_icon_state = "bg_spell_border"
+	button_icon = 'icons/mob/actions/actions_dreamweaver.dmi'
+	button_icon_state = "astral_walk"
+	background_icon = 'icons/mob/actions/actions_dreamweaver.dmi'
+	background_icon_state = "bg_dreamweaver"
+	overlay_icon_state = null
 	var/psi_cost = 25
 
 /datum/action/cooldown/spell/jaunt/astral_walk/can_cast_spell(feedback = TRUE)
@@ -189,10 +192,11 @@
 	cast_range = 3
 	invocation_type = INVOCATION_NONE
 	spell_requirements = NONE
-	button_icon = 'icons/mob/actions/actions_spells.dmi'
-	button_icon_state = "nether"
-	background_icon_state = "bg_spell"
-	overlay_icon_state = "bg_spell_border"
+	button_icon = 'icons/mob/actions/actions_dreamweaver.dmi'
+	button_icon_state = "mind_web"
+	background_icon = 'icons/mob/actions/actions_dreamweaver.dmi'
+	background_icon_state = "bg_dreamweaver"
+	overlay_icon_state = null
 	active_msg = "You reach out with psychic filaments..."
 	deactive_msg = "You withdraw your mental threads."
 	var/psi_cost = 40
@@ -256,6 +260,7 @@
 	alert_type = /atom/movable/screen/alert/status_effect/mind_webbed
 	on_remove_on_mob_delete = TRUE
 	var/datum/weakref/dreamweaver_ref
+	var/static/mutable_appearance/web_overlay = mutable_appearance('icons/effects/dream_web.dmi', "web")
 
 /atom/movable/screen/alert/status_effect/mind_webbed
 	name = "Psychic Resonance"
@@ -264,9 +269,13 @@
 /datum/status_effect/mind_webbed/on_apply(datum/antagonist/dreamweaver/source)
 	if(istype(source))
 		dreamweaver_ref = WEAKREF(source)
+	if(owner)
+		owner.add_overlay(web_overlay)
 	return ..()
 
 /datum/status_effect/mind_webbed/on_remove()
+	if(owner)
+		owner.cut_overlay(web_overlay)
 	var/datum/antagonist/dreamweaver/dreamweaver = dreamweaver_ref?.resolve()
 	if(dreamweaver)
 		for(var/datum/weakref/target_ref as anything in dreamweaver.mind_web_targets)
@@ -282,10 +291,11 @@
 	cooldown_time = 300 SECONDS
 	invocation_type = INVOCATION_NONE
 	spell_requirements = NONE
-	button_icon = 'icons/mob/actions/actions_spells.dmi'
-	button_icon_state = "spacetime"
-	background_icon_state = "bg_spell"
-	overlay_icon_state = "bg_spell_border"
+	button_icon = 'icons/mob/actions/actions_dreamweaver.dmi'
+	button_icon_state = "nightmare_cascade"
+	background_icon = 'icons/mob/actions/actions_dreamweaver.dmi'
+	background_icon_state = "bg_dreamweaver"
+	overlay_icon_state = null
 	var/psi_cost = 80
 
 /datum/action/cooldown/spell/nightmare_cascade/can_cast_spell(feedback = TRUE)
