@@ -532,27 +532,47 @@
 	. = ..()
 	new /obj/item/choice_beacon/music(get_turf(chap))
 
+#ifndef isundead
+#define isundead(A) (isliving(A) && ((A).mob_biotypes & MOB_UNDEAD))
+#endif
+
 /datum/religion_sect/necro_sect
 	name = "Necromancy"
 	desc = "A sect dedicated to the revival and summoning of the dead. Sacrificing living animals grants you favor."
 	quote = "An undead army is a must have!"
 	tgui_icon = "skull"
 	alignment = ALIGNMENT_EVIL
-	max_favor = 1500
-	desired_items = list(/obj/item/organ/)
-	rites_list = list(/datum/religion_rites/living_sacrifice, /datum/religion_rites/raise_undead)
+	max_favor = 5000
+	desired_items = list(/obj/item/organ)
+	rites_list = list(/datum/religion_rites/living_sacrifice, /datum/religion_rites/raise_undead, /datum/religion_rites/raise_dead, /datum/religion_rites/animate_bones)
 	altar_icon = 'icons/psychonaut/obj/service/hand_of_god_structures.dmi'
 	altar_icon_state = "convertaltar-necro"
 
 //Necro bibles don't heal or do anything special apart from the standard holy water blessings
 /datum/religion_sect/necro_sect/sect_bless(mob/living/blessed, mob/living/user)
-	return TRUE
+	if(isskeleton(blessed) || isundead(blessed) || blessed.has_status_effect(/datum/status_effect/zombie))
+		blessed.heal_overall_damage(15, 15)
+		blessed.visible_message(span_notice("[user] restores unholy vigor to [blessed]!"))
+		return BLESSING_SUCCESS
+	if(ishuman(blessed))
+		var/mob/living/carbon/human/H = blessed
+		to_chat(H, span_notice("You feel a chilling, otherworldly numbness flowing through your veins from [GLOB.deity]..."))
+		blessed.add_mood_event("blessing", /datum/mood_event/blessing)
+		return BLESSING_SUCCESS
+	return BLESSING_IGNORED
+
+/datum/religion_sect/necro_sect/sect_dead_bless(mob/living/target, mob/living/chap)
+	if(target.stat == DEAD)
+		to_chat(chap, span_notice("[GLOB.deity] stays the rot upon [target]'s mortal vessel."))
+		target.add_traits(list(TRAIT_RESISTCOLD), type)
+		return BLESSING_SUCCESS
+	return BLESSING_FAILED
 
 /datum/religion_sect/necro_sect/on_sacrifice(obj/item/N, mob/living/L)
 	if(!istype(N, /obj/item/organ))
 		return
 	adjust_favor(30, L)
-	to_chat(L, "<span class='notice'>You offer [N] to [GLOB.deity], pleasing them and gaining 30 favor in the process.</span>")
+	to_chat(L, span_notice("You offer [N] to [GLOB.deity], pleasing them and gaining 30 favor in the process."))
 	qdel(N)
 	return TRUE
 
@@ -566,19 +586,28 @@
 	alignment = ALIGNMENT_NEUT
 	max_favor = 10000
 	desired_items = list(/obj/item/food/meat)
-	rites_list = list(/datum/religion_rites/summon_carp, /datum/religion_rites/flood_area)
+	rites_list = list(/datum/religion_rites/summon_carp, /datum/religion_rites/flood_area, /datum/religion_rites/scales_blessing)
 	altar_icon = 'icons/psychonaut/obj/service/hand_of_god_structures.dmi'
 	altar_icon_state = "convertaltar-carp"
 
 //Carp bibles give people the carp faction!
 /datum/religion_sect/carp_sect/sect_bless(mob/living/L, mob/living/user)
-	return TRUE
+	if(istype(L, /mob/living/basic/carp))
+		L.heal_overall_damage(20)
+		to_chat(user, span_notice("[GLOB.deity] mends the scales of [L]!"))
+		return BLESSING_SUCCESS
+	if(isliving(L))
+		L.add_faction(FACTION_CARP)
+		to_chat(L, span_boldnotice("You are blessed by Carp-Sie. Wild space carp will no longer attack you."))
+		L.add_mood_event("blessing", /datum/mood_event/blessing)
+		return BLESSING_SUCCESS
+	return BLESSING_IGNORED
 
 /datum/religion_sect/carp_sect/on_sacrifice(obj/item/N, mob/living/L)
 	if(!istype(N, /obj/item/food/meat))
 		return
 	adjust_favor(20, L)
-	to_chat(L, "<span class='notice'>You offer [N] to [GLOB.deity], pleasing them and gaining 20 favor in the process.</span>")
+	to_chat(L, span_notice("You offer [N] to [GLOB.deity], pleasing them and gaining 20 favor in the process."))
 	qdel(N)
 	return TRUE
 
@@ -590,19 +619,32 @@
 	alignment = ALIGNMENT_GOOD
 	max_favor = 10000
 	desired_items = list(/obj/item/seeds)
-	rites_list = list(/datum/religion_rites/create_podperson,/datum/religion_rites/summon_animals)
+	rites_list = list(/datum/religion_rites/create_podperson, /datum/religion_rites/summon_animals, /datum/religion_rites/verdant_bloom)
 	altar_icon = 'icons/psychonaut/obj/service/hand_of_god_structures.dmi'
 	altar_icon_state = "convertaltar-nature"
 
 //plant bibles don't heal or do anything special apart from the standard holy water blessings
 /datum/religion_sect/plant_sect/sect_bless(mob/living/blessed, mob/living/user)
-	return TRUE
+	if(ispodperson(blessed))
+		var/mob/living/carbon/human/H = blessed
+		H.heal_overall_damage(15, 15)
+		H.adjust_nutrition(20)
+		to_chat(H, span_boldnotice("The natural warmth of [GLOB.deity] invigorates your leafy form!"))
+		H.add_mood_event("blessing", /datum/mood_event/blessing)
+		return BLESSING_SUCCESS
+	if(iscarbon(blessed))
+		var/mob/living/carbon/C = blessed
+		C.adjust_tox_loss(-10)
+		to_chat(C, span_notice("A calming herbal sensation cleanses your system with the grace of [GLOB.deity]."))
+		C.add_mood_event("blessing", /datum/mood_event/blessing)
+		return BLESSING_SUCCESS
+	return BLESSING_IGNORED
 
 /datum/religion_sect/plant_sect/on_sacrifice(obj/item/N, mob/living/L)
 	if(!istype(N, /obj/item/seeds))
 		return
 	adjust_favor(25, L)
-	to_chat(L, "<span class='notice'>You offer [N] to [GLOB.deity], pleasing them and gaining 25 favor in the process.</span>")
+	to_chat(L, span_notice("You offer [N] to [GLOB.deity], pleasing them and gaining 25 favor in the process."))
 	qdel(N)
 	return TRUE
 
