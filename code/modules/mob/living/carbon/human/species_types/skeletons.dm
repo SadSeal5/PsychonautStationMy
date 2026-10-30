@@ -92,3 +92,12 @@
 /datum/species/skeleton/brittle/get_species_description()
 	return "A creaking, brittle skeleton held together by necromantic favor."
 
+/datum/species/skeleton/brittle/on_species_gain(mob/living/carbon/human/C, datum/species/old_species, pref_loadout)
+	. = ..()
+	C.damage_resistance += damage_modifier
+
+/datum/species/skeleton/brittle/on_species_loss(mob/living/carbon/human/C, datum/species/new_species, pref_loadout)
+	C.damage_resistance -= damage_modifier
+	return ..()
+
+

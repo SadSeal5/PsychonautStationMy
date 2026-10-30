@@ -532,14 +532,6 @@
 	. = ..()
 	new /obj/item/choice_beacon/music(get_turf(chap))
 
-#ifndef isundead
-#define isundead(A) (isliving(A) && ((A).mob_biotypes & MOB_UNDEAD))
-#endif
-
-#ifndef HAS_FACTION
-#define HAS_FACTION(A, F) ((A).has_faction(F))
-#endif
-
 /datum/religion_sect/necro_sect
 	name = "Necromancy"
 	desc = "A sect dedicated to the revival and summoning of the dead. Sacrificing living animals grants you favor."
@@ -555,7 +547,7 @@
 
 //Necro bibles don't heal or do anything special apart from the standard holy water blessings
 /datum/religion_sect/necro_sect/sect_bless(mob/living/blessed, mob/living/user)
-	if(isskeleton(blessed) || isundead(blessed) || blessed.has_status_effect(/datum/status_effect/zombie))
+	if(isskeleton(blessed) || (blessed.mob_biotypes & MOB_UNDEAD) || blessed.has_status_effect(/datum/status_effect/zombie))
 		blessed.heal_overall_damage(15, 15)
 		blessed.visible_message(span_notice("[user] restores unholy vigor to [blessed]!"))
 		return BLESSING_SUCCESS
@@ -569,11 +561,18 @@
 /datum/religion_sect/necro_sect/sect_dead_bless(mob/living/target, mob/living/chap)
 	if(target.stat == DEAD)
 		qdel(target.GetComponent(/datum/component/rot))
-		target.reagents?.add_reagent(/datum/reagent/toxin/formaldehyde, 15)
+		if(target.reagents && target.reagents.get_reagent_amount(/datum/reagent/toxin/formaldehyde) < 15)
+			target.reagents.add_reagent(/datum/reagent/toxin/formaldehyde, 15)
 		target.add_traits(list(TRAIT_RESISTCOLD), type)
+		RegisterSignal(target, COMSIG_LIVING_REVIVE, PROC_REF(on_embalmed_revived), override = TRUE)
 		to_chat(chap, span_notice("[GLOB.deity] halts decay and embalms [target]'s mortal vessel."))
 		return BLESSING_SUCCESS
 	return BLESSING_FAILED
+
+/datum/religion_sect/necro_sect/proc/on_embalmed_revived(mob/living/target)
+	SIGNAL_HANDLER
+	target.remove_traits(list(TRAIT_RESISTCOLD), type)
+	UnregisterSignal(target, COMSIG_LIVING_REVIVE)
 
 /datum/religion_sect/necro_sect/on_sacrifice(obj/item/N, mob/living/L)
 	if(!istype(N, /obj/item/organ))
@@ -604,11 +603,11 @@
 		to_chat(user, span_notice("[GLOB.deity] mends the scales of [L]!"))
 		return BLESSING_SUCCESS
 	if(isliving(L))
-		if(HAS_FACTION(L, FACTION_CARP))
-			to_chat(user, span_notice("[L] already swims under the protection of Carp-Sie."))
+		if(L.has_faction(FACTION_CARP))
+			to_chat(user, span_notice("[L] already swims under the protection of [GLOB.deity]."))
 			return BLESSING_IGNORED
 		L.add_faction(FACTION_CARP)
-		to_chat(L, span_boldnotice("You are blessed by Carp-Sie. Wild space carp will no longer attack you."))
+		to_chat(L, span_boldnotice("You are blessed by [GLOB.deity]. Wild space carp will no longer attack you."))
 		L.add_mood_event("blessing", /datum/mood_event/blessing)
 		return BLESSING_SUCCESS
 	return BLESSING_IGNORED
