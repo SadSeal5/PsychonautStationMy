@@ -243,12 +243,8 @@
 
 /proc/ninja_kunai_smooth_landing(mob/living/ninja, datum/beam/zip_beam)
 	qdel(zip_beam)
-	if(QDELETED(ninja))
-		return
-	ninja.SetKnockdown(0)
-	ninja.SetParalyzed(0)
-	ninja.SetStun(0)
-	ninja.set_resting(FALSE)
+	if(!QDELETED(ninja))
+		ninja.set_resting(FALSE)
 
 /obj/item/throwing_star/kunai/ninja/throw_impact(atom/hit_atom, datum/thrownthing/throwingdatum)
 	. = ..()
@@ -1184,10 +1180,10 @@
 		empulse(epicenter, heavy_range = 0, light_range = 2, emp_source = src)
 		var/mob/living/creator = creator_ref?.resolve()
 		for(var/mob/living/victim in viewers(3, epicenter))
-			if(victim == src)
+			if(victim == src || victim == creator)
 				continue
 			victim.flash_act(intensity = 2, override_blindness_check = FALSE, affect_silicon = TRUE, visual = TRUE, length = 3 SECONDS)
-			if(victim != creator && (!victim.mind || !IS_SPACE_NINJA(victim)))
+			if(!victim.mind || !IS_SPACE_NINJA(victim))
 				victim.adjust_confusion(3 SECONDS)
 				victim.adjust_dizzy(5 SECONDS)
 				victim.Knockdown(1.5 SECONDS)
@@ -1324,13 +1320,15 @@
 
 	if(!attacking_item.is_open_container())
 		return NONE
-	if(charges >= max_charges)
-		balloon_alert(user, "already fully charged!")
-		return COMPONENT_NO_AFTERATTACK
 	var/datum/reagents/reagent_holder = attacking_item.reagents
 	if(!reagent_holder)
 		return NONE
 	var/radium_available = reagent_holder.get_reagent_amount(/datum/reagent/uranium/radium)
+	if(radium_available <= 0)
+		return NONE
+	if(charges >= max_charges)
+		balloon_alert(user, "already fully charged!")
+		return COMPONENT_NO_AFTERATTACK
 	if(radium_available < radium_per_charge)
 		balloon_alert(user, "needs at least [radium_per_charge]u radium per charge!")
 		return COMPONENT_NO_AFTERATTACK

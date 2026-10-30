@@ -328,6 +328,7 @@
 			Pixel_y %= 32
 		var/turf/destination = locate(final_x, final_y, segment.z)
 		if(!destination)
+			new_elements -= segment
 			qdel(segment)
 			continue
 		segment.forceMove(destination)

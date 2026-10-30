@@ -133,3 +133,13 @@
 	start_setup_phase()
 	return TRUE
 
+/datum/antagonist/ninja/on_removal()
+	if(in_setup_phase)
+		end_setup_phase()
+	return ..()
+
+/datum/antagonist/ninja/Destroy()
+	if(in_setup_phase)
+		end_setup_phase()
+	return ..()
+
