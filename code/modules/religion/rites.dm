@@ -516,6 +516,7 @@
 	"... RISE! ...")
 	invoke_msg = "... RISE!!!"
 	favor_cost = 1500
+	var/expecting_buckled = FALSE
 
 /datum/religion_rites/raise_undead/perform_rite(mob/living/user, atom/religious_tool)
 	if(!ismovable(religious_tool))
@@ -525,8 +526,25 @@
 	if(!movable_reltool)
 		return FALSE
 	if(LAZYLEN(movable_reltool.buckled_mobs))
+		expecting_buckled = TRUE
+		var/mob/living/target = movable_reltool.buckled_mobs[1]
+		if(!ishuman(target))
+			to_chat(user, span_warning("Only humanoids can be reanimated as skeletons!"))
+			return FALSE
+		if(isskeleton(target))
+			to_chat(user, span_warning("The buckled creature has already embraced the bone!"))
+			return FALSE
+		if(!target.get_bodypart(BODY_ZONE_HEAD))
+			to_chat(user, span_warning("The creature lacks a skull!"))
+			return FALSE
+		if(target.stat == DEAD)
+			if(HAS_TRAIT(target, TRAIT_SUICIDED))
+				to_chat(user, span_warning("Their soul has severed its earthly ties permanently!"))
+				return FALSE
+			target.notify_revival("Your soul is being summoned to rise as an unholy skeleton by [GLOB.deity]!", source = src)
 		to_chat(user, span_warning("You're going to convert the one buckled on [movable_reltool]."))
 	else
+		expecting_buckled = FALSE
 		if(!movable_reltool.can_buckle) //yes, if you have somehow managed to have someone buckled to something that now cannot buckle, we will still let you perform the rite!
 			to_chat(user, span_warning("This rite requires a religious device that individuals can be buckled to."))
 			return FALSE
@@ -542,15 +560,19 @@
 		CRASH("[name]'s perform_rite had a movable atom that has somehow turned into a non-movable!")
 	var/atom/movable/movable_reltool = religious_tool
 	var/mob/living/carbon/human/rite_target
-	if(!movable_reltool?.buckled_mobs?.len)
-		rite_target = user
-	else
+	if(expecting_buckled)
 		for(var/buckled in movable_reltool.buckled_mobs)
 			if(ishuman(buckled))
 				rite_target = buckled
 				break
-	if(!rite_target)
-		return FALSE
+		if(!rite_target)
+			to_chat(user, span_warning("The target is no longer on the altar! [favor_cost] favor has been refunded."))
+			GLOB.religious_sect?.adjust_favor(favor_cost, user)
+			return FALSE
+	else
+		rite_target = user
+		if(!ishuman(rite_target))
+			return FALSE
 	var/was_dead = (rite_target.stat == DEAD)
 	rite_target.set_species(/datum/species/skeleton/brittle)
 	if(was_dead)
@@ -581,6 +603,12 @@
 		return FALSE
 	for(var/mob/living/carbon/r_target in movable_reltool.buckled_mobs)
 		if(iscarbon(r_target) && r_target.stat == DEAD && r_target.mind)
+			if(HAS_TRAIT(r_target, TRAIT_SUICIDED))
+				to_chat(user, span_warning("Their soul has permanently abandoned this plane and refuses to return!"))
+				return FALSE
+			if(!r_target.get_bodypart(BODY_ZONE_HEAD))
+				to_chat(user, span_warning("The body is missing its head!"))
+				return FALSE
 			r_target.notify_revival("Your soul is being summoned back to your body by [GLOB.deity]!", source = src)
 			return ..()
 	to_chat(user, span_warning("There is no dead carbon creature with a soul buckled to the altar!"))
@@ -589,13 +617,23 @@
 /datum/religion_rites/raise_dead/invoke_effect(mob/living/user, atom/movable/religious_tool)
 	var/turf/altar_turf = get_turf(religious_tool)
 	var/mob/living/carbon/target
+	var/mob/living/carbon/alive_target
 	if(ismovable(religious_tool))
 		for(var/mob/living/carbon/r_target in religious_tool.buckled_mobs)
-			if(iscarbon(r_target) && r_target.stat == DEAD)
+			if(!iscarbon(r_target))
+				continue
+			if(r_target.stat == DEAD)
 				target = r_target
 				break
+			else
+				alive_target = r_target
 	if(!target)
-		to_chat(user, span_warning("There is no dead creature buckled to the altar!"))
+		if(alive_target)
+			to_chat(user, span_notice("The creature has already returned to life! [favor_cost] favor has been refunded."))
+			GLOB.religious_sect?.adjust_favor(favor_cost, user)
+			return FALSE
+		to_chat(user, span_warning("There is no dead creature buckled to the altar! [favor_cost] favor has been refunded."))
+		GLOB.religious_sect?.adjust_favor(favor_cost, user)
 		return FALSE
 	target.revive(HEAL_ALL, force_grab_ghost = FALSE)
 	playsound(altar_turf, 'sound/effects/magic/staff_healing.ogg', 50, TRUE)
@@ -628,6 +666,9 @@
 		if(corpse.stat == DEAD)
 			to_chat(user, span_warning("You can only sacrifice living creatures, this one is already dead!"))
 			return FALSE
+		if(!user.is_antag() && (corpse.ckey || corpse.mind?.has_antag_datum()))
+			to_chat(user, span_warning("Your deity forbids the sacrifice of sentient crewmembers! Only fauna may be offered."))
+			return FALSE
 		return ..()
 	to_chat(user, span_warning("Nothing suitable is buckled to the altar!"))
 	return FALSE
@@ -635,15 +676,23 @@
 /datum/religion_rites/living_sacrifice/invoke_effect(mob/living/user, atom/movable/religious_tool)
 	var/turf/altar_turf = get_turf(religious_tool)
 	var/mob/living/sacrifice
+	var/sacrifice_died = FALSE
 	if(ismovable(religious_tool))
 		for(var/mob/living/M in religious_tool.buckled_mobs)
-			if(isliving(M) && M.stat != DEAD)
-				sacrifice = M
-				break
+			if(!isliving(M))
+				continue
+			if(M.stat == DEAD)
+				sacrifice_died = TRUE
+				continue
+			sacrifice = M
+			break
 	if(!sacrifice)
-		to_chat(user, span_warning("The sacrifice is no longer alive or on the altar!"))
+		if(sacrifice_died)
+			to_chat(user, span_warning("The sacrifice expired before [GLOB.deity] could consume its life force!"))
+			return FALSE
+		to_chat(user, span_warning("The sacrifice is no longer on the altar!"))
 		return FALSE
-	var/favor_gained = max(20, round(sacrifice.maxHealth * 1.5))
+	var/favor_gained = min(800, max(20, round(sacrifice.maxHealth * 1.5)))
 	GLOB.religious_sect?.adjust_favor(favor_gained, user)
 	new /obj/effect/temp_visual/cult/blood/out(altar_turf)
 	to_chat(user, span_notice("[GLOB.deity] absorbs [sacrifice], leaving blood and gore in its place. [GLOB.deity] rewards you with [favor_gained] favor."))
@@ -665,17 +714,18 @@
 
 /datum/religion_rites/summon_carp/invoke_effect(mob/living/user, atom/movable/religious_tool)
 	var/turf/altar_turf = get_turf(religious_tool)
+	var/turf/spawn_turf = altar_turf.is_blocked_turf() ? religious_tool.drop_location() : altar_turf
 	new /obj/effect/temp_visual/bluespace_fissure(altar_turf)
 	user.visible_message(span_notice("A tear in reality appears above the altar!"))
 	var/list/candidates = SSpolling.poll_ghost_candidates("Do you wish to be summoned as a Holy Carp?", ROLE_SENTIENCE, null, 10 SECONDS, POLL_IGNORE_SENTIENCE_POTION)
 	if(!length(candidates))
 		new /obj/effect/gibspawner/generic(altar_turf)
-		user.visible_message(span_warning("The carp pool was not strong enough to bring forth a space carp."))
+		user.visible_message(span_warning("The carp pool was not strong enough to bring forth a space carp. 400 favor has been refunded."))
 		GLOB.religious_sect?.adjust_favor(400, user)
 		return NOT_ENOUGH_PLAYERS
 	var/mob/dead/observer/selected = pick_n_take(candidates)
 	var/carp_species = pick(85; /mob/living/basic/carp, 15; /mob/living/basic/carp/mega)
-	var/mob/living/basic/carp/carp = new carp_species(altar_turf)
+	var/mob/living/basic/carp/carp = new carp_species(spawn_turf)
 	carp.name = "Holy Space-Carp ([rand(1,999)])"
 	carp.maxHealth += 100
 	carp.health += 100
@@ -713,6 +763,9 @@
 		T.atmos_spawn_air("water_vapor=60;TEMP=293.15")
 		for(var/turf/open/floor/wet_floor in range(2, T))
 			wet_floor.MakeSlippery(TURF_WET_WATER, min_wet_time = 30 SECONDS)
+		for(var/mob/living/M in range(2, T))
+			M.extinguish_mob()
+			M.adjust_fire_stacks(-3)
 	playsound(get_turf(religious_tool), 'sound/effects/slosh.ogg', 50, TRUE)
 	return ..()
 
@@ -742,7 +795,9 @@
 	for(var/i in 1 to 8)
 		var/mob/living/S = create_random_mob(altar_turf, FRIENDLY_SPAWN)
 		if(S)
-			S.add_faction("neutral")
+			S.add_faction(FACTION_NEUTRAL)
+			S.add_faction(FACTION_PLANTS)
+			step(S, pick(GLOB.alldirs))
 	playsound(altar_turf, 'sound/ambience/ruin/servicebell.ogg', 25, TRUE)
 	if(prob(0.1))
 		playsound(altar_turf, 'sound/effects/bamf.ogg', 100, TRUE)
@@ -759,6 +814,7 @@
 						"... to merge us with all that is natural ...")
 	invoke_msg = "... May the grass be greener on the other side, show us what it means to be one with nature!!"
 	favor_cost = 300
+	var/expecting_buckled = FALSE
 
 /datum/religion_rites/create_podperson/perform_rite(mob/living/user, atom/religious_tool)
 	if(!ismovable(religious_tool))
@@ -768,8 +824,17 @@
 	if(!movable_reltool)
 		return FALSE
 	if(LAZYLEN(movable_reltool.buckled_mobs))
+		expecting_buckled = TRUE
+		var/mob/living/buckled = movable_reltool.buckled_mobs[1]
+		if(!ishuman(buckled))
+			to_chat(user, span_warning("Only humanoids can be merged with nature into podpeople!"))
+			return FALSE
+		if(ispodperson(buckled))
+			to_chat(user, span_warning("They are already one with the flora!"))
+			return FALSE
 		to_chat(user, span_warning("You're going to convert the one buckled on [movable_reltool]."))
 	else
+		expecting_buckled = FALSE
 		if(!movable_reltool.can_buckle) //yes, if you have somehow managed to have someone buckled to something that now cannot buckle, we will still let you perform the rite!
 			to_chat(user, span_warning("This rite requires a religious device that individuals can be buckled to."))
 			return FALSE
@@ -785,16 +850,21 @@
 		CRASH("[name]'s perform_rite had a movable atom that has somehow turned into a non-movable!")
 	var/atom/movable/movable_reltool = religious_tool
 	var/mob/living/carbon/human/rite_target
-	if(!movable_reltool?.buckled_mobs?.len)
-		rite_target = user
-	else
+	if(expecting_buckled)
 		for(var/buckled in movable_reltool.buckled_mobs)
 			if(ishuman(buckled))
 				rite_target = buckled
 				break
-	if(!rite_target)
-		return FALSE
+		if(!rite_target)
+			to_chat(user, span_warning("The target is no longer on the altar! [favor_cost] favor has been refunded."))
+			GLOB.religious_sect?.adjust_favor(favor_cost, user)
+			return FALSE
+	else
+		rite_target = user
+		if(!ishuman(rite_target))
+			return FALSE
 	rite_target.set_species(/datum/species/pod)
+	rite_target.adjust_nutrition(250)
 	rite_target.visible_message(span_notice("[rite_target] sprouts vines and foliage, blossoming into a podperson by the glory of [GLOB.deity]!"))
 	return TRUE
 
@@ -811,14 +881,31 @@
 	invoke_msg = "... Rise and strike down the foes of our faith!"
 	favor_cost = 800
 
+/datum/religion_rites/animate_bones/perform_rite(mob/living/user, atom/religious_tool)
+	if(istype(GLOB.religious_sect, /datum/religion_sect/necro_sect))
+		var/datum/religion_sect/necro_sect/NS = GLOB.religious_sect
+		for(var/datum/weakref/W in NS.active_skeletons)
+			var/mob/living/M = W.resolve()
+			if(!M || M.stat == DEAD)
+				NS.active_skeletons -= W
+		if(NS.active_skeletons.len >= 2)
+			to_chat(user, span_warning("[GLOB.deity] will not sustain more than two skeletal minions at once!"))
+			return FALSE
+	return ..()
+
 /datum/religion_rites/animate_bones/invoke_effect(mob/living/user, atom/movable/religious_tool)
 	var/turf/altar_turf = get_turf(religious_tool)
-	var/mob/living/basic/skeleton/skelly = new /mob/living/basic/skeleton(altar_turf)
+	var/turf/spawn_turf = altar_turf.is_blocked_turf() ? religious_tool.drop_location() : altar_turf
+	var/mob/living/basic/skeleton/skelly = new /mob/living/basic/skeleton(spawn_turf)
 	skelly.faction = user.faction.Copy()
 	skelly.add_faction(FACTION_HOLY)
 	skelly.name = "blessed skeleton ([rand(1, 999)])"
+	skelly.AddComponent(/datum/component/obeys_commands, list(/datum/pet_command/follow, /datum/pet_command/idle, /datum/pet_command/attack, /datum/pet_command/protect_owner))
+	if(istype(GLOB.religious_sect, /datum/religion_sect/necro_sect))
+		var/datum/religion_sect/necro_sect/NS = GLOB.religious_sect
+		NS.active_skeletons += WEAKREF(skelly)
 	user.visible_message(span_notice("[skelly] rises from the altar to serve [GLOB.deity]!"))
-	playsound(altar_turf, 'sound/effects/magic/summon_magic.ogg', 50, TRUE)
+	playsound(spawn_turf, 'sound/effects/magic/summon_magic.ogg', 50, TRUE)
 	return ..()
 
 /datum/religion_rites/scales_blessing
@@ -840,6 +927,10 @@
 		return FALSE
 	var/atom/movable/movable_reltool = religious_tool
 	if(!movable_reltool)
+		return FALSE
+	var/mob/living/target = LAZYLEN(movable_reltool.buckled_mobs) ? movable_reltool.buckled_mobs[1] : user
+	if(HAS_TRAIT_FROM(target, TRAIT_RESISTLOWPRESSURE, type))
+		to_chat(user, span_warning("[target] already bears the blessing of the Great Carp!"))
 		return FALSE
 	if(LAZYLEN(movable_reltool.buckled_mobs))
 		to_chat(user, span_warning("You're going to bless the one buckled on [movable_reltool]."))
@@ -889,6 +980,14 @@
 					air.set_gas(toxic_gas, 0)
 			if(prob(60))
 				new /obj/effect/temp_visual/heal(affected_turf, COLOR_GREEN)
+	for(var/mob/living/carbon/human/H in range(3, altar_turf))
+		if(ispodperson(H))
+			H.heal_overall_damage(10, 10)
+	for(var/obj/machinery/hydroponics/tray in range(3, altar_turf))
+		tray.adjust_waterlevel(50)
+		tray.adjust_toxic(-50)
+		tray.adjust_pestlevel(-10)
+		tray.adjust_weedlevel(-10)
 	playsound(altar_turf, SFX_RUSTLE, 50, TRUE)
 	user.visible_message(span_notice("Vibrant greenery blossoms around [religious_tool], purifying the air with sweet, fresh oxygen!"))
 	return ..()

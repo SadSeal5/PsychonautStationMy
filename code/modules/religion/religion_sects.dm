@@ -536,6 +536,10 @@
 #define isundead(A) (isliving(A) && ((A).mob_biotypes & MOB_UNDEAD))
 #endif
 
+#ifndef HAS_FACTION
+#define HAS_FACTION(A, F) ((A).has_faction(F))
+#endif
+
 /datum/religion_sect/necro_sect
 	name = "Necromancy"
 	desc = "A sect dedicated to the revival and summoning of the dead. Sacrificing living animals grants you favor."
@@ -547,6 +551,7 @@
 	rites_list = list(/datum/religion_rites/living_sacrifice, /datum/religion_rites/raise_undead, /datum/religion_rites/raise_dead, /datum/religion_rites/animate_bones)
 	altar_icon = 'icons/psychonaut/obj/service/hand_of_god_structures.dmi'
 	altar_icon_state = "convertaltar-necro"
+	var/list/active_skeletons = list()
 
 //Necro bibles don't heal or do anything special apart from the standard holy water blessings
 /datum/religion_sect/necro_sect/sect_bless(mob/living/blessed, mob/living/user)
@@ -563,8 +568,10 @@
 
 /datum/religion_sect/necro_sect/sect_dead_bless(mob/living/target, mob/living/chap)
 	if(target.stat == DEAD)
-		to_chat(chap, span_notice("[GLOB.deity] stays the rot upon [target]'s mortal vessel."))
+		qdel(target.GetComponent(/datum/component/rot))
+		target.reagents?.add_reagent(/datum/reagent/toxin/formaldehyde, 15)
 		target.add_traits(list(TRAIT_RESISTCOLD), type)
+		to_chat(chap, span_notice("[GLOB.deity] halts decay and embalms [target]'s mortal vessel."))
 		return BLESSING_SUCCESS
 	return BLESSING_FAILED
 
@@ -597,6 +604,9 @@
 		to_chat(user, span_notice("[GLOB.deity] mends the scales of [L]!"))
 		return BLESSING_SUCCESS
 	if(isliving(L))
+		if(HAS_FACTION(L, FACTION_CARP))
+			to_chat(user, span_notice("[L] already swims under the protection of Carp-Sie."))
+			return BLESSING_IGNORED
 		L.add_faction(FACTION_CARP)
 		to_chat(L, span_boldnotice("You are blessed by Carp-Sie. Wild space carp will no longer attack you."))
 		L.add_mood_event("blessing", /datum/mood_event/blessing)
