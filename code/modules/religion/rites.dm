@@ -507,7 +507,7 @@
 
 /datum/religion_rites/raise_undead
 	name = "Raise Undead"
-	desc = "Converts the target (or yourself) into an animated skeleton."
+	desc = "Converts the target (or yourself) into a fragile, brittle skeleton."
 	ritual_length = 50 SECONDS
 	ritual_invocations = list("Come forth from the abyss ...",
 	"... enter our realm ...",
@@ -552,10 +552,10 @@
 	if(!rite_target)
 		return FALSE
 	var/was_dead = (rite_target.stat == DEAD)
-	rite_target.set_species(/datum/species/skeleton)
+	rite_target.set_species(/datum/species/skeleton/brittle)
 	if(was_dead)
 		rite_target.revive(HEAL_ALL, force_grab_ghost = FALSE)
-	rite_target.visible_message(span_notice("[rite_target] has been transformed into an animated skeleton by the power of [GLOB.deity]!"))
+	rite_target.visible_message(span_notice("[rite_target] has been transformed into a brittle skeleton by the power of [GLOB.deity]!"))
 	return TRUE
 
 /datum/religion_rites/raise_dead

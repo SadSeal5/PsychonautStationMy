@@ -66,3 +66,29 @@
 		they're Flanderized into pun rolling JOKES, and it's really starting to get to them. \
 		You could say they're deeply RATTLED. Hah."
 	)
+
+/datum/species/skeleton/brittle
+	name = "Brittle Skeleton"
+	id = "brittle_skeleton"
+	examine_limb_id = SPECIES_SKELETON
+	damage_modifier = -15
+	coldmod = 1.5
+	heatmod = 1.2
+	inherent_traits = list(
+		TRAIT_EASYDISMEMBER,
+		TRAIT_FAKEDEATH,
+		TRAIT_GENELESS,
+		TRAIT_LIMBATTACHMENT,
+		TRAIT_NOBLOOD,
+		TRAIT_NOBREATH,
+		TRAIT_NO_DNA_COPY,
+		TRAIT_NO_UNDERWEAR,
+		TRAIT_UNHUSKABLE,
+	)
+
+/datum/species/skeleton/brittle/get_physical_attributes()
+	return "A fragile, reanimated skeleton raised by unholy rites. Its brittle bones lack immunity to vacuum, piercing projectiles, and extreme temperatures, and fracture easily under pressure."
+
+/datum/species/skeleton/brittle/get_species_description()
+	return "A creaking, brittle skeleton held together by necromantic favor."
+
