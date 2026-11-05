@@ -42,12 +42,22 @@
 	else
 		. += span_warning("The chain ballast is rewinding ([round(COOLDOWN_TIMELEFT(src, trip_timer) / 10, 0.1)]s left).")
 
+/obj/item/plasma_kusarigama/attack_secondary(mob/living/victim, mob/living/user, list/modifiers, list/attack_modifiers)
+	ranged_interact_with_atom_secondary(victim, user, modifiers)
+	return SECONDARY_ATTACK_CANCEL_ATTACK_CHAIN
+
 /obj/item/plasma_kusarigama/ranged_interact_with_atom_secondary(atom/interacting_with, mob/living/user, list/modifiers)
 	if(!isliving(interacting_with) || interacting_with == user)
 		return NONE
+	if(!(interacting_with in view(user)) || user.z != interacting_with.z)
+		return ITEM_INTERACT_BLOCKING
 	if(get_dist(user, interacting_with) > 4)
 		balloon_alert(user, "target too far!")
 		return ITEM_INTERACT_BLOCKING
+	for(var/turf/line_turf in get_line(get_turf(user), get_turf(interacting_with)))
+		if(istype(line_turf, /turf/closed) && line_turf.density)
+			balloon_alert(user, "blocked by terrain!")
+			return ITEM_INTERACT_BLOCKING
 	if(!COOLDOWN_FINISHED(src, trip_timer))
 		balloon_alert(user, "on cooldown!")
 		return ITEM_INTERACT_BLOCKING
@@ -59,8 +69,7 @@
 	var/mob/living/target = interacting_with
 	target.Knockdown(2 SECONDS)
 	var/obj/item/held = target.get_active_held_item()
-	if(held)
-		target.dropItemToGround(held)
+	if(held && target.dropItemToGround(held))
 		target.visible_message(span_danger("[user]'s kusarigama chain wraps around [target]'s wrist, violently wrenching [held] from their grip!"), span_userdanger("[user]'s kusarigama chain rips [held] out of your hands!"))
 	else
 		target.visible_message(span_danger("[user]'s kusarigama chain sweeps [target]'s legs out, slamming them to the ground!"), span_userdanger("[user]'s kusarigama sweeps your legs out!"))

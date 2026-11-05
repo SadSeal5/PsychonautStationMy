@@ -48,26 +48,31 @@
 
 /obj/item/nanite_daggers/attack(mob/living/target_mob, mob/living/user, list/modifiers, list/attack_modifiers)
 	. = ..()
-	if(. == TRUE)
-		return
 	if(!isliving(target_mob) || QDELETED(target_mob))
 		return
 
 	var/bonus_damage = 0
-	if(user.dir == target_mob.dir)
+	if(check_behind(user, target_mob) && !HAS_TRAIT(target_mob, TRAIT_BACKSTAB_IMMUNE))
 		bonus_damage = 16
 		target_mob.apply_status_effect(/datum/status_effect/silenced, 3 SECONDS)
 		to_chat(user, span_danger("Backstab! [target_mob] is silenced!"))
 		balloon_alert(user, "backstab!")
 
-	target_mob.apply_damage(16 + bonus_damage, BRUTE, def_zone = user.zone_selected, sharpness = SHARP_EDGED)
+	var/armor_block = target_mob.run_armor_check(user.zone_selected, MELEE, armour_penetration = armour_penetration)
+	target_mob.apply_damage(16 + bonus_damage, BRUTE, def_zone = user.zone_selected, blocked = armor_block, sharpness = SHARP_EDGED)
 	playsound(target_mob, 'sound/items/weapons/bladeslice.ogg', 50, TRUE)
 	do_sparks(2, TRUE, target_mob)
+
+/obj/item/nanite_daggers/attack_secondary(mob/living/victim, mob/living/user, list/modifiers, list/attack_modifiers)
+	ranged_interact_with_atom_secondary(victim, user, modifiers)
+	return SECONDARY_ATTACK_CANCEL_ATTACK_CHAIN
 
 /obj/item/nanite_daggers/ranged_interact_with_atom_secondary(atom/interacting_with, mob/living/user, list/modifiers)
 	if(!isliving(interacting_with) || interacting_with == user)
 		return NONE
-	if(!(interacting_with in view(user)))
+	if(user.incapacitated || user.buckled)
+		return ITEM_INTERACT_BLOCKING
+	if(user.z != interacting_with.z || !(interacting_with in view(user)))
 		balloon_alert(user, "not in sight!")
 		return ITEM_INTERACT_BLOCKING
 	if(charges <= 0)
@@ -79,11 +84,11 @@
 		return NONE
 
 	var/turf/behind = get_step(target_turf, REVERSE_DIR(interacting_with.dir))
-	if(!behind || behind.density || istype(behind, /turf/closed))
+	if(!behind || behind.density || istype(behind, /turf/closed) || behind.is_blocked_turf(exclude_mobs = TRUE))
 		behind = null
 		for(var/step_dir in list(turn(interacting_with.dir, 90), turn(interacting_with.dir, -90), interacting_with.dir))
 			var/turf/candidate = get_step(target_turf, step_dir)
-			if(candidate && !candidate.density && !istype(candidate, /turf/closed))
+			if(candidate && !candidate.density && !istype(candidate, /turf/closed) && !candidate.is_blocked_turf(exclude_mobs = TRUE))
 				behind = candidate
 				break
 

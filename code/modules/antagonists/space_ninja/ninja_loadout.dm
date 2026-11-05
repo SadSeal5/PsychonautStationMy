@@ -26,6 +26,8 @@
 	var/in_setup_phase = FALSE
 	/// Stoppable timer ID for the 3-minute timeout
 	var/setup_timer
+	/// Weakref to the mob being protected during setup phase
+	var/datum/weakref/protected_mob_ref
 
 /**
  * Starts the ninja setup phase upon gaining the antag datum:
@@ -40,6 +42,7 @@
 		return
 
 	in_setup_phase = TRUE
+	protected_mob_ref = WEAKREF(ninja)
 	ninja.alpha = 0
 	ninja.invisibility = INVISIBILITY_OBSERVER
 	ADD_TRAIT(ninja, TRAIT_IMMOBILIZED, REF(src))
@@ -64,6 +67,10 @@
 		setup_timer = null
 
 	var/mob/living/carbon/human/ninja = owner?.current
+	if(!istype(ninja) && protected_mob_ref)
+		ninja = protected_mob_ref.resolve()
+	protected_mob_ref = null
+
 	if(istype(ninja))
 		ninja.alpha = 255
 		ninja.invisibility = INVISIBILITY_NONE
@@ -94,7 +101,8 @@
 				var/obj/item/new_weapon = new new_weapon_type(ninja)
 				if(!ninja.equip_to_slot_if_possible(new_weapon, target_slot, disable_warning = TRUE))
 					if(!ninja.equip_to_slot_if_possible(new_weapon, ITEM_SLOT_BELT, disable_warning = TRUE))
-						ninja.put_in_hands(new_weapon)
+						if(!ninja.put_in_hands(new_weapon))
+							new_weapon.forceMove(get_turf(ninja))
 				var/obj/item/mod/control/mod = ninja.back
 				if(!istype(mod))
 					mod = locate(/obj/item/mod/control) in ninja.get_all_contents()
@@ -186,6 +194,8 @@
 	. = ..()
 	if(.)
 		return
+	if(!in_setup_phase || loadout_confirmed)
+		return TRUE
 	switch(action)
 		if("select_weapon")
 			var/choice = text2num(params["choice"])
@@ -195,6 +205,8 @@
 		if("set_slot")
 			var/slot = params["slot"]
 			var/value = text2num(params["value"])
+			if(!(value in list(1, 2)))
+				return TRUE
 			switch(slot)
 				if("star")
 					loadout_star = value
@@ -204,7 +216,6 @@
 					loadout_trap = value
 			return TRUE
 		if("confirm")
-			apply_loadout()
 			end_setup_phase()
 			to_chat(ui.user, span_notice("Spider Clan loadout synchronized."))
 			SStgui.update_uis(src)
