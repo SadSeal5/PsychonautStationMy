@@ -5,7 +5,7 @@
 	mask = /obj/item/clothing/mask/gas/ninja
 	ears = /obj/item/radio/headset
 	shoes = /obj/item/clothing/shoes/jackboots
-	suit_store = /obj/item/storage/belt/sheath/ninja
+	belt = /obj/item/storage/belt/sheath/ninja
 	l_pocket = /obj/item/grenade/c4/ninja
 	r_pocket = /obj/item/tank/internals/emergency_oxygen
 	internals_slot = ITEM_SLOT_RPOCKET

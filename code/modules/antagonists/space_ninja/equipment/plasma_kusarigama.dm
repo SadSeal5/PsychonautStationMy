@@ -49,15 +49,31 @@
 /obj/item/plasma_kusarigama/ranged_interact_with_atom_secondary(atom/interacting_with, mob/living/user, list/modifiers)
 	if(!isliving(interacting_with) || interacting_with == user)
 		return NONE
+	if(user.incapacitated || user.buckled || HAS_TRAIT(user, TRAIT_HANDS_BLOCKED))
+		return ITEM_INTERACT_BLOCKING
+	if(!isturf(user.loc))
+		return ITEM_INTERACT_BLOCKING
 	if(!(interacting_with in view(user)) || user.z != interacting_with.z)
 		return ITEM_INTERACT_BLOCKING
 	if(get_dist(user, interacting_with) > 4)
 		balloon_alert(user, "target too far!")
 		return ITEM_INTERACT_BLOCKING
-	for(var/turf/line_turf in get_line(get_turf(user), get_turf(interacting_with)))
-		if(istype(line_turf, /turf/closed) && line_turf.density)
+
+	var/turf/user_turf = get_turf(user)
+	var/turf/target_turf = get_turf(interacting_with)
+	for(var/turf/line_turf in (get_line(user_turf, target_turf) - user_turf))
+		if(line_turf.density)
 			balloon_alert(user, "blocked by terrain!")
 			return ITEM_INTERACT_BLOCKING
+		for(var/obj/obstacle in line_turf)
+			if(obstacle.density && !HAS_TRAIT(obstacle, TRAIT_CLIMBABLE))
+				balloon_alert(user, "blocked by obstacle!")
+				return ITEM_INTERACT_BLOCKING
+	for(var/obj/obstacle in user_turf)
+		if(obstacle.density && (obstacle.flags_1 & ON_BORDER_1) && obstacle.dir == get_dir(user_turf, target_turf))
+			balloon_alert(user, "blocked by obstacle!")
+			return ITEM_INTERACT_BLOCKING
+
 	if(!COOLDOWN_FINISHED(src, trip_timer))
 		balloon_alert(user, "on cooldown!")
 		return ITEM_INTERACT_BLOCKING
@@ -67,6 +83,7 @@
 	playsound(interacting_with, 'sound/items/weapons/whip.ogg', 50, TRUE)
 
 	var/mob/living/target = interacting_with
+	log_combat(user, target, "tripped and disarmed with", src)
 	target.Knockdown(2 SECONDS)
 	var/obj/item/held = target.get_active_held_item()
 	if(held && target.dropItemToGround(held))

@@ -114,6 +114,10 @@
 
 /// Called when the module is selected from the TGUI, radial or the action button
 /obj/item/mod/module/proc/on_select(mob/activator)
+	var/datum/antagonist/ninja/ninja_datum = activator?.mind?.has_antag_datum(/datum/antagonist/ninja)
+	if(ninja_datum?.in_setup_phase)
+		balloon_alert(activator, "suit calibrating!")
+		return
 	if(!mod.wearer && !(allow_flags & MODULE_ALLOW_UNWORN)) //No wearer and cannot be used unworn
 		balloon_alert(activator, "not equipped!")
 		return

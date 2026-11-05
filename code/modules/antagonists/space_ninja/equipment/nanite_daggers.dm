@@ -48,6 +48,8 @@
 
 /obj/item/nanite_daggers/attack(mob/living/target_mob, mob/living/user, list/modifiers, list/attack_modifiers)
 	. = ..()
+	if(. || HAS_TRAIT(user, TRAIT_PACIFISM) || HAS_TRAIT(user, TRAIT_CANT_ATTACK))
+		return
 	if(!isliving(target_mob) || QDELETED(target_mob))
 		return
 
@@ -62,6 +64,7 @@
 	target_mob.apply_damage(16 + bonus_damage, BRUTE, def_zone = user.zone_selected, blocked = armor_block, sharpness = SHARP_EDGED)
 	playsound(target_mob, 'sound/items/weapons/bladeslice.ogg', 50, TRUE)
 	do_sparks(2, TRUE, target_mob)
+	log_combat(user, target_mob, "struck with off-hand nanite dagger", src, addition = "(DAMAGE: [16 + bonus_damage])")
 
 /obj/item/nanite_daggers/attack_secondary(mob/living/victim, mob/living/user, list/modifiers, list/attack_modifiers)
 	ranged_interact_with_atom_secondary(victim, user, modifiers)
@@ -70,7 +73,10 @@
 /obj/item/nanite_daggers/ranged_interact_with_atom_secondary(atom/interacting_with, mob/living/user, list/modifiers)
 	if(!isliving(interacting_with) || interacting_with == user)
 		return NONE
-	if(user.incapacitated || user.buckled)
+	if(user.incapacitated || user.buckled || HAS_TRAIT(user, TRAIT_HANDS_BLOCKED))
+		return ITEM_INTERACT_BLOCKING
+	if(!isturf(user.loc))
+		balloon_alert(user, "cannot step from inside!")
 		return ITEM_INTERACT_BLOCKING
 	if(user.z != interacting_with.z || !(interacting_with in view(user)))
 		balloon_alert(user, "not in sight!")

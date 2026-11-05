@@ -150,7 +150,7 @@ export const AntagInfoNinja = () => {
           accentBg: 'rgba(251, 191, 36, 0.12)',
           description:
             'Synthesizes monomolecular energy shurikens that discharge high-grade EMP bursts upon impact.',
-          statBadge: '20 ENERGY // 0.5S CD // EMP',
+          statBadge: '10 ENERGY // 0.5S CD // EMP',
         },
         {
           value: 2,
@@ -162,7 +162,7 @@ export const AntagInfoNinja = () => {
           accentBg: 'rgba(196, 181, 253, 0.12)',
           description:
             'Throws tethered kunai. Knocks victims down and reels them in prone, or pulls the user to walls with a smooth landing.',
-          statBadge: '20 ENERGY // 7S CD // TETHER',
+          statBadge: '10 ENERGY // 7S CD // TETHER',
         },
       ],
     },
@@ -214,7 +214,7 @@ export const AntagInfoNinja = () => {
           accentBg: 'rgba(56, 189, 248, 0.12)',
           description:
             'Fires an active hardlight projector deploying a reinforced capture barrier to securely anchor targets.',
-          statBadge: '100 ENERGY // 15S CD // HARDLIGHT',
+          statBadge: '30 ENERGY // 15S CD // HARDLIGHT',
         },
         {
           value: 2,
@@ -226,7 +226,7 @@ export const AntagInfoNinja = () => {
           accentBg: 'rgba(0, 229, 255, 0.12)',
           description:
             'Projects a lifelike holographic decoy charging targets and absorbing attacks. Grants 2.5s cloaking. Decoy overloads with an EMP flash pulse.',
-          statBadge: '240 ENERGY // 24S CD // DECOY',
+          statBadge: '120 ENERGY // 24S CD // DECOY',
         },
       ],
     },
@@ -242,7 +242,7 @@ export const AntagInfoNinja = () => {
           iconState: 'dispenser_kunai',
           accentColor: '#c4b5fd',
           controls: 'Click pinned action to synthesize // Throw at target or structure',
-          power: '20 energy units per synthesis // 7.0s cooldown',
+          power: '10 energy units per synthesis // 7.0s cooldown',
           description:
             'Fabricates lightweight titanium kunai linked by high-tensile nanite tow cables. Striking living targets knocks them down and reels them across the room directly to your feet along a visible tether beam. Striking dense walls or machinery hauls you forward with a smooth, upright landing.',
           tacticalTip:
@@ -255,7 +255,7 @@ export const AntagInfoNinja = () => {
           iconState: 'dispenser_ninja',
           accentColor: '#fbbf24',
           controls: 'Click pinned action to synthesize // Throw at target',
-          power: '20 energy units per synthesis // 0.5s cooldown',
+          power: '10 energy units per synthesis // 0.5s cooldown',
           description:
             'Synthesizes monomolecular energy shurikens with embedded electromagnetic discharge emitters. On impact, releases a heavy EMP burst. If embedded in carbon prey, continues pulsing periodically with secondary EMP shocks.',
           tacticalTip:
@@ -296,7 +296,7 @@ export const AntagInfoNinja = () => {
           iconState: 'decoy_ninja',
           accentColor: '#00e5ff',
           controls: 'Pinned Suit Action or Suit Menu (Instant Use)',
-          power: '240 energy units per deployment // 24s cooldown',
+          power: '120 energy units per deployment // 24s cooldown',
           description:
             'A state-of-the-art Spider Clan misdirection system. When activated, projects a lifelike holographic decoy of the user that charges towards targets, drawing enemy fire and attacks. The ninja enters brief optical camouflage (alpha = 25 and silent footsteps) for 2.5 seconds to reposition. Upon taking damage or after 5 seconds, the holographic decoy overloads with an electromagnetic flash pulse, detonating an EMP and blinding/disorienting pursuers in a 3-tile radius with an intense flashbang overload.',
           tacticalTip:
@@ -309,7 +309,7 @@ export const AntagInfoNinja = () => {
           iconState: 'energy_net',
           accentColor: '#38bdf8',
           controls: 'Select action and target mob with ranged projector',
-          power: '100 energy units per shot // 15s cooldown',
+          power: '30 energy units per shot // 15s cooldown',
           description:
             'Fires an expanding hardlight projector that establishes a reinforced capture cage around the target, locking them in place on the tile and preventing all movement until dismantled or destroyed.',
           tacticalTip:

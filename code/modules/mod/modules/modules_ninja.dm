@@ -822,6 +822,8 @@
 		balloon_alert(mod.wearer, "already on self!")
 		return
 	var/distance = get_dist(mod.wearer, linked_weapon)
+	if(mod.wearer.z != linked_weapon.z)
+		distance = 30
 	var/in_view = (linked_weapon in view(mod.wearer)) && !(linked_weapon in get_turf(mod.wearer))
 	if(!in_view && !drain_power(use_energy_cost * distance))
 		balloon_alert(mod.wearer, "not enough charge!")
@@ -856,7 +858,7 @@
 	if(caught)
 		if(mod.wearer.is_holding(linked_weapon))
 			alert = "you catch [linked_weapon.name]"
-		else
+		else if(linked_weapon.loc == get_turf(src))
 			alert = "[linked_weapon.name] lands under you"
 	else
 		do_sparks(5, FALSE, linked_weapon)

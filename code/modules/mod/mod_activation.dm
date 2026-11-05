@@ -154,8 +154,12 @@
 			playsound(src, 'sound/machines/scanner/scanbuzz.ogg', 25, TRUE, SILENCED_SOUND_EXTRARANGE)
 			return FALSE
 	REMOVE_TRAIT(part, TRAIT_NODROP, MOD_TRAIT)
+	var/obj/item/suit_storage_item = wearer.s_store
 	var/preserve_suit_storage = part_datum.overslotting && can_preserve_suit_storage(part_datum.overslotting, wearer.s_store)
 	transfer_part_to_loc(part, src, force = TRUE, preserve_suit_storage = preserve_suit_storage)
+	if(!preserve_suit_storage && suit_storage_item && !QDELETED(suit_storage_item) && suit_storage_item.loc == get_turf(wearer))
+		if(!wearer.equip_to_slot_if_possible(suit_storage_item, ITEM_SLOT_BELT, disable_warning = TRUE))
+			wearer.put_in_hands(suit_storage_item)
 	if(part_datum.overslotting)
 		var/obj/item/overslot = part_datum.overslotting
 		if(!QDELING(wearer) && !wearer.equip_to_slot_if_possible(overslot, overslot.slot_flags, qdel_on_fail = FALSE, disable_warning = TRUE))
@@ -172,6 +176,10 @@
 
 /// Starts the activation sequence, where parts of the suit activate one by one until the whole suit is on.
 /obj/item/mod/control/proc/toggle_activate(mob/user, force_deactivate = FALSE)
+	var/datum/antagonist/ninja/ninja_datum = user?.mind?.has_antag_datum(/datum/antagonist/ninja)
+	if(ninja_datum?.in_setup_phase)
+		balloon_alert(user, "suit calibrating!")
+		return FALSE
 	if(!wearer)
 		if(!force_deactivate)
 			balloon_alert(user, "not equipped!")

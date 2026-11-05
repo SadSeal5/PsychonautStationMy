@@ -45,6 +45,7 @@
 	protected_mob_ref = WEAKREF(ninja)
 	ninja.alpha = 0
 	ninja.invisibility = INVISIBILITY_OBSERVER
+	ninja.density = FALSE
 	ADD_TRAIT(ninja, TRAIT_IMMOBILIZED, REF(src))
 	ADD_TRAIT(ninja, TRAIT_HANDS_BLOCKED, REF(src))
 	ADD_TRAIT(ninja, TRAIT_GODMODE, REF(src))
@@ -74,6 +75,7 @@
 	if(istype(ninja))
 		ninja.alpha = 255
 		ninja.invisibility = INVISIBILITY_NONE
+		ninja.density = TRUE
 		REMOVE_TRAIT(ninja, TRAIT_IMMOBILIZED, REF(src))
 		REMOVE_TRAIT(ninja, TRAIT_HANDS_BLOCKED, REF(src))
 		REMOVE_TRAIT(ninja, TRAIT_GODMODE, REF(src))
@@ -110,6 +112,26 @@
 					var/obj/item/mod/module/weapon_recall/recall = locate(/obj/item/mod/module/weapon_recall) in mod.modules
 					if(recall)
 						recall.set_weapon(new_weapon)
+		else
+			var/obj/item/energy_katana/katana = locate(/obj/item/energy_katana) in ninja.get_all_contents()
+			var/obj/item/storage/belt/sheath/ninja/sheath = locate(/obj/item/storage/belt/sheath/ninja) in ninja.get_all_contents()
+			if(!sheath || !katana)
+				if(!sheath)
+					sheath = new /obj/item/storage/belt/sheath/ninja(ninja)
+					if(!ninja.equip_to_slot_if_possible(sheath, ITEM_SLOT_BELT, disable_warning = TRUE))
+						if(!ninja.put_in_hands(sheath))
+							sheath.forceMove(get_turf(ninja))
+				if(!katana)
+					katana = locate(/obj/item/energy_katana) in ninja.get_all_contents()
+					if(!katana)
+						katana = new(sheath)
+			var/obj/item/mod/control/mod = ninja.back
+			if(!istype(mod))
+				mod = locate(/obj/item/mod/control) in ninja.get_all_contents()
+			if(istype(mod) && katana)
+				var/obj/item/mod/module/weapon_recall/recall = locate(/obj/item/mod/module/weapon_recall) in mod.modules
+				if(recall)
+					recall.set_weapon(katana)
 
 	apply_loadout()
 	SStgui.update_uis(src)
