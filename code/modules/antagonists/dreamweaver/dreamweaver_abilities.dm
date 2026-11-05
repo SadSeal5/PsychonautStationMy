@@ -195,7 +195,7 @@
 	button_icon = 'icons/mob/actions/actions_dreamweaver.dmi'
 	button_icon_state = "mind_web"
 	background_icon = 'icons/mob/actions/actions_dreamweaver.dmi'
-	background_icon_state = "bg_dreamweaver"
+	background_icon_state = "bg_dreamweaver'
 	overlay_icon_state = null
 	active_msg = "You reach out with psychic filaments..."
 	deactive_msg = "You withdraw your mental threads."
