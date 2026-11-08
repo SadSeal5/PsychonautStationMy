@@ -90,6 +90,8 @@
 	var/ling_class = get_ling_class(H)
 	if(!ling_class)
 		return list()
+	if(ling_class == SHADOWLING_ROLE_MAIN && !isshadowling(H) && !isshadowling_ascended(H))
+		return list()
 
 	var/datum/antagonist/shadowling/antag_datum = H?.mind?.has_antag_datum(/datum/antagonist/shadowling)
 	var/datum/team/shadow_hive/hive = get_shadow_hive()

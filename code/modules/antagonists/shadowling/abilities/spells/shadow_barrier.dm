@@ -20,8 +20,7 @@
 		end_barrier(WEAKREF(owner))
 	return ..()
 
-/datum/action/cooldown/shadowling/shadow_barrier/Trigger(mob/clicker, trigger_flags, atom/target)
-	. = ..()
+/datum/action/cooldown/shadowling/shadow_barrier/Activate(atom/target)
 	var/mob/living/carbon/human/H = owner
 	if(!istype(H) || !can_use(H))
 		return FALSE

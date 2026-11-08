@@ -24,18 +24,21 @@
 	var/smoke_stun_chance = 25
 	var/smoke_stun_time = 2 SECONDS
 	var/static/sfx_emp = 'sound/effects/empulse.ogg'
+	var/secondary_mode = FALSE
 
 /datum/action/cooldown/shadowling/veil/Trigger(mob/clicker, trigger_flags, atom/target)
-	. = ..()
-	if(!.)
-		return FALSE
+	secondary_mode = (trigger_flags & TRIGGER_SECONDARY_ACTION) ? TRUE : FALSE
+	return ..()
+
+/datum/action/cooldown/shadowling/veil/Activate(atom/target)
 	if(!istype(owner))
 		return FALSE
 	var/mob/living/carbon/human/H = owner
 	if(!can_use(H))
 		return FALSE
 
-	var/use_smoke = (trigger_flags & TRIGGER_SECONDARY_ACTION) ? TRUE : FALSE
+	var/use_smoke = secondary_mode
+	secondary_mode = FALSE
 	if(use_smoke)
 		return do_smoke(H)
 	return do_veil(H)

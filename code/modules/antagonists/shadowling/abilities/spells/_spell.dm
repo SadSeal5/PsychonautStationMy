@@ -35,6 +35,11 @@
 	if(!hive)
 		owner.balloon_alert(owner, "hive connection severed")
 		return FALSE
+	if(!istype(src, /datum/action/cooldown/shadowling/hatch) && !istype(src, /datum/action/cooldown/shadowling/commune))
+		if(H in hive.lings)
+			if(!isshadowling(H) && !isshadowling_ascended(H) && hive.get_ling_role(H) != SHADOWLING_ROLE_LESSER)
+				owner.balloon_alert(owner, "must hatch first")
+				return FALSE
 	if(requires_dark_user && !is_dark(H))
 		owner.balloon_alert(owner, "too bright")
 		return FALSE
@@ -69,33 +74,26 @@
 /datum/action/cooldown/shadowling/proc/DoEffect(mob/living/carbon/human/H, atom/target)
 	return FALSE
 
-/datum/action/cooldown/shadowling/Trigger(mob/clicker, trigger_flags, atom/target)
-	. = ..()
-	if(!.)
-		return FALSE
-	if(click_to_activate)
-		return .
+/datum/action/cooldown/shadowling/Activate(atom/target)
 	if(!istype(owner))
 		return FALSE
 	if(!can_use(owner))
-		enable()
 		return FALSE
-	var/list/targets = CollectTargets(owner, target)
+	var/atom/explicit = (target == owner) ? null : target
+	var/list/targets = CollectTargets(owner, explicit)
 	if(!ValidateTargets(owner, targets))
-		enable()
 		owner.balloon_alert(owner, "no valid targets")
-		return
+		return FALSE
 	if(channel_time > 0)
 		if(!PerformChannel(owner, null))
-			return
-	disable()
+			return FALSE
 	var/success = DoEffectOnTargets(owner, targets)
 	if(QDELETED(src))
-		return
+		return TRUE
 	if(success)
 		StartCooldown()
-	else
-		enable()
+		return TRUE
+	return FALSE
 
 /datum/action/cooldown/shadowling/proc/CollectTargets(mob/living/carbon/human/H, atom/explicit)
 	if(explicit)
@@ -184,11 +182,6 @@
 	if(length(cands))
 		return pick(cands)
 	return null
-
-/datum/action/cooldown/shadowling/process()
-	. = ..()
-	if(!owner || (next_use_time - world.time) <= 0)
-		enable()
 
 /datum/action/cooldown/shadowling/proc/get_shadowling_antag_of(mob/living/carbon/human/H)
 	if(!istype(H))

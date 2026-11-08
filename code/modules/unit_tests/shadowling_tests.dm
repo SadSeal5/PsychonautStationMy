@@ -19,6 +19,37 @@
 	var/datum/action/cooldown/shadowling/commune/comm_action = locate(/datum/action/cooldown/shadowling/commune) in ling_mob.actions
 	TEST_ASSERT_NOTNULL(comm_action, "Shadowling was not granted commune action upon initialization.")
 
+	// Unhatched shadowling should not have abilities prior to hatching
+	TEST_ASSERT_NULL(locate(/datum/action/cooldown/shadowling/glare) in ling_mob.actions, "Unhatched shadowling was granted glare action.")
+	TEST_ASSERT_NULL(locate(/datum/action/cooldown/shadowling/veil) in ling_mob.actions, "Unhatched shadowling was granted veil action.")
+	TEST_ASSERT_NULL(locate(/datum/action/cooldown/shadowling/enthrall) in ling_mob.actions, "Unhatched shadowling was granted enthrall action.")
+	TEST_ASSERT_NULL(locate(/datum/action/cooldown/shadowling/toggle_night_vision) in ling_mob.actions, "Unhatched shadowling was granted toggle_night_vision action.")
+
+/// Tests Shadowling ability unlocking and execution upon hatching
+/datum/unit_test/shadowling_abilities_execution/Run()
+	var/mob/living/carbon/human/ling_mob = allocate(/mob/living/carbon/human/consistent, run_loc_floor_bottom_left)
+	ling_mob.mind_initialize()
+	ling_mob.mock_client = new()
+
+	var/datum/antagonist/shadowling/ling_antag = ling_mob.mind.add_antag_datum(/datum/antagonist/shadowling)
+	TEST_ASSERT_NOTNULL(ling_antag, "Shadowling antagonist datum could not be added.")
+
+	var/datum/team/shadow_hive/hive = get_shadow_hive()
+	TEST_ASSERT_NOTNULL(hive, "Shadowling hive team was not created.")
+
+	var/datum/action/cooldown/shadowling/glare/glare_action = locate(/datum/action/cooldown/shadowling/glare) in ling_mob.actions
+	TEST_ASSERT_NULL(glare_action, "Glare action was present before hatching.")
+
+	ling_mob.set_species(/datum/species/shadow/shadowling)
+	hive.sync_after_event(ling_mob)
+
+	glare_action = locate(/datum/action/cooldown/shadowling/glare) in ling_mob.actions
+	TEST_ASSERT_NOTNULL(glare_action, "Shadowling was not granted glare action after hatching.")
+
+	var/triggered = glare_action.Trigger(ling_mob)
+	TEST_ASSERT(triggered, "Glare action failed to trigger.")
+	TEST_ASSERT(glare_action.next_use_time > world.time, "Glare action did not enter cooldown.")
+
 /// Tests Thrall tumor insertion, antagonist assignment, hive tracking, and extraction
 /datum/unit_test/shadow_thrall_lifecycle/Run()
 	var/mob/living/carbon/human/victim = allocate(/mob/living/carbon/human/consistent, run_loc_floor_bottom_left)

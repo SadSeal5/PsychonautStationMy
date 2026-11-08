@@ -50,8 +50,7 @@
 		return FALSE
 	return TRUE
 
-/datum/action/cooldown/shadowling/shadow_phase/Trigger(mob/clicker, trigger_flags, atom/target)
-	. = ..()
+/datum/action/cooldown/shadowling/shadow_phase/Activate(atom/target)
 	var/mob/living/carbon/human/H = owner
 	if(!istype(H))
 		return FALSE

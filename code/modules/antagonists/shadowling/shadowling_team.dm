@@ -74,7 +74,8 @@
 		members += H.mind
 	to_chat(H, span_notice("You feel the whisper of the hive echoing in your mind..."))
 	grant_comm_action(H)
-	grant_night_vision(H)
+	if(role == SHADOWLING_ROLE_THRALL || isshadowling(H) || isshadowling_ascended(H))
+		grant_night_vision(H)
 	update_objective_explanations()
 
 /datum/team/shadow_hive/proc/leave_member(mob/living/carbon/human/H)
@@ -239,6 +240,8 @@
 	sanitize()
 	refresh_ascension_thralls_needed()
 	update_objective_explanations()
+	if((actor in lings) && !isshadowling(actor) && !isshadowling_ascended(actor))
+		return
 
 	for(var/datum/action/cooldown/shadowling/hive_sync/existing in actor.actions)
 		qdel(existing)
