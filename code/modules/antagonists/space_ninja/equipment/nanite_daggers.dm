@@ -63,7 +63,6 @@
 	var/armor_block = target_mob.run_armor_check(user.zone_selected, MELEE, armour_penetration = armour_penetration)
 	target_mob.apply_damage(16 + bonus_damage, BRUTE, def_zone = user.zone_selected, blocked = armor_block, sharpness = SHARP_EDGED)
 	playsound(target_mob, 'sound/items/weapons/bladeslice.ogg', 50, TRUE)
-	do_sparks(2, TRUE, target_mob)
 	log_combat(user, target_mob, "struck with off-hand nanite dagger", src, addition = "(DAMAGE: [16 + bonus_damage])")
 
 /obj/item/nanite_daggers/attack_secondary(mob/living/victim, mob/living/user, list/modifiers, list/attack_modifiers)
