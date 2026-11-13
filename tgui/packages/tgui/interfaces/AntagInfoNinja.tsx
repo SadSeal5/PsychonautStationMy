@@ -60,7 +60,7 @@ type SlotDef = {
   title: string;
   slotNum: number;
   currentValue: number;
-  options: [OptionDef, OptionDef];
+  options: OptionDef[];
 };
 
 type DossierItem = {
@@ -105,18 +105,18 @@ export const AntagInfoNinja = () => {
       accentColor: '#22c55e',
       accentBg: 'rgba(34, 197, 94, 0.12)',
       description:
-        'Spider Clan monomolecular plasma blade. Balanced offense and defense with blade reflection. RMB combat dash to instantly phase to targets or positions.',
-      statBadge: '30 FORCE // 50% BLOCK // PHASE DASH',
+        'Spider Clan monomolecular plasma blade with a 50% block chance. RMB combat dash (3 charges) instantly phases and strikes targets; downing a conscious foe refunds 1 charge.',
+      statBadge: '30 FORCE // 50% BLOCK // EXECUTE REFUND',
     },
     {
       value: 2,
       title: 'Plasma Kusarigama',
-      tag: 'REACH 2 // TRIP & DISARM',
+      tag: 'REACH 2 // TRIP & REEL',
       iconState: 'plasma_kusarigama',
       accentColor: '#10b981',
       accentBg: 'rgba(16, 185, 129, 0.12)',
       description:
-        'Spider Clan chained scythe and heavy plasma ballast. Extended 2-tile melee reach. RMB lashes tether chain to trip and disarm targets at up to 4 tiles range.',
+        'Spider Clan chained scythe with 2-tile reach. RMB lashes up to 4 tiles to trip and smart-disarm (active or off-hand); already-prone targets are dragged 2 tiles into melee reach.',
       statBadge: '24 FORCE // REACH 2 // 6S TRIP CD',
     },
     {
@@ -127,8 +127,8 @@ export const AntagInfoNinja = () => {
       accentColor: '#84cc16',
       accentBg: 'rgba(132, 204, 22, 0.12)',
       description:
-        'Twin high-frequency nanite daggers. Attacks deliver rapid double strikes. Backstabs deal +16 critical damage and silence victims. RMB shadow step blink (1 charge).',
-      statBadge: '16x2 FORCE // 60 AP // 1 BLINK CHARGE',
+        'Twin high-frequency daggers delivering rapid double strikes and +16 silent backstabs. RMB shadow step (1 charge) recharges in 4s from cloak and resets instantly on execute.',
+      statBadge: '16x2 FORCE // 60 AP // CLOAK RESET',
     },
   ];
 
@@ -164,6 +164,18 @@ export const AntagInfoNinja = () => {
             'Throws tethered kunai. Knocks victims down and reels them in prone, or pulls the user to walls with a smooth landing.',
           statBadge: '10 ENERGY // 7S CD // TETHER',
         },
+        {
+          value: 3,
+          title: 'Paralytic Venom Dart Dispenser',
+          badge: 'ALTERNATIVE',
+          typeTag: 'NEUROTOXIN DART',
+          iconState: 'dispenser_venom',
+          accentColor: '#a855f7',
+          accentBg: 'rgba(168, 85, 247, 0.12)',
+          description:
+            'Fabricates silent venom darts that inflict 22 stamina trauma, 2s confusion, 2.5s vocal silence, and lingering toxic embed drain.',
+          statBadge: '10 ENERGY // 3.5S CD // SILENCE',
+        },
       ],
     },
     {
@@ -195,6 +207,18 @@ export const AntagInfoNinja = () => {
           description:
             'Specialized Spider Clan biomedical matrix that deploys surgical nanomachines into the bloodstream to rapidly clot hemorrhaging wounds, knit damaged tissue, and regenerate burns. Consumes 0 suit power, utilizing self-contained nanite charges refilled with Radium.',
           statBadge: '0 ENERGY // 3 CHARGES // 5U RADIUM/CHARGE',
+        },
+        {
+          value: 3,
+          title: 'Neural Reflex Overdrive',
+          badge: 'ALTERNATIVE',
+          typeTag: 'KINETIC STIM CORE',
+          iconState: 'reflex_overdrive',
+          accentColor: '#f59e0b',
+          accentBg: 'rgba(245, 158, 11, 0.12)',
+          description:
+            'Floods the nervous system for 8s, restoring 35 stamina immediately plus 4/s, boosting move and attack speed, and ignoring injury slowdown.',
+          statBadge: '80 ENERGY // 25S CD // 8S HASTE',
         },
       ],
     },
@@ -228,14 +252,26 @@ export const AntagInfoNinja = () => {
             'Projects a lifelike holographic decoy charging targets and absorbing attacks. Grants 2.5s cloaking. Decoy overloads with an EMP flash pulse.',
           statBadge: '120 ENERGY // 24S CD // DECOY',
         },
+        {
+          value: 3,
+          title: 'Shadow Smoke Shroud',
+          badge: 'ALTERNATIVE',
+          typeTag: 'SMOKE & RECLOAK',
+          iconState: 'smoke_ninja',
+          accentColor: '#06b6d4',
+          accentBg: 'rgba(6, 182, 212, 0.12)',
+          description:
+            'Deploys a dense disorienting smoke cloud, extinguishes flames on you, blinds nearby unmasked foes, and resets optical cloak cooldown.',
+          statBadge: '60 ENERGY // 20S CD // CLOAK RESET',
+        },
       ],
     },
   ];
 
-  // Active loadout dossier specifications based on chosen slots
-  const chosenDossier: DossierItem[] = [
-    slot_star === 2
-      ? {
+  const getStarDossier = (): DossierItem => {
+    switch (slot_star) {
+      case 2:
+        return {
           title: 'Grappling Kunai Dispenser',
           badge: 'SLOT 1',
           typeTag: 'TETHER HOOK // REEL & DRAG',
@@ -247,8 +283,23 @@ export const AntagInfoNinja = () => {
             'Fabricates lightweight titanium kunai linked by high-tensile nanite tow cables. Striking living targets knocks them down and reels them across the room directly to your feet along a visible tether beam. Striking dense walls or machinery hauls you forward with a smooth, upright landing.',
           tacticalTip:
             'Snatch isolated personnel into dark corridors for silent assassinations while they remain prone, or slingshot across wide corridors and hull breaches to bypass barriers.',
-        }
-      : {
+        };
+      case 3:
+        return {
+          title: 'Paralytic Venom Dart Dispenser',
+          badge: 'SLOT 1',
+          typeTag: 'NEUROTOXIN DART // SILENCE',
+          iconState: 'dispenser_venom',
+          accentColor: '#a855f7',
+          controls: 'Click pinned action to synthesize // Throw at target',
+          power: '10 energy units per synthesis // 3.5s cooldown',
+          description:
+            'Synthesizes sleek purple-emerald Spider Clan darts tipped with a fast-acting paralytic neurotoxin. Impact deals 22 stamina damage, inflicts 2s confusion, and silences the victim for 2.5s with zero EMP signature. Embedded darts periodically seep additional stamina drain.',
+          tacticalTip:
+            'Use venom darts to mute witnesses before they can call security over radio, then follow up with Kusarigama reel-in or Nanite Dagger backstabs.',
+        };
+      default:
+        return {
           title: 'EMP Shuriken Dispenser',
           badge: 'SLOT 1',
           typeTag: 'ION DISRUPTOR // ORDNANCE',
@@ -260,9 +311,14 @@ export const AntagInfoNinja = () => {
             'Synthesizes monomolecular energy shurikens with embedded electromagnetic discharge emitters. On impact, releases a heavy EMP burst. If embedded in carbon prey, continues pulsing periodically with secondary EMP shocks.',
           tacticalTip:
             'Thrown shurikens are uncatchable. Use them to shut down cyborgs, disable security laser carbines, drain electronics, and extinguish room lighting.',
-        },
-    slot_heal === 2
-      ? {
+        };
+    }
+  };
+
+  const getHealDossier = (): DossierItem => {
+    switch (slot_heal) {
+      case 2:
+        return {
           title: 'Nanite Cellular Repair Matrix',
           badge: 'SLOT 2',
           typeTag: 'BIOMEDICAL MATRIX // RESTORATION',
@@ -271,11 +327,26 @@ export const AntagInfoNinja = () => {
           controls: 'Click pinned action to engage (Usable while incapacitated)',
           power: '0 Energy (Does not consume suit power // 3 charges, 5u Radium per charge // 15s cooldown)',
           description:
-            'Floods the operative\'s circulation with autonomous medical nanomachines and synthetic coagulants. The microscopic swarm seals internal hemorrhaging, reconstructs torn muscle and bone, and restores lost blood volume. Draws no power from the suit, relying on internal nanite reserves refueled with Radium.',
+            "Floods the operative's circulation with autonomous medical nanomachines and synthetic coagulants. The microscopic swarm seals internal hemorrhaging, reconstructs torn muscle and bone, and restores lost blood volume. Draws no power from the suit, relying on internal nanite reserves refueled with Radium.",
           tacticalTip:
             'Acts as an independent trauma response unit that keeps you fighting without eating into your cloak or mobility power. If charges are spent, top up directly from beakers or bottles containing Radium (5u per charge).',
-        }
-      : {
+        };
+      case 3:
+        return {
+          title: 'Neural Reflex Overdrive',
+          badge: 'SLOT 2',
+          typeTag: 'KINETIC STIM CORE // OVERDRIVE',
+          iconState: 'reflex_overdrive',
+          accentColor: '#f59e0b',
+          controls: 'Pinned Suit Action or Suit Menu (Instant Use)',
+          power: '80 energy units per surge // 25s cooldown',
+          description:
+            'Discharges a crimson-gold synaptic surge that restores 35 stamina immediately and 4 stamina per second for 8 seconds. Grants a dramatic boost to movement and attack speed while granting full immunity to injury-based movement slowdown.',
+          tacticalTip:
+            'Pop overdrive right before diving a fortified room or chasing down fleeing targets; injury slowdown immunity keeps you at peak velocity even under heavy fire.',
+        };
+      default:
+        return {
           title: 'Combat Adrenaline Boost',
           badge: 'SLOT 2',
           typeTag: 'STIMULANT SHOCK // NEURAL OVERRIDE',
@@ -287,9 +358,14 @@ export const AntagInfoNinja = () => {
             'Triggers an emergency autonomic neuro-chemical override. Instantly purges all stuns, knockdowns, paralysis, and up to 200 stamina damage while flooding the bloodstream with combat stimulants.',
           tacticalTip:
             'The ultimate escape countermeasure. If ambushed by flashbangs, tasers, or stun batons, pop adrenaline immediately to regain control and retaliate before restraints can be placed.',
-        },
-    slot_trap === 2
-      ? {
+        };
+    }
+  };
+
+  const getTrapDossier = (): DossierItem => {
+    switch (slot_trap) {
+      case 2:
+        return {
           title: 'Holographic Decoy Module',
           badge: 'SLOT 3',
           typeTag: 'CYBER DECOY // MISDIRECTION',
@@ -301,8 +377,23 @@ export const AntagInfoNinja = () => {
             'A state-of-the-art Spider Clan misdirection system. When activated, projects a lifelike holographic decoy of the user that charges towards targets, drawing enemy fire and attacks. The ninja enters brief optical camouflage (alpha = 25 and silent footsteps) for 2.5 seconds to reposition. Upon taking damage or after 5 seconds, the holographic decoy overloads with an electromagnetic flash pulse, detonating an EMP and blinding/disorienting pursuers in a 3-tile radius with an intense flashbang overload.',
           tacticalTip:
             'Trigger the decoy when ambushed or breaching high-threat areas. The decoy will absorb attacks while you slip away invisibly. The enhanced flash overload disorients and knocks down nearby enemies, opening them up for lethal katana strikes.',
-        }
-      : {
+        };
+      case 3:
+        return {
+          title: 'Shadow Smoke Shroud',
+          badge: 'SLOT 3',
+          typeTag: 'SMOKE & RECLOAK // EVASION',
+          iconState: 'smoke_ninja',
+          accentColor: '#06b6d4',
+          controls: 'Pinned Suit Action or Suit Menu (Instant Use)',
+          power: '60 energy units per deployment // 20s cooldown',
+          description:
+            'Erupts a 3-tile dense smoke cloud that extinguishes active fires on your suit, disorients and blurs vision of nearby unmasked adversaries without internals, and instantaneously resets the cooldown on your Advanced Mimetic Stealth module.',
+          tacticalTip:
+            'Use immediately after breaking cloak in an ambush or when set ablaze: extinguish flames, blind pursuers, and re-engage stealth without waiting on cloak recharge.',
+        };
+      default:
+        return {
           title: 'Energy Net Projector',
           badge: 'SLOT 3',
           typeTag: 'HARDLIGHT RESTRAINT // CAPTURE',
@@ -314,8 +405,12 @@ export const AntagInfoNinja = () => {
             'Fires an expanding hardlight projector that establishes a reinforced capture cage around the target, locking them in place on the tile and preventing all movement until dismantled or destroyed.',
           tacticalTip:
             'Ideal for taking key station personnel alive or neutralizing aggressive pursuers without wasting lethal blade energy.',
-        },
-  ];
+        };
+    }
+  };
+
+  // Active loadout dossier specifications based on chosen slots
+  const chosenDossier: DossierItem[] = [getStarDossier(), getHealDossier(), getTrapDossier()];
 
   const getCoreWeaponDossier = (): DossierItem => {
     switch (loadout_weapon) {
@@ -327,12 +422,12 @@ export const AntagInfoNinja = () => {
           iconState: 'plasma_kusarigama',
           iconFile: weapon_icon,
           accentColor: '#10b981',
-          controls: 'LMB reach-2 strike // RMB chain trip & disarm',
+          controls: 'LMB reach-2 strike // RMB chain trip, smart disarm & prone reel-in',
           power: 'None (6s trip cooldown)',
           description:
-            'A Spider Clan chained scythe and heavy ballast infused with superheated plasma. Features extended 2-tile reach to cleave through enemies beyond normal strike distance. Right-clicking a target wraps a nanite chain around their limbs to trip and disarm them at a distance.',
+            'A Spider Clan chained scythe and heavy plasma ballast with extended 2-tile reach. Right-clicking lashes up to 4 tiles to knock targets down and smart-disarm either their active or off-hand item. Targets already lying down are dragged 2 tiles directly into reach-2 melee range.',
           tacticalTip:
-            'Keep enemies at 2 tiles distance for spacing and crowd control. Right-click armed opponents up to 4 tiles away to wrench weapons straight from their hands and send them tumbling to the deck.',
+            'Open with a Grappling Kunai or Shuriken to drop targets, then RMB with the Kusarigama to strip off-hand weapons and drag prone foes straight into 2-tile cleave range.',
         };
       case 3:
         return {
@@ -343,11 +438,11 @@ export const AntagInfoNinja = () => {
           iconFile: weapon_icon,
           accentColor: '#84cc16',
           controls: 'LMB rapid dual stab // RMB shadow step blink',
-          power: '1 charge (8s recharge)',
+          power: '1 charge (8s recharge, 4s from cloak, instant reset on execute)',
           description:
-            'Twin high-frequency nanite daggers designed for silent infiltration. Striking in rapid succession, every hit delivers an immediate second strike for 16 brute damage. Striking targets from behind inflicts an extra +16 critical damage and silences their vocal cords for 3 seconds.',
+            'Twin high-frequency nanite daggers designed for silent infiltration. Every attack delivers an immediate second strike for 16 brute damage, while backstabs inflict +16 critical damage and 3s silence. Shadow stepping from optical cloak halves recharge to 4s, and downing or killing a conscious target refunds the charge instantly.',
           tacticalTip:
-            'Right-click a living adversary in sight to consume a charge, instantly shadow step behind them, and automatically deliver a devastating backstab and vocal silence before they can scream.',
+            'Engage stealth or Shadow Smoke before shadow stepping to halve blink recharge to 4s—or finish weakened targets in one ambush to chain consecutive shadow steps with zero cooldown.',
         };
       default:
         return {
@@ -357,12 +452,12 @@ export const AntagInfoNinja = () => {
           iconState: 'energy_katana',
           iconFile: weapon_icon,
           accentColor: '#22c55e',
-          controls: 'LMB strike // RMB combat dash',
-          power: 'None',
+          controls: 'LMB strike // RMB combat dash (3 charges)',
+          power: '3 charges (20s recharge; refunds 1 charge on execute)',
           description:
-            'Monomolecular plasma blade forged by the Spider Clan. Slices through heavy armor and has a 50% chance to block incoming attacks. An all-rounder weapon featuring combat dash to instantly phase across tiles and strike adversaries.',
+            'Monomolecular plasma blade forged by the Spider Clan with 50% block chance and 50 armor penetration. Right-clicking a tile or target consumes 1 of 3 combat dash charges to blink and strike immediately; downing or killing a conscious target with dash-strike refunds the dash charge.',
           tacticalTip:
-            'Right-click any visible location within sight to combat dash and reposition instantaneously. You can also throw your katana at fleeing targets and recall it across any distance.',
+            'Inspect your katana to track remaining dash charges. Chain dash-strike executes on softened or poisoned targets to refund charges and blitz through multi-target encounters.',
         };
     }
   };
@@ -762,7 +857,7 @@ export const AntagInfoNinja = () => {
                         </Flex.Item>
                         <Flex.Item>
                           <Box fontSize="0.75em" color="label">
-                            SELECT 1 OF 2
+                            SELECT 1 OF {slot.options.length}
                           </Box>
                         </Flex.Item>
                       </Flex>

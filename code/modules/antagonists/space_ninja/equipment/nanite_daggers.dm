@@ -68,12 +68,16 @@
 	log_combat(user, target_mob, "struck with off-hand nanite dagger", src, addition = "(DAMAGE: [16 + bonus_damage])")
 
 /obj/item/nanite_daggers/attack_secondary(mob/living/victim, mob/living/user, list/modifiers, list/attack_modifiers)
+	if(HAS_TRAIT(user, TRAIT_PACIFISM) || HAS_TRAIT(user, TRAIT_CANT_ATTACK))
+		return SECONDARY_ATTACK_CANCEL_ATTACK_CHAIN
 	ranged_interact_with_atom_secondary(victim, user, modifiers)
 	return SECONDARY_ATTACK_CANCEL_ATTACK_CHAIN
 
 /obj/item/nanite_daggers/ranged_interact_with_atom_secondary(atom/interacting_with, mob/living/user, list/modifiers)
 	if(!isliving(interacting_with) || interacting_with == user)
 		return NONE
+	if(HAS_TRAIT(user, TRAIT_PACIFISM) || HAS_TRAIT(user, TRAIT_CANT_ATTACK))
+		return ITEM_INTERACT_BLOCKING
 	if(user.incapacitated || user.buckled || HAS_TRAIT(user, TRAIT_HANDS_BLOCKED))
 		return ITEM_INTERACT_BLOCKING
 	if(!isturf(user.loc))
@@ -103,22 +107,33 @@
 		balloon_alert(user, "nowhere to step!")
 		return ITEM_INTERACT_BLOCKING
 
+	var/mob/living/victim = interacting_with
+	var/was_cloaked = (user.alpha < 100)
+	var/was_conscious = (victim.stat == STABLE)
+
 	var/turf/old_loc = get_turf(user)
 	new /obj/effect/temp_visual/dir_setting/ninja/shadow(old_loc, user.dir)
 	user.forceMove(behind)
 	new /obj/effect/temp_visual/dir_setting/ninja/shadow(behind, user.dir)
-	user.setDir(get_dir(user, interacting_with))
+	user.setDir(get_dir(user, victim))
 
-	melee_attack_chain(user, interacting_with)
+	melee_attack_chain(user, victim)
 
 	charges--
-	start_recharge()
+	if(!QDELETED(victim) && was_conscious && victim.stat >= SOFT_CRIT)
+		charges = min(charges + 1, max_charges)
+		if(charge_timer)
+			deltimer(charge_timer)
+			charge_timer = null
+		balloon_alert(user, "ambush execute! step ready")
+	else
+		start_recharge(was_cloaked ? 4 SECONDS : 8 SECONDS)
 	return ITEM_INTERACT_SUCCESS
 
-/obj/item/nanite_daggers/proc/start_recharge()
+/obj/item/nanite_daggers/proc/start_recharge(recharge_delay = 8 SECONDS)
 	if(charge_timer || charges >= max_charges)
 		return
-	charge_timer = addtimer(CALLBACK(src, PROC_REF(recharge_tick)), 8 SECONDS, TIMER_STOPPABLE)
+	charge_timer = addtimer(CALLBACK(src, PROC_REF(recharge_tick)), recharge_delay, TIMER_STOPPABLE)
 
 /obj/item/nanite_daggers/proc/recharge_tick()
 	charge_timer = null

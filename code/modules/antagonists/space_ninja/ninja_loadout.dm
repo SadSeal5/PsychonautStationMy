@@ -6,12 +6,15 @@
 
 #define NINJA_SLOT_STAR_DEFAULT 1
 #define NINJA_SLOT_STAR_KUNAI 2
+#define NINJA_SLOT_STAR_VENOM 3
 
 #define NINJA_SLOT_HEAL_DEFAULT 1
 #define NINJA_SLOT_HEAL_NANITE 2
+#define NINJA_SLOT_HEAL_OVERDRIVE 3
 
 #define NINJA_SLOT_TRAP_DEFAULT 1
 #define NINJA_SLOT_TRAP_DECOY 2
+#define NINJA_SLOT_TRAP_SMOKE 3
 
 /datum/antagonist/ninja
 	/// Active slot selections
@@ -158,49 +161,71 @@
 		mod.install(stealth_mod)
 		stealth_mod.pin(ninja)
 
-	// Slot 1: Shuriken vs Kunai
-	if(loadout_star == NINJA_SLOT_STAR_KUNAI)
-		swap_module(mod, /obj/item/mod/module/dispenser/ninja, /obj/item/mod/module/dispenser/ninja/kunai)
-	else
-		swap_module(mod, /obj/item/mod/module/dispenser/ninja/kunai, /obj/item/mod/module/dispenser/ninja)
+	var/static/list/star_types = list(
+		/obj/item/mod/module/dispenser/ninja,
+		/obj/item/mod/module/dispenser/ninja/kunai,
+		/obj/item/mod/module/dispenser/ninja/venom,
+	)
+	var/selected_star = /obj/item/mod/module/dispenser/ninja
+	switch(loadout_star)
+		if(NINJA_SLOT_STAR_KUNAI)
+			selected_star = /obj/item/mod/module/dispenser/ninja/kunai
+		if(NINJA_SLOT_STAR_VENOM)
+			selected_star = /obj/item/mod/module/dispenser/ninja/venom
+	equip_slot_module(mod, star_types, selected_star)
 
-	// Slot 2: Adrenaline vs Nanite Repair
-	if(loadout_heal == NINJA_SLOT_HEAL_NANITE)
-		swap_module(mod, /obj/item/mod/module/adrenaline_boost, /obj/item/mod/module/nanite_repair/ninja)
-	else
-		swap_module(mod, /obj/item/mod/module/nanite_repair/ninja, /obj/item/mod/module/adrenaline_boost)
+	var/static/list/heal_types = list(
+		/obj/item/mod/module/adrenaline_boost,
+		/obj/item/mod/module/nanite_repair/ninja,
+		/obj/item/mod/module/reflex_overdrive/ninja,
+	)
+	var/selected_heal = /obj/item/mod/module/adrenaline_boost
+	switch(loadout_heal)
+		if(NINJA_SLOT_HEAL_NANITE)
+			selected_heal = /obj/item/mod/module/nanite_repair/ninja
+		if(NINJA_SLOT_HEAL_OVERDRIVE)
+			selected_heal = /obj/item/mod/module/reflex_overdrive/ninja
+	equip_slot_module(mod, heal_types, selected_heal)
 
-	// Slot 3: Energy Net vs Holographic Decoy
-	if(loadout_trap == NINJA_SLOT_TRAP_DECOY)
-		swap_module(mod, /obj/item/mod/module/energy_net, /obj/item/mod/module/hologram_decoy/ninja)
-	else
-		swap_module(mod, /obj/item/mod/module/hologram_decoy/ninja, /obj/item/mod/module/energy_net)
+	var/static/list/trap_types = list(
+		/obj/item/mod/module/energy_net,
+		/obj/item/mod/module/hologram_decoy/ninja,
+		/obj/item/mod/module/nanite_smoke/ninja,
+	)
+	var/selected_trap = /obj/item/mod/module/energy_net
+	switch(loadout_trap)
+		if(NINJA_SLOT_TRAP_DECOY)
+			selected_trap = /obj/item/mod/module/hologram_decoy/ninja
+		if(NINJA_SLOT_TRAP_SMOKE)
+			selected_trap = /obj/item/mod/module/nanite_smoke/ninja
+	equip_slot_module(mod, trap_types, selected_trap)
 
 	loadout_confirmed = TRUE
 
-/**
- * Helper to swap an existing module type for a new module type in the MODsuit.
- */
-/datum/antagonist/ninja/proc/swap_module(obj/item/mod/control/mod, old_type, new_type)
+/datum/antagonist/ninja/proc/equip_slot_module(obj/item/mod/control/mod, list/slot_types, selected_type)
+	var/obj/item/mod/module/existing
+	var/list/to_remove = list()
 	for(var/obj/item/mod/module/candidate as anything in mod.modules)
-		if(candidate.type == new_type)
-			return candidate
-	var/obj/item/mod/module/to_remove
-	for(var/obj/item/mod/module/candidate as anything in mod.modules)
-		if(candidate.type == old_type)
-			to_remove = candidate
-			break
-	if(to_remove)
-		mod.uninstall(to_remove, deleting = TRUE)
-		qdel(to_remove)
-	var/obj/item/mod/module/new_module = new new_type(mod)
+		if(candidate.type == selected_type)
+			existing = candidate
+		else if(candidate.type in (slot_types - selected_type))
+			to_remove += candidate
+	for(var/obj/item/mod/module/old_mod as anything in to_remove)
+		if(istype(mod, /obj/item/mod/control/pre_equipped))
+			var/obj/item/mod/control/pre_equipped/pre = mod
+			pre.default_pins -= old_mod.type
+		mod.uninstall(old_mod, deleting = TRUE)
+		qdel(old_mod)
+	if(existing)
+		return existing
+	var/obj/item/mod/module/new_module = new selected_type(mod)
 	mod.install(new_module)
 	var/mob/living/carbon/human/ninja = owner?.current
 	if(ninja)
 		new_module.pin(ninja)
 	if(istype(mod, /obj/item/mod/control/pre_equipped))
 		var/obj/item/mod/control/pre_equipped/pre = mod
-		pre.default_pins[new_type] = list(REF(ninja))
+		pre.default_pins[selected_type] = list(REF(ninja))
 	return new_module
 
 /datum/antagonist/ninja/ui_data(mob/user)
@@ -232,7 +257,7 @@
 		if("set_slot")
 			var/slot = params["slot"]
 			var/value = text2num(params["value"])
-			if(!(value in list(1, 2)))
+			if(!(value in list(1, 2, 3)))
 				return TRUE
 			switch(slot)
 				if("star")
@@ -260,8 +285,11 @@
 #undef NINJA_SLOT_WEAPON_DAGGERS
 #undef NINJA_SLOT_STAR_DEFAULT
 #undef NINJA_SLOT_STAR_KUNAI
+#undef NINJA_SLOT_STAR_VENOM
 #undef NINJA_SLOT_HEAL_DEFAULT
 #undef NINJA_SLOT_HEAL_NANITE
+#undef NINJA_SLOT_HEAL_OVERDRIVE
 #undef NINJA_SLOT_TRAP_DEFAULT
 #undef NINJA_SLOT_TRAP_DECOY
+#undef NINJA_SLOT_TRAP_SMOKE
 

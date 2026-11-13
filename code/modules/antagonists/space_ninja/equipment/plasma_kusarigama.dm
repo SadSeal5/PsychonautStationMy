@@ -83,13 +83,35 @@
 	playsound(interacting_with, 'sound/items/weapons/whip.ogg', 50, TRUE)
 
 	var/mob/living/target = interacting_with
+	var/was_lying = (target.body_position == LYING_DOWN)
 	log_combat(user, target, "tripped and disarmed with", src)
 	target.Knockdown(2 SECONDS)
+	var/obj/item/disarmed_item
 	var/obj/item/held = target.get_active_held_item()
 	if(held && target.dropItemToGround(held))
-		target.visible_message(span_danger("[user]'s kusarigama chain wraps around [target]'s wrist, violently wrenching [held] from their grip!"), span_userdanger("[user]'s kusarigama chain rips [held] out of your hands!"))
+		disarmed_item = held
+	else
+		for(var/obj/item/other_held as anything in target.held_items)
+			if(other_held && target.dropItemToGround(other_held))
+				disarmed_item = other_held
+				break
+
+	var/reeled_in = FALSE
+	if(was_lying && !target.anchored && !target.buckled && target.move_resist < MOVE_FORCE_OVERPOWERING && isturf(target.loc) && get_dist(user, target) > 2)
+		target.throw_at(target = get_turf(user), range = min(2, get_dist(target, user) - 1), speed = 1.5, thrower = user, spin = FALSE, gentle = TRUE)
+		reeled_in = TRUE
+
+	if(disarmed_item && reeled_in)
+		target.visible_message(span_danger("[user]'s kusarigama chain rips [disarmed_item] from [target]'s grip and drags [target.p_them()] closer!"), span_userdanger("[user]'s kusarigama chain rips [disarmed_item] out of your hands and drags you closer!"))
+		balloon_alert(user, "disarmed & reeled in!")
+	else if(disarmed_item)
+		target.visible_message(span_danger("[user]'s kusarigama chain wraps around [target]'s wrist, violently wrenching [disarmed_item] from their grip!"), span_userdanger("[user]'s kusarigama chain rips [disarmed_item] out of your hands!"))
+		balloon_alert(user, "tripped & disarmed!")
+	else if(reeled_in)
+		target.visible_message(span_danger("[user]'s kusarigama chain hooks [target] and drags [target.p_them()] closer!"), span_userdanger("[user]'s kusarigama hooks you and drags you closer!"))
+		balloon_alert(user, "reeled in!")
 	else
 		target.visible_message(span_danger("[user]'s kusarigama chain sweeps [target]'s legs out, slamming them to the ground!"), span_userdanger("[user]'s kusarigama sweeps your legs out!"))
+		balloon_alert(user, "tripped & disarmed!")
 
-	balloon_alert(user, "tripped & disarmed!")
 	return ITEM_INTERACT_SUCCESS

@@ -158,6 +158,13 @@
 /obj/item/throwing_star/stamina/ninja/throw_impact(atom/hit_atom, datum/thrownthing/throwingdatum)
 	. = ..()
 	item_flags |= DROPDEL // Just in case, re-apply drop del now
+	if(istype(hit_atom, /mob/living/basic/illusion/ninja_decoy))
+		var/mob/living/basic/illusion/ninja_decoy/decoy = hit_atom
+		var/mob/living/thrower = throwingdatum?.get_thrower()
+		if(isliving(thrower) && decoy.is_allied_mob(thrower))
+			if(isturf(loc))
+				qdel(src)
+			return
 	hit_atom.emp_act(EMP_HEAVY)
 	new /obj/effect/temp_visual/emp/pulse(get_turf(src))
 	new /obj/effect/temp_visual/emp(get_turf(hit_atom))
@@ -259,6 +266,13 @@
 	transform = null
 	icon_state = "kunai_ninja"
 	var/mob/living/thrower = thrower_ref?.resolve()
+	if(istype(hit_atom, /mob/living/basic/illusion/ninja_decoy))
+		var/mob/living/basic/illusion/ninja_decoy/decoy = hit_atom
+		var/mob/living/actual_thrower = thrower || throwingdatum?.get_thrower()
+		if(isliving(actual_thrower) && decoy.is_allied_mob(actual_thrower))
+			if(isturf(loc))
+				qdel(src)
+			return
 	if(isliving(hit_atom))
 		var/mob/living/victim = hit_atom
 		playsound(src, 'sound/items/weapons/pierce.ogg', 60, TRUE)
@@ -278,6 +292,74 @@
 			thrower.throw_at(target = get_turf(hit_atom), range = get_dist(thrower, hit_atom), speed = 2, thrower = thrower, spin = FALSE, gentle = TRUE, callback = CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(ninja_kunai_smooth_landing), thrower, zip_beam))
 	if(isturf(loc))
 		qdel(src)
+
+//Paralytic Venom Dart Dispenser - Dispenses paralytic venom darts.
+/obj/item/mod/module/dispenser/ninja/venom
+	name = "\improper MOD paralytic venom dart dispenser module"
+	desc = "A specialized Spider Clan micro-fabricator calibrated to synthesize neurotoxic venom darts \
+		tipped with fast-acting paralytic agents. Designed to silently cripple targets' stamina, \
+		coordination, and speech without triggering electromagnetic signatures."
+	icon_state = "dispenser_venom"
+	dispense_type = /obj/item/throwing_star/venom/ninja
+	cooldown_time = 3.5 SECONDS
+	use_energy_cost = DEFAULT_CHARGE_DRAIN * 2
+
+/obj/item/throwing_star/venom/ninja
+	name = "paralytic venom dart"
+	desc = "A sleek purple-emerald Spider Clan dart tipped with a fast-acting paralytic neurotoxin. \
+		Inflicts heavy stamina trauma, disorients, and briefly mutes victims on impact."
+	icon_state = "venom_dart"
+	force = 6
+	throwforce = 8
+	armour_penetration = 60
+	item_flags = DROPDEL
+	custom_materials = null
+	resistance_flags = FIRE_PROOF | ACID_PROOF | UNACIDABLE
+	embed_type = /datum/embedding/throwing_star/venom/ninja
+
+/obj/item/throwing_star/venom/ninja/Initialize(mapload)
+	. = ..()
+	ADD_TRAIT(src, TRAIT_UNCATCHABLE, INNATE_TRAIT)
+
+/obj/item/throwing_star/venom/ninja/on_thrown(mob/living/carbon/user, atom/target)
+	item_flags &= ~DROPDEL
+	return ..()
+
+/obj/item/throwing_star/venom/ninja/throw_impact(atom/hit_atom, datum/thrownthing/throwingdatum)
+	. = ..()
+	item_flags |= DROPDEL
+	if(istype(hit_atom, /mob/living/basic/illusion/ninja_decoy))
+		var/mob/living/basic/illusion/ninja_decoy/decoy = hit_atom
+		var/mob/living/thrower = throwingdatum?.get_thrower()
+		if(isliving(thrower) && decoy.is_allied_mob(thrower))
+			if(isturf(loc))
+				qdel(src)
+			return
+	if(isliving(hit_atom))
+		var/mob/living/victim = hit_atom
+		victim.apply_damage(22, STAMINA)
+		victim.adjust_confusion(2 SECONDS)
+		victim.apply_status_effect(/datum/status_effect/silenced, 2.5 SECONDS)
+		playsound(victim, 'sound/items/weapons/pierce.ogg', 50, TRUE)
+		new /obj/effect/temp_visual/heal(get_turf(victim), "#7c3aed")
+	if(isturf(loc))
+		qdel(src)
+
+/datum/embedding/throwing_star/venom/ninja
+	pain_mult = 2
+	jostle_chance = 15
+	COOLDOWN_DECLARE(venom_cd)
+
+/datum/embedding/throwing_star/venom/ninja/on_successful_embed(mob/living/carbon/victim, obj/item/bodypart/target_limb)
+	COOLDOWN_START(src, venom_cd, 4 SECONDS)
+	parent.item_flags |= DROPDEL
+
+/datum/embedding/throwing_star/venom/ninja/process_effect(seconds_per_tick)
+	if(owner.stat == DEAD || !COOLDOWN_FINISHED(src, venom_cd))
+		return
+	COOLDOWN_START(src, venom_cd, 4 SECONDS)
+	owner.adjust_stamina_loss(6)
+	to_chat(owner, span_warning("Paralytic venom seeps from [parent] into your bloodstream!"))
 
 ///Hacker - This module hooks onto your right-clicks with empty hands and causes ninja actions.
 /obj/item/mod/module/hacker
@@ -955,7 +1037,7 @@
 	removable = FALSE
 	module_type = MODULE_ACTIVE
 	use_energy_cost = DEFAULT_CHARGE_DRAIN * 6
-	incompatible_modules = list(/obj/item/mod/module/energy_net, /obj/item/mod/module/hologram_decoy)
+	incompatible_modules = list(/obj/item/mod/module/energy_net, /obj/item/mod/module/hologram_decoy, /obj/item/mod/module/nanite_smoke)
 	cooldown_time = 5 SECONDS
 	required_slots = list(ITEM_SLOT_GLOVES)
 	/// List of all energy nets this module made.
@@ -1075,7 +1157,7 @@
 	module_type = MODULE_USABLE
 	complexity = 3
 	use_energy_cost = DEFAULT_CHARGE_DRAIN * 24
-	incompatible_modules = list(/obj/item/mod/module/energy_net, /obj/item/mod/module/hologram_decoy)
+	incompatible_modules = list(/obj/item/mod/module/energy_net, /obj/item/mod/module/hologram_decoy, /obj/item/mod/module/nanite_smoke)
 	cooldown_time = 24 SECONDS
 	required_slots = list(ITEM_SLOT_GLOVES)
 
@@ -1168,7 +1250,9 @@
 
 /mob/living/basic/illusion/ninja_decoy/Initialize(mapload)
 	. = ..()
-	RegisterSignals(src, list(COMSIG_MOB_ITEM_ATTACK, COMSIG_ATOM_ATTACKBY, COMSIG_ATOM_ATTACK_HAND, COMSIG_ATOM_BULLET_ACT, COMSIG_ATOM_HITBY, COMSIG_ATOM_HULK_ATTACK), PROC_REF(on_attacked))
+	RegisterSignals(src, list(COMSIG_MOB_ITEM_ATTACK, COMSIG_ATOM_ATTACKBY, COMSIG_ATOM_ATTACK_HAND, COMSIG_ATOM_BULLET_ACT, COMSIG_ATOM_HULK_ATTACK), PROC_REF(on_attacked))
+	RegisterSignal(src, COMSIG_ATOM_PREHITBY, PROC_REF(on_pre_hitby))
+	RegisterSignal(src, COMSIG_ATOM_HITBY, PROC_REF(on_hitby))
 	addtimer(CALLBACK(src, PROC_REF(detonate)), 5 SECONDS)
 
 /mob/living/basic/illusion/ninja_decoy/proc/is_allied_mob(mob/living/target)
@@ -1176,6 +1260,22 @@
 
 /mob/living/basic/illusion/ninja_decoy/proc/on_attacked()
 	SIGNAL_HANDLER
+	INVOKE_ASYNC(src, PROC_REF(detonate))
+
+/mob/living/basic/illusion/ninja_decoy/proc/on_pre_hitby(datum/source, atom/movable/hitting_atom, datum/thrownthing/throwingdatum)
+	SIGNAL_HANDLER
+	if(istype(hitting_atom, /obj/item/throwing_star))
+		var/mob/living/thrower = throwingdatum?.get_thrower()
+		if(isliving(thrower) && is_allied_mob(thrower))
+			return COMSIG_HIT_PREVENTED
+	return NONE
+
+/mob/living/basic/illusion/ninja_decoy/proc/on_hitby(datum/source, atom/movable/hitting_atom, skipcatch, hitpush, blocked, datum/thrownthing/throwingdatum)
+	SIGNAL_HANDLER
+	if(istype(hitting_atom, /obj/item/throwing_star))
+		var/mob/living/thrower = throwingdatum?.get_thrower()
+		if(isliving(thrower) && is_allied_mob(thrower))
+			return
 	INVOKE_ASYNC(src, PROC_REF(detonate))
 
 /mob/living/basic/illusion/ninja_decoy/on_damage_taken(mob/living/source)
@@ -1252,6 +1352,48 @@
 			victim.Paralyze(0.5 SECONDS)
 	qdel(src)
 
+///Shadow Smoke Shroud - Deploys disorienting smoke, extinguishes the wearer, and resets stealth cloak cooldown.
+/obj/item/mod/module/nanite_smoke/ninja
+	name = "\improper MOD shadow smoke shroud module"
+	desc = "A tactical Spider Clan concealment unit that vents a dense cloud of disorienting nanite-laced smoke \
+		while purging external flames and instantaneously resetting the suit's optical cloak capacitor."
+	icon_state = "smoke_ninja"
+	complexity = 0
+	removable = FALSE
+	module_type = MODULE_USABLE
+	cooldown_time = 20 SECONDS
+	use_energy_cost = DEFAULT_CHARGE_DRAIN * 12
+	incompatible_modules = list(/obj/item/mod/module/energy_net, /obj/item/mod/module/hologram_decoy, /obj/item/mod/module/nanite_smoke)
+	required_slots = list(ITEM_SLOT_GLOVES)
+
+/obj/item/mod/module/nanite_smoke/ninja/on_use(mob/activator)
+	var/mob/living/wearer = mod?.wearer
+	if(!istype(wearer))
+		return
+	if(!drain_power(use_energy_cost))
+		return
+	var/turf/origin = get_turf(wearer)
+	playsound(origin, 'sound/effects/smoke.ogg', 60, TRUE)
+	do_smoke(3, src, origin, smoke_type = /datum/effect_system/fluid_spread/smoke/bad)
+	wearer.extinguish_mob()
+	for(var/mob/living/victim in range(3, origin))
+		if(victim == wearer || istype(victim, /mob/living/basic/illusion/ninja_decoy) || (victim.mind && IS_SPACE_NINJA(victim)) || victim.has_faction(ROLE_NINJA))
+			continue
+		if(iscarbon(victim))
+			var/mob/living/carbon/carbon_victim = victim
+			if(carbon_victim.internal != null || carbon_victim.has_smoke_protection())
+				continue
+		victim.adjust_confusion(2 SECONDS)
+		victim.adjust_eye_blur(3 SECONDS)
+	var/obj/item/mod/module/stealth/stealth_mod = locate() in mod?.modules
+	if(stealth_mod)
+		COOLDOWN_RESET(stealth_mod, cooldown_timer)
+		stealth_mod.start_cooldown(0)
+		stealth_mod.update_clothing_slots()
+		balloon_alert(wearer, "smoke shroud deployed! cloak reset")
+	else
+		balloon_alert(wearer, "smoke shroud deployed!")
+
 ///Adrenaline Boost - Stops all stuns the ninja is affected with, increases his speed.
 /obj/item/mod/module/adrenaline_boost
 	name = "\improper MOD adrenaline boost module"
@@ -1265,7 +1407,7 @@
 	removable = FALSE
 	module_type = MODULE_USABLE
 	allow_flags = MODULE_ALLOW_INCAPACITATED
-	incompatible_modules = list(/obj/item/mod/module/adrenaline_boost, /obj/item/mod/module/nanite_repair)
+	incompatible_modules = list(/obj/item/mod/module/adrenaline_boost, /obj/item/mod/module/nanite_repair, /obj/item/mod/module/reflex_overdrive)
 	cooldown_time = 12 SECONDS
 	required_slots = list(ITEM_SLOT_BACK|ITEM_SLOT_BELT)
 	/// What reagent we need to refill?
@@ -1343,7 +1485,7 @@
 	complexity = 0
 	cooldown_time = 15 SECONDS
 	use_energy_cost = 0
-	incompatible_modules = list(/obj/item/mod/module/adrenaline_boost, /obj/item/mod/module/nanite_repair)
+	incompatible_modules = list(/obj/item/mod/module/adrenaline_boost, /obj/item/mod/module/nanite_repair, /obj/item/mod/module/reflex_overdrive)
 	required_slots = list(ITEM_SLOT_BACK|ITEM_SLOT_BELT)
 	/// Current remaining charges
 	var/charges = 3
@@ -1435,5 +1577,72 @@
 /datum/status_effect/ninja_nanite_repair/on_remove()
 	if(!QDELETED(owner))
 		to_chat(owner, span_notice("Nanite cellular repair complete."))
+
+///Neural Reflex Overdrive - Surges movement speed, attack speed, stamina recovery, and damage-slowdown immunity.
+/obj/item/mod/module/reflex_overdrive/ninja
+	name = "\improper MOD neural reflex overdrive module"
+	desc = "A crimson-gold Spider Clan synaptic accelerator that floods the operative's nervous system \
+		with kinetic charge, purging fatigue, accelerating movement and strikes, and overriding injury slowdown."
+	icon_state = "reflex_overdrive"
+	complexity = 0
+	removable = FALSE
+	module_type = MODULE_USABLE
+	cooldown_time = 25 SECONDS
+	use_energy_cost = DEFAULT_CHARGE_DRAIN * 16
+	incompatible_modules = list(/obj/item/mod/module/adrenaline_boost, /obj/item/mod/module/nanite_repair, /obj/item/mod/module/reflex_overdrive)
+	required_slots = list(ITEM_SLOT_BACK|ITEM_SLOT_BELT)
+
+/obj/item/mod/module/reflex_overdrive/ninja/used(mob/activator)
+	if(!mod?.wearer || mod.wearer.stat == DEAD)
+		balloon_alert(activator, "wearer is dead!")
+		return FALSE
+	return ..()
+
+/obj/item/mod/module/reflex_overdrive/ninja/on_use(mob/activator)
+	var/mob/living/wearer = mod?.wearer
+	if(!istype(wearer))
+		return
+	if(!drain_power(use_energy_cost))
+		return
+	playsound(wearer, 'sound/items/hypospray.ogg', 50, TRUE)
+	wearer.adjust_stamina_loss(-35)
+	wearer.apply_status_effect(/datum/status_effect/speed_boost/ninja_overdrive)
+	balloon_alert(wearer, "neural overdrive!")
+
+/datum/status_effect/speed_boost/ninja_overdrive
+	id = "ninja_overdrive"
+	duration = 8 SECONDS
+	tick_interval = 1 SECONDS
+	move_datum = /datum/movespeed_modifier/ninja_overdrive
+	action_datum = /datum/actionspeed_modifier/ninja_overdrive
+
+/datum/status_effect/speed_boost/ninja_overdrive/on_apply()
+	. = ..()
+	if(.)
+		owner.add_movespeed_mod_immunities(type, /datum/movespeed_modifier/damage_slowdown)
+
+/datum/status_effect/speed_boost/ninja_overdrive/tick(seconds_between_ticks)
+	if(owner.stat == DEAD)
+		qdel(src)
+		return
+	owner.adjust_stamina_loss(-4 * seconds_between_ticks)
+
+/datum/status_effect/speed_boost/ninja_overdrive/be_replaced()
+	owner.remove_movespeed_mod_immunities(type, /datum/movespeed_modifier/damage_slowdown)
+	if(move_datum)
+		owner.remove_movespeed_modifier(move_datum, update = TRUE)
+	if(action_datum)
+		owner.remove_actionspeed_modifier(action_datum, update = TRUE)
+	return ..()
+
+/datum/status_effect/speed_boost/ninja_overdrive/on_remove()
+	owner.remove_movespeed_mod_immunities(type, /datum/movespeed_modifier/damage_slowdown)
+	return ..()
+
+/datum/movespeed_modifier/ninja_overdrive
+	multiplicative_slowdown = -1.2
+
+/datum/actionspeed_modifier/ninja_overdrive
+	multiplicative_slowdown = -0.25
 
 
