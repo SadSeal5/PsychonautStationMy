@@ -45,6 +45,8 @@
 /obj/item/nanite_daggers/examine(mob/user)
 	. = ..()
 	. += span_notice("It has [charges]/[max_charges] shadow step charges available.")
+	if(charge_timer)
+		. += span_notice("Next charge ready in [round(timeleft(charge_timer) * 0.1, 0.1)] seconds.")
 
 /obj/item/nanite_daggers/attack(mob/living/target_mob, mob/living/user, list/modifiers, list/attack_modifiers)
 	. = ..()

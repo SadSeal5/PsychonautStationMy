@@ -42,6 +42,7 @@
 		return
 
 	in_setup_phase = TRUE
+	loadout_confirmed = FALSE
 	protected_mob_ref = WEAKREF(ninja)
 	ninja.alpha = 0
 	ninja.invisibility = INVISIBILITY_OBSERVER
@@ -181,10 +182,14 @@
  * Helper to swap an existing module type for a new module type in the MODsuit.
  */
 /datum/antagonist/ninja/proc/swap_module(obj/item/mod/control/mod, old_type, new_type)
-	var/obj/item/mod/module/existing = locate(new_type) in mod.modules
-	if(existing)
-		return existing
-	var/obj/item/mod/module/to_remove = locate(old_type) in mod.modules
+	for(var/obj/item/mod/module/candidate as anything in mod.modules)
+		if(candidate.type == new_type)
+			return candidate
+	var/obj/item/mod/module/to_remove
+	for(var/obj/item/mod/module/candidate as anything in mod.modules)
+		if(candidate.type == old_type)
+			to_remove = candidate
+			break
 	if(to_remove)
 		mod.uninstall(to_remove, deleting = TRUE)
 		qdel(to_remove)

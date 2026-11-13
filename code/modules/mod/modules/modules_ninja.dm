@@ -128,6 +128,12 @@
 	dispense_type = /obj/item/throwing_star/stamina/ninja
 	cooldown_time = 0.5 SECONDS
 
+/obj/item/mod/module/dispenser/ninja/used(mob/activator)
+	if(!mod?.wearer?.get_empty_held_indexes())
+		balloon_alert(activator, "hands full!")
+		return FALSE
+	return ..()
+
 /obj/item/throwing_star/stamina/ninja
 	name = "energy throwing star"
 	desc = "An evolution of the traditional steel shuriken, commonly used by Spider Clan initiates. \
@@ -259,13 +265,13 @@
 		victim.apply_damage(10, STAMINA)
 		victim.Knockdown(2.5 SECONDS)
 		do_sparks(2, TRUE, victim)
-		if(thrower && thrower != victim && get_dist(thrower, victim) > 1)
+		if(thrower && thrower != victim && get_dist(thrower, victim) > 1 && !victim.anchored && !victim.buckled && victim.move_resist < MOVE_FORCE_OVERPOWERING && isturf(victim.loc))
 			victim.visible_message(span_danger("[thrower] snags [victim] with [src] and yanks [victim.p_them()] close!"), span_userdanger("[thrower] hooks you with [src] and yanks you across the room!"))
 			playsound(victim, 'sound/items/fulton/fultext_deploy.ogg', 50, TRUE)
 			var/datum/beam/pull_beam = thrower.Beam(victim, icon_state = "ninja_cable", maxdistance = 15, time = 3 SECONDS)
 			victim.throw_at(target = thrower, range = get_dist(victim, thrower), speed = 1.5, thrower = thrower, spin = FALSE, gentle = TRUE, callback = CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(qdel), pull_beam))
 	else if(hit_atom.density || istype(hit_atom, /turf/closed) || isstructure(hit_atom) || ismachinery(hit_atom))
-		if(thrower && get_dist(thrower, hit_atom) > 1)
+		if(thrower && isturf(thrower.loc) && !thrower.buckled && get_dist(thrower, hit_atom) > 1)
 			thrower.visible_message(span_danger("[thrower] grapples onto [hit_atom] and zips forward!"), span_notice("You hook [hit_atom] with [src] and haul yourself forward!"))
 			playsound(thrower, 'sound/items/fulton/fultext_deploy.ogg', 50, TRUE)
 			var/datum/beam/zip_beam = thrower.Beam(hit_atom, icon_state = "ninja_cable", maxdistance = 15, time = 3 SECONDS)
@@ -851,10 +857,14 @@
 		alert = "[linked_weapon.name] teleports to your hand"
 	else if(mod.wearer.equip_to_slot_if_possible(linked_weapon, ITEM_SLOT_SUITSTORE, disable_warning = TRUE))
 		alert = "[linked_weapon.name] docks into your armor"
-	else if(mod.wearer.equip_to_slot_if_possible(linked_weapon, ITEM_SLOT_BELT, disable_warning = TRUE))
-		alert = "[linked_weapon.name] sheathes itself in your belt"
 	else
-		alert = "[linked_weapon.name] teleports under you"
+		var/obj/item/belt_item = mod.wearer.get_item_by_slot(ITEM_SLOT_BELT)
+		if(istype(belt_item, /obj/item/storage/belt/sheath/ninja) && belt_item.atom_storage?.attempt_insert(linked_weapon, mod.wearer, override = TRUE, messages = FALSE))
+			alert = "[linked_weapon.name] sheathes itself in your [belt_item.name]"
+		else if(mod.wearer.equip_to_slot_if_possible(linked_weapon, ITEM_SLOT_BELT, disable_warning = TRUE))
+			alert = "[linked_weapon.name] sheathes itself in your belt"
+		else
+			alert = "[linked_weapon.name] teleports under you"
 	if(caught)
 		if(mod.wearer.is_holding(linked_weapon))
 			alert = "you catch [linked_weapon.name]"
@@ -1071,6 +1081,17 @@
 
 /obj/item/mod/module/hologram_decoy/ninja
 	removable = FALSE
+	complexity = 0
+	var/stealth_timer
+	var/datum/weakref/stealth_wearer_ref
+
+/obj/item/mod/module/hologram_decoy/ninja/on_uninstall(deleting = FALSE)
+	end_stealth(stealth_wearer_ref)
+	return ..()
+
+/obj/item/mod/module/hologram_decoy/ninja/Destroy()
+	end_stealth(stealth_wearer_ref)
+	return ..()
 
 /obj/item/mod/module/hologram_decoy/ninja/on_use(mob/activator)
 	var/mob/living/ninja = mod?.wearer
@@ -1078,6 +1099,8 @@
 		return
 	if(!drain_power(use_energy_cost))
 		return
+	if(stealth_timer)
+		end_stealth(stealth_wearer_ref)
 
 	playsound(ninja, 'sound/effects/phasein.ogg', 50, TRUE)
 	do_sparks(2, TRUE, ninja)
@@ -1085,16 +1108,45 @@
 	var/mob/living/basic/illusion/ninja_decoy/decoy = new(ninja.loc)
 	decoy.setup_decoy(ninja)
 
+	stealth_wearer_ref = WEAKREF(ninja)
+	RegisterSignal(ninja, COMSIG_LIVING_UNARMED_ATTACK, PROC_REF(on_decoy_unarmed_attack))
+	RegisterSignal(ninja, COMSIG_ATOM_BULLET_ACT, PROC_REF(on_decoy_bullet_act))
+	RegisterSignals(ninja, list(COMSIG_MOB_ITEM_ATTACK, COMSIG_ATOM_ATTACKBY, COMSIG_ATOM_ATTACK_HAND, COMSIG_ATOM_HITBY, COMSIG_ATOM_HULK_ATTACK, COMSIG_ATOM_ATTACK_PAW, COMSIG_CARBON_CUFF_ATTEMPTED, COMSIG_MOB_FIRED_GUN), PROC_REF(on_decoy_stealth_break))
 	animate(ninja, alpha = 25, time = 0.5 SECONDS)
 	ninja.alpha = 25
 	ADD_TRAIT(ninja, TRAIT_SILENT_FOOTSTEPS, REF(src))
 	to_chat(ninja, span_notice("You engage optical camouflage as a holographic decoy deploys!"))
-	addtimer(CALLBACK(src, PROC_REF(end_stealth), WEAKREF(ninja)), 2.5 SECONDS)
+	stealth_timer = addtimer(CALLBACK(src, PROC_REF(end_stealth), WEAKREF(ninja)), 2.5 SECONDS, TIMER_STOPPABLE)
+
+/obj/item/mod/module/hologram_decoy/ninja/proc/on_decoy_stealth_break(datum/source)
+	SIGNAL_HANDLER
+
+	end_stealth(stealth_wearer_ref)
+
+/obj/item/mod/module/hologram_decoy/ninja/proc/on_decoy_unarmed_attack(datum/source, atom/target)
+	SIGNAL_HANDLER
+
+	if(!isliving(target))
+		return
+	end_stealth(stealth_wearer_ref)
+
+/obj/item/mod/module/hologram_decoy/ninja/proc/on_decoy_bullet_act(datum/source, obj/projectile/projectile)
+	SIGNAL_HANDLER
+
+	if(!projectile.is_hostile_projectile())
+		return
+	end_stealth(stealth_wearer_ref)
 
 /obj/item/mod/module/hologram_decoy/ninja/proc/end_stealth(datum/weakref/ninja_ref)
-	var/mob/living/ninja = ninja_ref?.resolve()
+	if(stealth_timer)
+		deltimer(stealth_timer)
+		stealth_timer = null
+	var/mob/living/ninja = (ninja_ref || stealth_wearer_ref)?.resolve()
+	stealth_wearer_ref = null
 	if(!ninja || QDELETED(ninja))
 		return
+	UnregisterSignal(ninja, list(COMSIG_LIVING_UNARMED_ATTACK, COMSIG_ATOM_BULLET_ACT, COMSIG_MOB_ITEM_ATTACK, COMSIG_ATOM_ATTACKBY, COMSIG_ATOM_ATTACK_HAND, COMSIG_ATOM_HITBY, COMSIG_ATOM_HULK_ATTACK, COMSIG_ATOM_ATTACK_PAW, COMSIG_CARBON_CUFF_ATTEMPTED, COMSIG_MOB_FIRED_GUN))
+	REMOVE_TRAIT(ninja, TRAIT_SILENT_FOOTSTEPS, REF(src))
 	var/obj/item/mod/module/stealth/stealth_mod = locate() in mod?.modules
 	if(stealth_mod?.active)
 		animate(ninja, alpha = stealth_mod.stealth_alpha, time = 0.5 SECONDS)
@@ -1102,7 +1154,6 @@
 	else
 		animate(ninja, alpha = initial(ninja.alpha), time = 0.5 SECONDS)
 		ninja.alpha = initial(ninja.alpha)
-	REMOVE_TRAIT(ninja, TRAIT_SILENT_FOOTSTEPS, REF(src))
 
 /mob/living/basic/illusion/ninja_decoy
 	name = "holographic decoy"
@@ -1120,6 +1171,9 @@
 	RegisterSignals(src, list(COMSIG_MOB_ITEM_ATTACK, COMSIG_ATOM_ATTACKBY, COMSIG_ATOM_ATTACK_HAND, COMSIG_ATOM_BULLET_ACT, COMSIG_ATOM_HITBY, COMSIG_ATOM_HULK_ATTACK), PROC_REF(on_attacked))
 	addtimer(CALLBACK(src, PROC_REF(detonate)), 5 SECONDS)
 
+/mob/living/basic/illusion/ninja_decoy/proc/is_allied_mob(mob/living/target)
+	return target == creator_ref?.resolve() || target == src || (target.mind && IS_SPACE_NINJA(target)) || target.has_faction(ROLE_NINJA)
+
 /mob/living/basic/illusion/ninja_decoy/proc/on_attacked()
 	SIGNAL_HANDLER
 	INVOKE_ASYNC(src, PROC_REF(detonate))
@@ -1131,12 +1185,20 @@
 	detonate()
 	return ..()
 
+/mob/living/basic/illusion/ninja_decoy/Moved(atom/old_loc, movement_dir, forced, list/old_locs, momentum_change = TRUE)
+	. = ..()
+	if(detonated || QDELETED(src) || !isturf(loc))
+		return
+	for(var/mob/living/target in loc)
+		if(target.stat != DEAD && !is_allied_mob(target))
+			detonate()
+			break
+
 /mob/living/basic/illusion/ninja_decoy/Bump(atom/obstacle)
 	. = ..()
 	if(isliving(obstacle))
 		var/mob/living/target = obstacle
-		var/mob/living/creator = creator_ref?.resolve()
-		if(target != creator && (!target.mind || !IS_SPACE_NINJA(target)))
+		if(!is_allied_mob(target))
 			detonate()
 
 /mob/living/basic/illusion/ninja_decoy/proc/setup_decoy(mob/living/creator)
@@ -1155,9 +1217,7 @@
 	var/mob/living/closest_target = null
 	var/closest_dist = 8
 	for(var/mob/living/candidate in range(7, src))
-		if(candidate == creator || candidate == src || candidate.stat == DEAD)
-			continue
-		if(candidate.mind && IS_SPACE_NINJA(candidate))
+		if(candidate.stat == DEAD || is_allied_mob(candidate))
 			continue
 		var/dist = get_dist(src, candidate)
 		if(dist < closest_dist)
@@ -1182,16 +1242,14 @@
 		new /obj/effect/temp_visual/emp/pulse(epicenter)
 		new /obj/effect/dummy/lighting_obj(epicenter, 4, 3, COLOR_WHITE, 1)
 		empulse(epicenter, heavy_range = 0, light_range = 2, emp_source = src)
-		var/mob/living/creator = creator_ref?.resolve()
 		for(var/mob/living/victim in viewers(3, epicenter))
-			if(victim == src || victim == creator)
+			if(is_allied_mob(victim))
 				continue
 			victim.flash_act(intensity = 2, override_blindness_check = FALSE, affect_silicon = TRUE, visual = TRUE, length = 3 SECONDS)
-			if(!victim.mind || !IS_SPACE_NINJA(victim))
-				victim.adjust_confusion(3 SECONDS)
-				victim.adjust_dizzy(5 SECONDS)
-				victim.Knockdown(1.5 SECONDS)
-				victim.Paralyze(0.5 SECONDS)
+			victim.adjust_confusion(3 SECONDS)
+			victim.adjust_dizzy(5 SECONDS)
+			victim.Knockdown(1.5 SECONDS)
+			victim.Paralyze(0.5 SECONDS)
 	qdel(src)
 
 ///Adrenaline Boost - Stops all stuns the ninja is affected with, increases his speed.
@@ -1220,7 +1278,10 @@
 	create_reagents(reagent_required_amount)
 	reagents.add_reagent(reagent_required, reagent_required_amount)
 
-/obj/item/mod/module/adrenaline_boost/used()
+/obj/item/mod/module/adrenaline_boost/used(mob/activator)
+	if(!mod?.wearer || mod.wearer.stat == DEAD)
+		balloon_alert(activator, "wearer is dead!")
+		return FALSE
 	if(!reagents.has_reagent(reagent_required, reagent_required_amount))
 		balloon_alert(mod.wearer, "no charge!")
 		return FALSE
@@ -1292,6 +1353,9 @@
 	var/radium_per_charge = 5
 
 /obj/item/mod/module/nanite_repair/ninja/used(mob/activator)
+	if(!mod?.wearer || mod.wearer.stat == DEAD)
+		balloon_alert(activator, "wearer is dead!")
+		return FALSE
 	if(charges <= 0)
 		balloon_alert(mod.wearer, "depleted! needs radium")
 		return FALSE

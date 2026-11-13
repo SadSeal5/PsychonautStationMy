@@ -1031,8 +1031,6 @@
 	storage_type = /datum/storage/ninja_sheath
 	stored_blade = /obj/item/energy_katana
 
-
-
 /obj/item/storage/belt/sheath/hanzo_katana
 	name = "hanzo katana sheath"
 	desc = "A normal black sheath meant to house the legendary hanzo steel."

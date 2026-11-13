@@ -214,7 +214,7 @@ export const AntagInfoNinja = () => {
           accentBg: 'rgba(56, 189, 248, 0.12)',
           description:
             'Fires an active hardlight projector deploying a reinforced capture barrier to securely anchor targets.',
-          statBadge: '30 ENERGY // 15S CD // HARDLIGHT',
+          statBadge: '30 ENERGY // 5S CD // HARDLIGHT',
         },
         {
           value: 2,
@@ -309,7 +309,7 @@ export const AntagInfoNinja = () => {
           iconState: 'energy_net',
           accentColor: '#38bdf8',
           controls: 'Select action and target mob with ranged projector',
-          power: '30 energy units per shot // 15s cooldown',
+          power: '30 energy units per shot // 5s cooldown',
           description:
             'Fires an expanding hardlight projector that establishes a reinforced capture cage around the target, locking them in place on the tile and preventing all movement until dismantled or destroyed.',
           tacticalTip:
@@ -360,7 +360,7 @@ export const AntagInfoNinja = () => {
           controls: 'LMB strike // RMB combat dash',
           power: 'None',
           description:
-            'Monomolecular plasma blade forged by the Spider Clan. Slices through heavy armor and deflects incoming energy projectiles. An all-rounder weapon featuring combat dash to instantly phase across tiles and strike adversaries.',
+            'Monomolecular plasma blade forged by the Spider Clan. Slices through heavy armor and has a 50% chance to block incoming attacks. An all-rounder weapon featuring combat dash to instantly phase across tiles and strike adversaries.',
           tacticalTip:
             'Right-click any visible location within sight to combat dash and reposition instantaneously. You can also throw your katana at fleeing targets and recall it across any distance.',
         };
