@@ -49,6 +49,8 @@
 /obj/item/plasma_kusarigama/ranged_interact_with_atom_secondary(atom/interacting_with, mob/living/user, list/modifiers)
 	if(!isliving(interacting_with) || interacting_with == user)
 		return NONE
+	if(HAS_TRAIT(user, TRAIT_PACIFISM) || HAS_TRAIT(user, TRAIT_CANT_ATTACK))
+		return ITEM_INTERACT_BLOCKING
 	if(user.incapacitated || user.buckled || HAS_TRAIT(user, TRAIT_HANDS_BLOCKED))
 		return ITEM_INTERACT_BLOCKING
 	if(!isturf(user.loc))

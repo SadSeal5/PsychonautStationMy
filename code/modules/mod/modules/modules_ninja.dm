@@ -245,7 +245,6 @@
 	if(!.)
 		return FALSE
 	QDEL_NULL(tether_beam)
-	item_flags &= ~DROPDEL
 	thrower_ref = WEAKREF(user)
 	icon_state = "kunai_projectile"
 	var/target_angle = get_angle(user, target)
@@ -1282,8 +1281,9 @@
 	detonate()
 
 /mob/living/basic/illusion/ninja_decoy/death(gibbed)
+	. = ..()
 	detonate()
-	return ..()
+	return .
 
 /mob/living/basic/illusion/ninja_decoy/Moved(atom/old_loc, movement_dir, forced, list/old_locs, momentum_change = TRUE)
 	. = ..()
@@ -1644,5 +1644,3 @@
 
 /datum/actionspeed_modifier/ninja_overdrive
 	multiplicative_slowdown = -0.25
-
-

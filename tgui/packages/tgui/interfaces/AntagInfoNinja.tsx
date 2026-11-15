@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   Box,
   Button,
@@ -91,10 +92,9 @@ export const AntagInfoNinja = () => {
     weapon_icon = 'icons/obj/weapons/sword.dmi',
   } = data;
 
-  const [selectedTab, setSelectedTab] = useSharedState<'directives' | 'modsuit'>(
-    'ninja_info_selected_tab',
-    !confirmed ? 'modsuit' : 'directives'
-  );
+  const [selectedTab, setSelectedTab] = useSharedState<
+    'directives' | 'modsuit'
+  >('ninja_info_selected_tab', !confirmed ? 'modsuit' : 'directives');
 
   const weapons: WeaponDef[] = [
     {
@@ -277,7 +277,8 @@ export const AntagInfoNinja = () => {
           typeTag: 'TETHER HOOK // REEL & DRAG',
           iconState: 'dispenser_kunai',
           accentColor: '#c4b5fd',
-          controls: 'Click pinned action to synthesize // Throw at target or structure',
+          controls:
+            'Click pinned action to synthesize // Throw at target or structure',
           power: '10 energy units per synthesis // 7.0s cooldown',
           description:
             'Fabricates lightweight titanium kunai linked by high-tensile nanite tow cables. Striking living targets knocks them down and reels them across the room directly to your feet along a visible tether beam. Striking dense walls or machinery hauls you forward with a smooth, upright landing.',
@@ -324,8 +325,10 @@ export const AntagInfoNinja = () => {
           typeTag: 'BIOMEDICAL MATRIX // RESTORATION',
           iconState: 'nanite_repair',
           accentColor: '#34d399',
-          controls: 'Click pinned action to engage (Usable while incapacitated)',
-          power: '0 Energy (Does not consume suit power // 3 charges, 5u Radium per charge // 15s cooldown)',
+          controls:
+            'Click pinned action to engage (Usable while incapacitated)',
+          power:
+            '0 Energy (Does not consume suit power // 3 charges, 5u Radium per charge // 15s cooldown)',
           description:
             "Floods the operative's circulation with autonomous medical nanomachines and synthetic coagulants. The microscopic swarm seals internal hemorrhaging, reconstructs torn muscle and bone, and restores lost blood volume. Draws no power from the suit, relying on internal nanite reserves refueled with Radium.",
           tacticalTip:
@@ -352,8 +355,10 @@ export const AntagInfoNinja = () => {
           typeTag: 'STIMULANT SHOCK // NEURAL OVERRIDE',
           iconState: 'adrenaline_boost',
           accentColor: '#fb7185',
-          controls: 'Click pinned action to inject (Usable while incapacitated / cuffed)',
-          power: '0 Energy (Does not consume suit power // Refillable with 20u Radium // 12s cooldown)',
+          controls:
+            'Click pinned action to inject (Usable while incapacitated / cuffed)',
+          power:
+            '0 Energy (Does not consume suit power // Refillable with 20u Radium // 12s cooldown)',
           description:
             'Triggers an emergency autonomic neuro-chemical override. Instantly purges all stuns, knockdowns, paralysis, and up to 200 stamina damage while flooding the bloodstream with combat stimulants.',
           tacticalTip:
@@ -410,7 +415,10 @@ export const AntagInfoNinja = () => {
   };
 
   // Active loadout dossier specifications based on chosen slots
-  const chosenDossier: DossierItem[] = [getStarDossier(), getHealDossier(), getTrapDossier()];
+  const chosenDossier: DossierItem[] = useMemo(
+    () => [getStarDossier(), getHealDossier(), getTrapDossier()],
+    [slot_star, slot_heal, slot_trap],
+  );
 
   const getCoreWeaponDossier = (): DossierItem => {
     switch (loadout_weapon) {
@@ -422,7 +430,8 @@ export const AntagInfoNinja = () => {
           iconState: 'plasma_kusarigama',
           iconFile: weapon_icon,
           accentColor: '#10b981',
-          controls: 'LMB reach-2 strike // RMB chain trip, smart disarm & prone reel-in',
+          controls:
+            'LMB reach-2 strike // RMB chain trip, smart disarm & prone reel-in',
           power: 'None (6s trip cooldown)',
           description:
             'A Spider Clan chained scythe and heavy plasma ballast with extended 2-tile reach. Right-clicking lashes up to 4 tiles to knock targets down and smart-disarm either their active or off-hand item. Targets already lying down are dragged 2 tiles directly into reach-2 melee range.',
@@ -438,7 +447,8 @@ export const AntagInfoNinja = () => {
           iconFile: weapon_icon,
           accentColor: '#84cc16',
           controls: 'LMB rapid dual stab // RMB shadow step blink',
-          power: '1 charge (8s recharge, 4s from cloak, instant reset on execute)',
+          power:
+            '1 charge (8s recharge, 4s from cloak, instant reset on execute)',
           description:
             'Twin high-frequency nanite daggers designed for silent infiltration. Every attack delivers an immediate second strike for 16 brute damage, while backstabs inflict +16 critical damage and 3s silence. Shadow stepping from optical cloak halves recharge to 4s, and downing or killing a conscious target refunds the charge instantly.',
           tacticalTip:
@@ -462,52 +472,61 @@ export const AntagInfoNinja = () => {
     }
   };
 
-  const coreSystems: DossierItem[] = [
-    {
-      title: 'Advanced Mimetic Stealth',
-      badge: 'CORE INFILTRATION',
-      typeTag: 'OPTICAL CLOAK // CHAMELEONIC',
-      iconState: 'cloak_ninja',
-      accentColor: '#c084fc',
-      controls: 'Pinned Suit Action or Suit Menu (Toggle)',
-      power: '50 energy units on activation + 10 units/sec while active',
-      description:
-        'Projects a refractive light-bending field with dynamic chameleonic skin adaptation. Renders the wearer virtually invisible and completely silences footsteps. Equipped with stabilization dampeners that do NOT break cloak on bumping into objects or crew.',
-      tacticalTip:
-        'Cloak only disengages when sustaining hostile damage or initiating attacks. Perfect for slipping past sentry turrets and lurking undetected in illuminated hallways.',
-    },
-    getCoreWeaponDossier(),
-    {
-      title: 'Cybernetic Hacker Interface',
+  const coreSystems: DossierItem[] = useMemo(
+    () => [
+      {
+        title: 'Advanced Mimetic Stealth',
+        badge: 'CORE INFILTRATION',
+        typeTag: 'OPTICAL CLOAK // CHAMELEONIC',
+        iconState: 'cloak_ninja',
+        accentColor: '#c084fc',
+        controls: 'Pinned Suit Action or Suit Menu (Toggle)',
+        power: '50 energy units on activation + 10 units/sec while active',
+        description:
+          'Projects a refractive light-bending field with dynamic chameleonic skin adaptation. Renders the wearer virtually invisible and completely silences footsteps. Equipped with stabilization dampeners that do NOT break cloak on bumping into objects or crew.',
+        tacticalTip:
+          'Cloak only disengages when sustaining hostile damage or initiating attacks. Perfect for slipping past sentry turrets and lurking undetected in illuminated hallways.',
+      },
+      getCoreWeaponDossier(),
+      {
+        title: 'Cybernetic Hacker Interface',
 
-      badge: 'CORE GLOVES',
-      typeTag: 'ELECTRONIC WARFARE // SIFTER',
-      iconState: 'hacker',
-      accentColor: '#06b6d4',
-      controls: 'Right-click with empty hands on APCs, SMES, airlocks, or consoles',
-      power: 'RECHARGES MODSUIT BATTERY',
-      description:
-        'Sub-dermal induction emitters crack machine circuitry. Right-clicking an APC or power cell drains its energy to rapidly refill your MODsuit battery. Right-clicking airlocks doorjacks them open immediately. Hacking consoles executes sabotage objectives.',
-      tacticalTip:
-        'Whenever battery levels dwindle after cloaking or combat, slip into maintenance and drain the nearest APC.',
-    },
-    {
-      title: 'Multi-Spectrum Optical Visor',
-      badge: 'CORE SENSOR',
-      typeTag: 'RECON // ANTI-SURVEILLANCE',
-      iconState: 'welding_camera',
-      accentColor: '#10b981',
-      controls: 'Passive Integrated Sensor Suite',
-      power: '0 W (Passive)',
-      description:
-        'Provides continuous thermal night vision and absolute flash protection against welding arcs and flashbangs. Emits counter-frequency jamming that prevents security camera tracking and AI facial recognition.',
-      tacticalTip:
-        'Operate in total darkness. Station AI and camera tracking will never reveal your coordinates.',
-    },
-  ];
+        badge: 'CORE GLOVES',
+        typeTag: 'ELECTRONIC WARFARE // SIFTER',
+        iconState: 'hacker',
+        accentColor: '#06b6d4',
+        controls:
+          'Right-click with empty hands on APCs, SMES, airlocks, or consoles',
+        power: 'RECHARGES MODSUIT BATTERY',
+        description:
+          'Sub-dermal induction emitters crack machine circuitry. Right-clicking an APC or power cell drains its energy to rapidly refill your MODsuit battery. Right-clicking airlocks doorjacks them open immediately. Hacking consoles executes sabotage objectives.',
+        tacticalTip:
+          'Whenever battery levels dwindle after cloaking or combat, slip into maintenance and drain the nearest APC.',
+      },
+      {
+        title: 'Multi-Spectrum Optical Visor',
+        badge: 'CORE SENSOR',
+        typeTag: 'RECON // ANTI-SURVEILLANCE',
+        iconState: 'welding_camera',
+        accentColor: '#10b981',
+        controls: 'Passive Integrated Sensor Suite',
+        power: '0 W (Passive)',
+        description:
+          'Provides continuous thermal night vision and absolute flash protection against welding arcs and flashbangs. Emits counter-frequency jamming that prevents security camera tracking and AI facial recognition.',
+        tacticalTip:
+          'Operate in total darkness. Station AI and camera tracking will never reveal your coordinates.',
+      },
+    ],
+    [loadout_weapon, weapon_icon],
+  );
 
   return (
-    <Window title="Spider Clan Mercenary Terminal" width={740} height={640} theme="hackerman">
+    <Window
+      title="Spider Clan Mercenary Terminal"
+      width={740}
+      height={640}
+      theme="hackerman"
+    >
       <Window.Content scrollable>
         {/* Subtle decorative background watermark */}
         <Icon
@@ -547,7 +566,8 @@ export const AntagInfoNinja = () => {
                 <br />A <span style={{ color: '#ef4444' }}>SPACE NINJA</span>!
               </Box>
               <Box italic color="label" mt={0.5}>
-                Surprise is my weapon. Shadows are my armor. Without them, I am nothing.
+                Surprise is my weapon. Shadows are my armor. Without them, I am
+                nothing.
               </Box>
             </Stack.Item>
 
@@ -556,15 +576,21 @@ export const AntagInfoNinja = () => {
                 <Stack vertical g={1}>
                   <Box>
                     <Icon name="bolt" color="#fbbf24" mr={1} />
-                    <strong>Power Harvesting:</strong> Right-click on station APCs, SMES units, or power cells with empty hands to drain electrical grids directly into your MODsuit capacitor.
+                    <strong>Power Harvesting:</strong> Right-click on station
+                    APCs, SMES units, or power cells with empty hands to drain
+                    electrical grids directly into your MODsuit capacitor.
                   </Box>
                   <Box>
                     <Icon name="door-open" color="#38bdf8" mr={1} />
-                    <strong>Electronic Doorjacking:</strong> Right-click airlocks with cybernetic hacker gloves to force open bulkheads without keys.
+                    <strong>Electronic Doorjacking:</strong> Right-click
+                    airlocks with cybernetic hacker gloves to force open
+                    bulkheads without keys.
                   </Box>
                   <Box>
                     <Icon name="terminal" color="#34d399" mr={1} />
-                    <strong>Subversive Sabotage:</strong> Right-click security consoles to scramble crew arrest records or communications consoles to dispatch phantom distress signals.
+                    <strong>Subversive Sabotage:</strong> Right-click security
+                    consoles to scramble crew arrest records or communications
+                    consoles to dispatch phantom distress signals.
                   </Box>
                 </Stack>
               </Section>
@@ -596,7 +622,14 @@ export const AntagInfoNinja = () => {
                     <Flex align="center" justify="space-between">
                       <Flex.Item>
                         <Icon name="shield-alt" mr={1} />
-                        <strong>Spider Clan Temporal Infiltration Protocol:</strong> Mimetic-cloaking nanites and invulnerability shielding are fully active. Your position is completely concealed. The veil remains active until your loadout is confirmed (or this window is closed), or until the calibration timer expires.
+                        <strong>
+                          Spider Clan Temporal Infiltration Protocol:
+                        </strong>{' '}
+                        Mimetic-cloaking nanites and invulnerability shielding
+                        are fully active. Your position is completely concealed.
+                        The veil remains active until your loadout is confirmed
+                        (or this window is closed), or until the calibration
+                        timer expires.
                       </Flex.Item>
                       {!!in_setup && (
                         <Flex.Item>
@@ -648,7 +681,11 @@ export const AntagInfoNinja = () => {
                           >
                             PRIMARY WEAPON
                           </Box>
-                          <Box bold fontSize="0.95em" style={{ letterSpacing: '0.8px' }}>
+                          <Box
+                            bold
+                            fontSize="0.95em"
+                            style={{ letterSpacing: '0.8px' }}
+                          >
                             PRIMARY ARSENAL
                           </Box>
                         </Flex>
@@ -667,7 +704,9 @@ export const AntagInfoNinja = () => {
                         return (
                           <Stack.Item key={wep.value} grow basis={0}>
                             <Box
-                              onClick={() => act('select_weapon', { choice: wep.value })}
+                              onClick={() =>
+                                act('select_weapon', { choice: wep.value })
+                              }
                               style={{
                                 cursor: 'pointer',
                                 backgroundColor: isSelected
@@ -688,7 +727,11 @@ export const AntagInfoNinja = () => {
                                 minHeight: '120px',
                               }}
                             >
-                              <Flex align="center" justify="space-between" mb={1}>
+                              <Flex
+                                align="center"
+                                justify="space-between"
+                                mb={1}
+                              >
                                 <Flex.Item>
                                   <Flex align="center" g={1}>
                                     <Box
@@ -703,7 +746,9 @@ export const AntagInfoNinja = () => {
                                         letterSpacing: '0.5px',
                                       }}
                                     >
-                                      {wep.value === 1 ? 'DEFAULT' : 'ALTERNATIVE'}
+                                      {wep.value === 1
+                                        ? 'DEFAULT'
+                                        : 'ALTERNATIVE'}
                                     </Box>
                                     <Box fontSize="0.7em" color="label">
                                       {wep.tag}
@@ -735,7 +780,8 @@ export const AntagInfoNinja = () => {
                                       style={{
                                         padding: '2px 6px',
                                         borderRadius: '3px',
-                                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                                        border:
+                                          '1px solid rgba(255, 255, 255, 0.08)',
                                       }}
                                     >
                                       CLICK TO EQUIP
@@ -744,7 +790,11 @@ export const AntagInfoNinja = () => {
                                 </Flex.Item>
                               </Flex>
 
-                              <Flex align="flex-start" g={1.5} style={{ flexGrow: 1 }}>
+                              <Flex
+                                align="flex-start"
+                                g={1.5}
+                                style={{ flexGrow: 1 }}
+                              >
                                 <Flex.Item>
                                   <Box
                                     style={{
@@ -800,8 +850,11 @@ export const AntagInfoNinja = () => {
                                 fontSize="0.75em"
                                 bold
                                 style={{
-                                  borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-                                  color: isSelected ? wep.accentColor : '#64748b',
+                                  borderTop:
+                                    '1px solid rgba(255, 255, 255, 0.06)',
+                                  color: isSelected
+                                    ? wep.accentColor
+                                    : '#64748b',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
@@ -809,7 +862,9 @@ export const AntagInfoNinja = () => {
                               >
                                 <span>SPEC: {wep.statBadge}</span>
                                 {isSelected && (
-                                  <span style={{ fontSize: '0.9em' }}>● SYNCHRONIZED</span>
+                                  <span style={{ fontSize: '0.9em' }}>
+                                    ● SYNCHRONIZED
+                                  </span>
                                 )}
                               </Box>
                             </Box>
@@ -822,7 +877,6 @@ export const AntagInfoNinja = () => {
 
                 {/* 3 Slot Selection Cards */}
                 {slots.map((slot) => (
-
                   <Stack.Item key={slot.id}>
                     <Box
                       style={{
@@ -850,7 +904,11 @@ export const AntagInfoNinja = () => {
                             >
                               SLOT {slot.slotNum}
                             </Box>
-                            <Box bold fontSize="0.95em" style={{ letterSpacing: '0.8px' }}>
+                            <Box
+                              bold
+                              fontSize="0.95em"
+                              style={{ letterSpacing: '0.8px' }}
+                            >
                               {slot.title}
                             </Box>
                           </Flex>
@@ -869,7 +927,12 @@ export const AntagInfoNinja = () => {
                           return (
                             <Stack.Item key={opt.value} grow basis={0}>
                               <Box
-                                onClick={() => act('set_slot', { slot: slot.id, value: opt.value })}
+                                onClick={() =>
+                                  act('set_slot', {
+                                    slot: slot.id,
+                                    value: opt.value,
+                                  })
+                                }
                                 style={{
                                   cursor: 'pointer',
                                   backgroundColor: isSelected
@@ -891,7 +954,11 @@ export const AntagInfoNinja = () => {
                                 }}
                               >
                                 {/* Top Badges Row */}
-                                <Flex align="center" justify="space-between" mb={1}>
+                                <Flex
+                                  align="center"
+                                  justify="space-between"
+                                  mb={1}
+                                >
                                   <Flex.Item>
                                     <Flex align="center" g={1}>
                                       <Box
@@ -903,7 +970,9 @@ export const AntagInfoNinja = () => {
                                               ? 'rgba(255, 255, 255, 0.08)'
                                               : opt.accentBg,
                                           color:
-                                            opt.badge === 'DEFAULT' ? '#94a3b8' : opt.accentColor,
+                                            opt.badge === 'DEFAULT'
+                                              ? '#94a3b8'
+                                              : opt.accentColor,
                                           border: `1px solid ${
                                             opt.badge === 'DEFAULT'
                                               ? 'rgba(255, 255, 255, 0.15)'
@@ -946,7 +1015,8 @@ export const AntagInfoNinja = () => {
                                         style={{
                                           padding: '2px 6px',
                                           borderRadius: '3px',
-                                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                                          border:
+                                            '1px solid rgba(255, 255, 255, 0.08)',
                                         }}
                                       >
                                         CLICK TO EQUIP
@@ -956,7 +1026,11 @@ export const AntagInfoNinja = () => {
                                 </Flex>
 
                                 {/* Middle Sprite & Info */}
-                                <Flex align="flex-start" g={1.5} style={{ flexGrow: 1 }}>
+                                <Flex
+                                  align="flex-start"
+                                  g={1.5}
+                                  style={{ flexGrow: 1 }}
+                                >
                                   <Flex.Item>
                                     <Box
                                       style={{
@@ -989,7 +1063,9 @@ export const AntagInfoNinja = () => {
                                       bold
                                       fontSize="1.05em"
                                       style={{
-                                        color: isSelected ? '#ffffff' : '#cbd5e1',
+                                        color: isSelected
+                                          ? '#ffffff'
+                                          : '#cbd5e1',
                                         letterSpacing: '0.3px',
                                       }}
                                     >
@@ -1013,8 +1089,11 @@ export const AntagInfoNinja = () => {
                                   fontSize="0.75em"
                                   bold
                                   style={{
-                                    borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-                                    color: isSelected ? opt.accentColor : '#64748b',
+                                    borderTop:
+                                      '1px solid rgba(255, 255, 255, 0.06)',
+                                    color: isSelected
+                                      ? opt.accentColor
+                                      : '#64748b',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
@@ -1022,7 +1101,9 @@ export const AntagInfoNinja = () => {
                                 >
                                   <span>SPEC: {opt.statBadge}</span>
                                   {isSelected && (
-                                    <span style={{ fontSize: '0.9em' }}>● SYNCHRONIZED</span>
+                                    <span style={{ fontSize: '0.9em' }}>
+                                      ● SYNCHRONIZED
+                                    </span>
                                   )}
                                 </Box>
                               </Box>
@@ -1062,7 +1143,9 @@ export const AntagInfoNinja = () => {
                     <Flex align="center" justify="space-between">
                       <Flex.Item>
                         <Icon name="check-double" mr={1} />
-                        <strong>MODsuit Fully Calibrated — Cybernetic Dossier</strong>
+                        <strong>
+                          MODsuit Fully Calibrated — Cybernetic Dossier
+                        </strong>
                       </Flex.Item>
                       <Flex.Item>
                         <Box
@@ -1088,8 +1171,8 @@ export const AntagInfoNinja = () => {
                 <Stack.Item>
                   <Section title="Chosen Tactical Modules">
                     <Stack vertical g={1.5}>
-                      {chosenDossier.map((item, idx) => (
-                        <Stack.Item key={idx}>
+                      {chosenDossier.map((item) => (
+                        <Stack.Item key={item.title}>
                           <Box
                             style={{
                               backgroundColor: 'rgba(15, 18, 26, 0.85)',
@@ -1126,7 +1209,11 @@ export const AntagInfoNinja = () => {
 
                               {/* Content */}
                               <Flex.Item grow style={{ minWidth: 0 }}>
-                                <Flex align="center" justify="space-between" mb={0.5}>
+                                <Flex
+                                  align="center"
+                                  justify="space-between"
+                                  mb={0.5}
+                                >
                                   <Flex.Item>
                                     <Flex align="center" g={1}>
                                       <Box
@@ -1143,7 +1230,11 @@ export const AntagInfoNinja = () => {
                                       >
                                         {item.badge}
                                       </Box>
-                                      <Box bold fontSize="1.1em" style={{ color: '#ffffff' }}>
+                                      <Box
+                                        bold
+                                        fontSize="1.1em"
+                                        style={{ color: '#ffffff' }}
+                                      >
                                         {item.title}
                                       </Box>
                                     </Flex>
@@ -1163,22 +1254,35 @@ export const AntagInfoNinja = () => {
                                     display: 'flex',
                                     flexWrap: 'wrap',
                                     gap: '12px',
-                                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                                    backgroundColor:
+                                      'rgba(255, 255, 255, 0.03)',
                                     padding: '5px 8px',
                                     borderRadius: '4px',
                                   }}
                                 >
                                   <span>
-                                    <Icon name="hand-pointer" mr={0.5} color={item.accentColor} />
+                                    <Icon
+                                      name="hand-pointer"
+                                      mr={0.5}
+                                      color={item.accentColor}
+                                    />
                                     <strong>Controls:</strong> {item.controls}
                                   </span>
                                   <span>
-                                    <Icon name="bolt" mr={0.5} color="#fbbf24" />
+                                    <Icon
+                                      name="bolt"
+                                      mr={0.5}
+                                      color="#fbbf24"
+                                    />
                                     <strong>Drain:</strong> {item.power}
                                   </span>
                                 </Box>
 
-                                <Box fontSize="0.85em" style={{ lineHeight: '1.4' }} mb={0.8}>
+                                <Box
+                                  fontSize="0.85em"
+                                  style={{ lineHeight: '1.4' }}
+                                  mb={0.8}
+                                >
                                   {item.description}
                                 </Box>
 
@@ -1192,8 +1296,13 @@ export const AntagInfoNinja = () => {
                                     color: '#94a3b8',
                                   }}
                                 >
-                                  <Icon name="lightbulb" mr={0.5} color={item.accentColor} />
-                                  <strong>Tactical Tip:</strong> {item.tacticalTip}
+                                  <Icon
+                                    name="lightbulb"
+                                    mr={0.5}
+                                    color={item.accentColor}
+                                  />
+                                  <strong>Tactical Tip:</strong>{' '}
+                                  {item.tacticalTip}
                                 </Box>
                               </Flex.Item>
                             </Flex>
@@ -1208,8 +1317,8 @@ export const AntagInfoNinja = () => {
                 <Stack.Item>
                   <Section title="Integrated Core Capabilities">
                     <Stack vertical g={1.5}>
-                      {coreSystems.map((item, idx) => (
-                        <Stack.Item key={idx}>
+                      {coreSystems.map((item) => (
+                        <Stack.Item key={item.title}>
                           <Box
                             style={{
                               backgroundColor: 'rgba(15, 18, 26, 0.7)',
@@ -1244,7 +1353,11 @@ export const AntagInfoNinja = () => {
 
                               {/* Content */}
                               <Flex.Item grow style={{ minWidth: 0 }}>
-                                <Flex align="center" justify="space-between" mb={0.5}>
+                                <Flex
+                                  align="center"
+                                  justify="space-between"
+                                  mb={0.5}
+                                >
                                   <Flex.Item>
                                     <Flex align="center" g={1}>
                                       <Box
@@ -1261,7 +1374,11 @@ export const AntagInfoNinja = () => {
                                       >
                                         {item.badge}
                                       </Box>
-                                      <Box bold fontSize="1.05em" style={{ color: '#ffffff' }}>
+                                      <Box
+                                        bold
+                                        fontSize="1.05em"
+                                        style={{ color: '#ffffff' }}
+                                      >
                                         {item.title}
                                       </Box>
                                     </Flex>
@@ -1281,22 +1398,35 @@ export const AntagInfoNinja = () => {
                                     display: 'flex',
                                     flexWrap: 'wrap',
                                     gap: '12px',
-                                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                                    backgroundColor:
+                                      'rgba(255, 255, 255, 0.03)',
                                     padding: '5px 8px',
                                     borderRadius: '4px',
                                   }}
                                 >
                                   <span>
-                                    <Icon name="hand-pointer" mr={0.5} color={item.accentColor} />
+                                    <Icon
+                                      name="hand-pointer"
+                                      mr={0.5}
+                                      color={item.accentColor}
+                                    />
                                     <strong>Controls:</strong> {item.controls}
                                   </span>
                                   <span>
-                                    <Icon name="bolt" mr={0.5} color="#fbbf24" />
+                                    <Icon
+                                      name="bolt"
+                                      mr={0.5}
+                                      color="#fbbf24"
+                                    />
                                     <strong>Power:</strong> {item.power}
                                   </span>
                                 </Box>
 
-                                <Box fontSize="0.85em" style={{ lineHeight: '1.4' }} mb={0.8}>
+                                <Box
+                                  fontSize="0.85em"
+                                  style={{ lineHeight: '1.4' }}
+                                  mb={0.8}
+                                >
                                   {item.description}
                                 </Box>
 
@@ -1310,8 +1440,13 @@ export const AntagInfoNinja = () => {
                                     color: '#94a3b8',
                                   }}
                                 >
-                                  <Icon name="lightbulb" mr={0.5} color={item.accentColor} />
-                                  <strong>Tactical Tip:</strong> {item.tacticalTip}
+                                  <Icon
+                                    name="lightbulb"
+                                    mr={0.5}
+                                    color={item.accentColor}
+                                  />
+                                  <strong>Tactical Tip:</strong>{' '}
+                                  {item.tacticalTip}
                                 </Box>
                               </Flex.Item>
                             </Flex>

@@ -126,6 +126,9 @@
 	log_admin("[key_name(admin)] has ninja'ed [key_name(new_owner)].")
 
 /datum/antagonist/ninja/on_respawn(mob/new_character)
+	// A respawn mid-setup would otherwise leave the old body veiled forever and
+	// never start the setup phase for the new one.
+	end_setup_phase(do_loadout = FALSE)
 	equip_space_ninja()
 	var/turf/spawnpoint = find_space_spawn()
 	if(spawnpoint)
@@ -142,4 +145,3 @@
 	if(in_setup_phase)
 		end_setup_phase()
 	return ..()
-

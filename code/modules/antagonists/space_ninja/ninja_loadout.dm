@@ -63,7 +63,7 @@
  * Ends the setup phase: restores alpha, removes invisibility and protection/immobilization traits,
  * applies the chosen loadout, and updates open AntagInfoNinja interfaces.
  */
-/datum/antagonist/ninja/proc/end_setup_phase()
+/datum/antagonist/ninja/proc/end_setup_phase(do_loadout = TRUE)
 	if(!in_setup_phase)
 		return
 	in_setup_phase = FALSE
@@ -71,20 +71,27 @@
 		deltimer(setup_timer)
 		setup_timer = null
 
-	var/mob/living/carbon/human/ninja = owner?.current
-	if(!istype(ninja) && protected_mob_ref)
-		ninja = protected_mob_ref.resolve()
+	// Resolve the body that was actually veiled first. After a respawn owner?.current is the
+	// NEW body, so checking it first would strand the old one in godmode forever.
+	var/mob/living/carbon/human/ninja = protected_mob_ref?.resolve()
 	protected_mob_ref = null
+	if(!istype(ninja) || QDELETED(ninja))
+		ninja = owner?.current
+	if(!istype(ninja) || QDELETED(ninja))
+		return
 
 	if(istype(ninja))
-		ninja.alpha = 255
-		ninja.invisibility = INVISIBILITY_NONE
-		ninja.density = TRUE
+		ninja.alpha = initial(ninja.alpha)
+		ninja.invisibility = initial(ninja.invisibility)
+		ninja.density = initial(ninja.density)
 		REMOVE_TRAIT(ninja, TRAIT_IMMOBILIZED, REF(src))
 		REMOVE_TRAIT(ninja, TRAIT_HANDS_BLOCKED, REF(src))
 		REMOVE_TRAIT(ninja, TRAIT_GODMODE, REF(src))
 		new /obj/effect/temp_visual/dir_setting/ninja(get_turf(ninja), ninja.dir)
 		to_chat(ninja, span_warning("The shadows recede as your cybernetic systems calibrate. You are now exposed to the void."))
+
+		if(!do_loadout)
+			return
 
 		if(loadout_weapon != NINJA_SLOT_WEAPON_KATANA)
 			var/new_weapon_type
@@ -275,10 +282,11 @@
 
 /datum/antagonist/ninja/ui_close(mob/user)
 	. = ..()
+	if(user != owner?.current)
+		return
 	if(in_setup_phase)
 		end_setup_phase()
-		if(user)
-			to_chat(user, span_notice("Spider Clan loadout synchronized."))
+		to_chat(user, span_notice("Spider Clan loadout synchronized."))
 
 #undef NINJA_SLOT_WEAPON_KATANA
 #undef NINJA_SLOT_WEAPON_KUSARIGAMA
@@ -292,4 +300,3 @@
 #undef NINJA_SLOT_TRAP_DEFAULT
 #undef NINJA_SLOT_TRAP_DECOY
 #undef NINJA_SLOT_TRAP_SMOKE
-
