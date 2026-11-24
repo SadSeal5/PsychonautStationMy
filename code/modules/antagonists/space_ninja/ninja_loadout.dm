@@ -31,6 +31,36 @@
 	var/setup_timer
 	/// Weakref to the mob being protected during setup phase
 	var/datum/weakref/protected_mob_ref
+	/// Weakref to the MODsuit locked during setup phase
+	var/datum/weakref/setup_mod_ref
+
+/datum/antagonist/ninja/proc/get_ninja_mod(mob/living/carbon/human/ninja)
+	if(!istype(ninja))
+		return null
+	if(istype(ninja.back, /obj/item/mod/control))
+		return ninja.back
+	return locate(/obj/item/mod/control) in ninja.get_all_contents()
+
+/datum/antagonist/ninja/proc/link_recall_weapon(mob/living/carbon/human/ninja, obj/item/weapon)
+	if(!weapon)
+		return
+	var/obj/item/mod/control/mod = get_ninja_mod(ninja)
+	var/obj/item/mod/module/weapon_recall/recall = locate(/obj/item/mod/module/weapon_recall) in mod?.modules
+	recall?.set_weapon(weapon)
+
+/datum/antagonist/ninja/proc/on_setup_mod_activate(obj/item/mod/control/source, mob/user)
+	SIGNAL_HANDLER
+	if(in_setup_phase)
+		source.balloon_alert(user, "suit calibrating!")
+		return MOD_CANCEL_ACTIVATE
+	return NONE
+
+/datum/antagonist/ninja/proc/on_setup_module_triggered(obj/item/mod/module/source, mob/user)
+	SIGNAL_HANDLER
+	if(in_setup_phase)
+		source.balloon_alert(user, "suit calibrating!")
+		return MOD_ABORT_USE
+	return NONE
 
 /**
  * Starts the ninja setup phase upon gaining the antag datum:
@@ -53,6 +83,14 @@
 	ADD_TRAIT(ninja, TRAIT_IMMOBILIZED, REF(src))
 	ADD_TRAIT(ninja, TRAIT_HANDS_BLOCKED, REF(src))
 	ADD_TRAIT(ninja, TRAIT_GODMODE, REF(src))
+	ADD_TRAIT(ninja, TRAIT_MUTE, REF(src))
+
+	var/obj/item/mod/control/mod = get_ninja_mod(ninja)
+	if(mod)
+		setup_mod_ref = WEAKREF(mod)
+		RegisterSignal(mod, COMSIG_MOD_ACTIVATE, PROC_REF(on_setup_mod_activate))
+		for(var/obj/item/mod/module/module as anything in mod.modules)
+			RegisterSignal(module, COMSIG_MODULE_TRIGGERED, PROC_REF(on_setup_module_triggered))
 
 	setup_timer = addtimer(CALLBACK(src, PROC_REF(end_setup_phase)), 3 MINUTES, TIMER_STOPPABLE)
 
@@ -71,6 +109,13 @@
 		deltimer(setup_timer)
 		setup_timer = null
 
+	var/obj/item/mod/control/setup_mod = setup_mod_ref?.resolve()
+	setup_mod_ref = null
+	if(setup_mod)
+		UnregisterSignal(setup_mod, COMSIG_MOD_ACTIVATE)
+		for(var/obj/item/mod/module/module as anything in setup_mod.modules)
+			UnregisterSignal(module, COMSIG_MODULE_TRIGGERED)
+
 	// Resolve the body that was actually veiled first. After a respawn owner?.current is the
 	// NEW body, so checking it first would strand the old one in godmode forever.
 	var/mob/living/carbon/human/ninja = protected_mob_ref?.resolve()
@@ -80,84 +125,67 @@
 	if(!istype(ninja) || QDELETED(ninja))
 		return
 
-	if(istype(ninja))
-		ninja.alpha = initial(ninja.alpha)
-		ninja.invisibility = initial(ninja.invisibility)
-		ninja.density = initial(ninja.density)
-		REMOVE_TRAIT(ninja, TRAIT_IMMOBILIZED, REF(src))
-		REMOVE_TRAIT(ninja, TRAIT_HANDS_BLOCKED, REF(src))
-		REMOVE_TRAIT(ninja, TRAIT_GODMODE, REF(src))
-		new /obj/effect/temp_visual/dir_setting/ninja(get_turf(ninja), ninja.dir)
-		to_chat(ninja, span_warning("The shadows recede as your cybernetic systems calibrate. You are now exposed to the void."))
+	ninja.alpha = initial(ninja.alpha)
+	ninja.invisibility = initial(ninja.invisibility)
+	ninja.density = initial(ninja.density)
+	REMOVE_TRAIT(ninja, TRAIT_IMMOBILIZED, REF(src))
+	REMOVE_TRAIT(ninja, TRAIT_HANDS_BLOCKED, REF(src))
+	REMOVE_TRAIT(ninja, TRAIT_GODMODE, REF(src))
+	REMOVE_TRAIT(ninja, TRAIT_MUTE, REF(src))
+	new /obj/effect/temp_visual/dir_setting/ninja(get_turf(ninja), ninja.dir)
+	to_chat(ninja, span_warning("The shadows recede as your cybernetic systems calibrate. You are now exposed to the void."))
 
-		if(!do_loadout)
-			return
+	if(!do_loadout)
+		return
 
-		if(loadout_weapon != NINJA_SLOT_WEAPON_KATANA)
-			var/new_weapon_type
-			switch(loadout_weapon)
-				if(NINJA_SLOT_WEAPON_KUSARIGAMA)
-					new_weapon_type = /obj/item/plasma_kusarigama
-				if(NINJA_SLOT_WEAPON_DAGGERS)
-					new_weapon_type = /obj/item/nanite_daggers
-			if(new_weapon_type)
-				var/target_slot = ITEM_SLOT_SUITSTORE
-				var/obj/item/storage/belt/sheath/ninja/old_sheath = locate(/obj/item/storage/belt/sheath/ninja) in ninja.get_all_contents()
-				if(old_sheath)
-					var/slot = ninja.get_slot_by_item(old_sheath)
-					if(slot)
-						target_slot = slot
-					qdel(old_sheath)
-				var/obj/item/energy_katana/old_katana = locate(/obj/item/energy_katana) in ninja.get_all_contents()
-				if(old_katana)
-					qdel(old_katana)
-				var/obj/item/new_weapon = new new_weapon_type(ninja)
-				if(!ninja.equip_to_slot_if_possible(new_weapon, target_slot, disable_warning = TRUE))
-					if(!ninja.equip_to_slot_if_possible(new_weapon, ITEM_SLOT_BELT, disable_warning = TRUE))
-						if(!ninja.put_in_hands(new_weapon))
-							new_weapon.forceMove(get_turf(ninja))
-				var/obj/item/mod/control/mod = ninja.back
-				if(!istype(mod))
-					mod = locate(/obj/item/mod/control) in ninja.get_all_contents()
-				if(istype(mod))
-					var/obj/item/mod/module/weapon_recall/recall = locate(/obj/item/mod/module/weapon_recall) in mod.modules
-					if(recall)
-						recall.set_weapon(new_weapon)
-		else
-			var/obj/item/energy_katana/katana = locate(/obj/item/energy_katana) in ninja.get_all_contents()
-			var/obj/item/storage/belt/sheath/ninja/sheath = locate(/obj/item/storage/belt/sheath/ninja) in ninja.get_all_contents()
-			if(!sheath || !katana)
-				if(!sheath)
-					sheath = new /obj/item/storage/belt/sheath/ninja(ninja)
-					if(!ninja.equip_to_slot_if_possible(sheath, ITEM_SLOT_BELT, disable_warning = TRUE))
-						if(!ninja.put_in_hands(sheath))
-							sheath.forceMove(get_turf(ninja))
+	if(loadout_weapon != NINJA_SLOT_WEAPON_KATANA)
+		var/new_weapon_type
+		switch(loadout_weapon)
+			if(NINJA_SLOT_WEAPON_KUSARIGAMA)
+				new_weapon_type = /obj/item/plasma_kusarigama
+			if(NINJA_SLOT_WEAPON_DAGGERS)
+				new_weapon_type = /obj/item/nanite_daggers
+		if(new_weapon_type)
+			var/target_slot = ITEM_SLOT_SUITSTORE
+			var/obj/item/energy_katana/old_katana = locate(/obj/item/energy_katana) in ninja.get_all_contents()
+			if(old_katana)
+				qdel(old_katana)
+			var/obj/item/storage/belt/sheath/ninja/old_sheath = locate(/obj/item/storage/belt/sheath/ninja) in ninja.get_all_contents()
+			if(old_sheath)
+				var/slot = ninja.get_slot_by_item(old_sheath)
+				if(slot)
+					target_slot = slot
+				qdel(old_sheath)
+			var/obj/item/new_weapon = new new_weapon_type(ninja)
+			if(!ninja.equip_to_slot_if_possible(new_weapon, target_slot, disable_warning = TRUE))
+				if(!ninja.equip_to_slot_if_possible(new_weapon, ITEM_SLOT_BELT, disable_warning = TRUE))
+					if(!ninja.put_in_hands(new_weapon))
+						new_weapon.forceMove(get_turf(ninja))
+			link_recall_weapon(ninja, new_weapon)
+	else
+		var/obj/item/energy_katana/katana = locate(/obj/item/energy_katana) in ninja.get_all_contents()
+		var/obj/item/storage/belt/sheath/ninja/sheath = locate(/obj/item/storage/belt/sheath/ninja) in ninja.get_all_contents()
+		if(!sheath || !katana)
+			if(!sheath)
+				sheath = new /obj/item/storage/belt/sheath/ninja(ninja)
+				if(!ninja.equip_to_slot_if_possible(sheath, ITEM_SLOT_BELT, disable_warning = TRUE))
+					if(!ninja.put_in_hands(sheath))
+						sheath.forceMove(get_turf(ninja))
+			if(!katana)
+				katana = locate(/obj/item/energy_katana) in ninja.get_all_contents()
 				if(!katana)
-					katana = locate(/obj/item/energy_katana) in ninja.get_all_contents()
-					if(!katana)
-						katana = new(sheath)
-			var/obj/item/mod/control/mod = ninja.back
-			if(!istype(mod))
-				mod = locate(/obj/item/mod/control) in ninja.get_all_contents()
-			if(istype(mod) && katana)
-				var/obj/item/mod/module/weapon_recall/recall = locate(/obj/item/mod/module/weapon_recall) in mod.modules
-				if(recall)
-					recall.set_weapon(katana)
+					katana = new(sheath)
+		link_recall_weapon(ninja, katana)
 
-	apply_loadout()
+	apply_loadout(ninja)
 	SStgui.update_uis(src)
 
 
 /**
  * Applies the selected loadout to the ninja's MODsuit, swapping modules and updating pinned actions.
  */
-/datum/antagonist/ninja/proc/apply_loadout()
-	var/mob/living/carbon/human/ninja = owner?.current
-	if(!istype(ninja))
-		return
-	var/obj/item/mod/control/mod = ninja.back
-	if(!istype(mod))
-		mod = locate(/obj/item/mod/control) in ninja.get_all_contents()
+/datum/antagonist/ninja/proc/apply_loadout(mob/living/carbon/human/ninja = owner?.current)
+	var/obj/item/mod/control/mod = get_ninja_mod(ninja)
 	if(!istype(mod))
 		return
 
@@ -179,37 +207,37 @@
 			selected_star = /obj/item/mod/module/dispenser/ninja/kunai
 		if(NINJA_SLOT_STAR_VENOM)
 			selected_star = /obj/item/mod/module/dispenser/ninja/venom
-	equip_slot_module(mod, star_types, selected_star)
+	equip_slot_module(mod, ninja, star_types, selected_star)
 
 	var/static/list/heal_types = list(
 		/obj/item/mod/module/adrenaline_boost,
 		/obj/item/mod/module/nanite_repair/ninja,
-		/obj/item/mod/module/reflex_overdrive/ninja,
+		/obj/item/mod/module/reflex_overdrive,
 	)
 	var/selected_heal = /obj/item/mod/module/adrenaline_boost
 	switch(loadout_heal)
 		if(NINJA_SLOT_HEAL_NANITE)
 			selected_heal = /obj/item/mod/module/nanite_repair/ninja
 		if(NINJA_SLOT_HEAL_OVERDRIVE)
-			selected_heal = /obj/item/mod/module/reflex_overdrive/ninja
-	equip_slot_module(mod, heal_types, selected_heal)
+			selected_heal = /obj/item/mod/module/reflex_overdrive
+	equip_slot_module(mod, ninja, heal_types, selected_heal)
 
 	var/static/list/trap_types = list(
 		/obj/item/mod/module/energy_net,
 		/obj/item/mod/module/hologram_decoy/ninja,
-		/obj/item/mod/module/nanite_smoke/ninja,
+		/obj/item/mod/module/nanite_smoke,
 	)
 	var/selected_trap = /obj/item/mod/module/energy_net
 	switch(loadout_trap)
 		if(NINJA_SLOT_TRAP_DECOY)
 			selected_trap = /obj/item/mod/module/hologram_decoy/ninja
 		if(NINJA_SLOT_TRAP_SMOKE)
-			selected_trap = /obj/item/mod/module/nanite_smoke/ninja
-	equip_slot_module(mod, trap_types, selected_trap)
+			selected_trap = /obj/item/mod/module/nanite_smoke
+	equip_slot_module(mod, ninja, trap_types, selected_trap)
 
 	loadout_confirmed = TRUE
 
-/datum/antagonist/ninja/proc/equip_slot_module(obj/item/mod/control/mod, list/slot_types, selected_type)
+/datum/antagonist/ninja/proc/equip_slot_module(obj/item/mod/control/mod, mob/living/carbon/human/ninja, list/slot_types, selected_type)
 	var/obj/item/mod/module/existing
 	var/list/to_remove = list()
 	for(var/obj/item/mod/module/candidate as anything in mod.modules)
@@ -218,21 +246,14 @@
 		else if(candidate.type in (slot_types - selected_type))
 			to_remove += candidate
 	for(var/obj/item/mod/module/old_mod as anything in to_remove)
-		if(istype(mod, /obj/item/mod/control/pre_equipped))
-			var/obj/item/mod/control/pre_equipped/pre = mod
-			pre.default_pins -= old_mod.type
 		mod.uninstall(old_mod, deleting = TRUE)
 		qdel(old_mod)
 	if(existing)
 		return existing
 	var/obj/item/mod/module/new_module = new selected_type(mod)
 	mod.install(new_module)
-	var/mob/living/carbon/human/ninja = owner?.current
 	if(ninja)
 		new_module.pin(ninja)
-	if(istype(mod, /obj/item/mod/control/pre_equipped))
-		var/obj/item/mod/control/pre_equipped/pre = mod
-		pre.default_pins[selected_type] = list(REF(ninja))
 	return new_module
 
 /datum/antagonist/ninja/ui_data(mob/user)

@@ -24,8 +24,8 @@
  * * ninja - The human to receive the gear
  * * Returns a proc call on the given human which will equip them with all the gear.
  */
-/datum/antagonist/ninja/proc/equip_space_ninja(mob/living/carbon/human/ninja = owner.current)
-	return ninja.equip_species_outfit(/datum/outfit/ninja)
+/datum/antagonist/ninja/proc/equip_space_ninja(mob/living/carbon/human/ninja = owner?.current)
+	return ninja?.equip_species_outfit(/datum/outfit/ninja)
 
 /**
  * Proc that adds the proper memories to the antag datum
@@ -129,7 +129,11 @@
 	// A respawn mid-setup would otherwise leave the old body veiled forever and
 	// never start the setup phase for the new one.
 	end_setup_phase(do_loadout = FALSE)
-	equip_space_ninja()
+	equip_space_ninja(new_character)
+	if(isliving(new_character))
+		var/mob/living/living_ninja = new_character
+		living_ninja.add_quirk(/datum/quirk/freerunning, announce = FALSE)
+		living_ninja.add_quirk(/datum/quirk/light_step, announce = FALSE)
 	var/turf/spawnpoint = find_space_spawn()
 	if(spawnpoint)
 		new_character.forceMove(spawnpoint)
@@ -138,10 +142,10 @@
 
 /datum/antagonist/ninja/on_removal()
 	if(in_setup_phase)
-		end_setup_phase()
+		end_setup_phase(do_loadout = FALSE)
 	return ..()
 
 /datum/antagonist/ninja/Destroy()
 	if(in_setup_phase)
-		end_setup_phase()
+		end_setup_phase(do_loadout = FALSE)
 	return ..()

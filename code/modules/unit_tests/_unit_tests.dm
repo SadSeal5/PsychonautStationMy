@@ -324,6 +324,7 @@
 #include "slapcrafting.dm"
 #include "slime_mood.dm"
 #include "slips.dm"
+#include "space_ninja_tests.dm"
 #include "spawn_humans.dm"
 #include "spawn_mobs.dm"
 #include "species_change_clothing.dm"

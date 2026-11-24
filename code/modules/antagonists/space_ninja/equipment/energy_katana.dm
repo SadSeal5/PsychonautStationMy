@@ -52,8 +52,9 @@
 
 /obj/item/energy_katana/ranged_interact_with_atom_secondary(atom/interacting_with, mob/living/user, list/modifiers)
 	if(isliving(interacting_with))
-		jaunt.attack_teleport(user, interacting_with)
-		return ITEM_INTERACT_SUCCESS
+		if(interacting_with == user)
+			return NONE
+		return jaunt.attack_teleport(user, interacting_with) ? ITEM_INTERACT_SUCCESS : ITEM_INTERACT_BLOCKING
 	if(jaunt.teleport(user, interacting_with))
 		return ITEM_INTERACT_SUCCESS
 	return NONE
@@ -79,13 +80,6 @@
 	charge_rate = 200
 	beam_length = 1 SECONDS
 	recharge_sound = null
-	var/list/pending_charge_timers = list()
-
-/datum/action/innate/dash/ninja/Destroy()
-	for(var/timer_id in pending_charge_timers)
-		deltimer(timer_id)
-	pending_charge_timers.Cut()
-	return ..()
 
 /datum/action/innate/dash/ninja/GiveAction(mob/viewer) //this action should be invisible, as its handled by right-click
 	return
@@ -93,59 +87,34 @@
 /datum/action/innate/dash/ninja/HideFrom(mob/viewer)
 	return
 
-/datum/action/innate/dash/ninja/teleport(mob/user, atom/target)
-	if(!IsAvailable(feedback = TRUE))
+/// Returns TRUE if target is a valid human-tier enemy for execute dash/step refunds.
+/proc/is_ninja_execute_target(mob/living/target)
+	if(QDELETED(target) || istype(target, /mob/living/basic/illusion/ninja_decoy))
 		return FALSE
-
-	var/turf/current_turf = get_turf(user)
-	var/turf/target_turf = get_turf(target)
-	if(!(target in view(user.client?.view || world.view, user)))
-		user.balloon_alert(user, "out of view!")
+	if((target.mind && IS_SPACE_NINJA(target)) || target.has_faction(ROLE_NINJA))
 		return FALSE
-	if(target_turf.is_blocked_turf_ignore_climbable())
-		user.balloon_alert(user, "destination blocked!")
-		return FALSE
-	if(!do_teleport(user, target_turf, no_effects = TRUE))
-		user.balloon_alert(user, "dash blocked!")
-		return FALSE
-
-	var/obj/spot_one = new phaseout(current_turf, user.dir)
-	var/obj/spot_two = new phasein(target_turf, user.dir)
-	spot_one.Beam(spot_two, beam_effect, time = beam_length)
-	playsound(target_turf, dash_sound, 25, TRUE)
-	current_charges--
-	pending_charge_timers += addtimer(CALLBACK(src, PROC_REF(charge)), charge_rate, TIMER_STOPPABLE)
-	owner?.update_mob_action_buttons()
-	SEND_SIGNAL(src, COMSIG_DASH_ACTION_DASHED)
-	return TRUE
-
-/datum/action/innate/dash/ninja/charge()
-	if(length(pending_charge_timers))
-		pending_charge_timers.Cut(1, 2)
-	return ..()
-
-/datum/action/innate/dash/ninja/proc/refund_charge()
-	if(length(pending_charge_timers))
-		var/timer_id = pending_charge_timers[length(pending_charge_timers)]
-		pending_charge_timers.Cut(length(pending_charge_timers))
-		deltimer(timer_id)
-	if(current_charges < max_charges)
-		current_charges = min(current_charges + 1, max_charges)
-		SEND_SIGNAL(src, COMSIG_DASH_ACTION_CHARGED)
-		owner?.update_mob_action_buttons()
+	return ishuman(target) || (target.mind && target.mob_size >= MOB_SIZE_HUMAN)
 
 /// Teleports to a tile adjacent to a mob, then attacks it
 /datum/action/innate/dash/ninja/proc/attack_teleport(mob/living/user, mob/living/stabbing)
-	var/list/turf/line = get_line(user, stabbing)
+	if(!istype(stabbing) || stabbing == user)
+		return FALSE
+	if(HAS_TRAIT(user, TRAIT_PACIFISM) || HAS_TRAIT(user, TRAIT_CANT_ATTACK))
+		return FALSE
 	var/obj/item/sword = target
-	if(length(line) <= 1 || !teleport(user, line[length(line) - 1])) // teleports to the second last turf, should be adjacent to the target
-		return
+	var/was_adjacent = user.Adjacent(stabbing)
+	var/dashed = !was_adjacent
+	if(!was_adjacent)
+		var/list/turf/line = get_line(user, stabbing)
+		if(length(line) <= 1 || !teleport(user, line[length(line) - 1]))
+			return FALSE
 	if(!stabbing.IsReachableBy(user, sword?.reach))
-		return
+		return FALSE
 	var/was_conscious = (stabbing.stat == STABLE)
 	sword.melee_attack_chain(user, stabbing)
-	if(!QDELETED(stabbing) && was_conscious && stabbing.stat >= SOFT_CRIT)
+	if(dashed && was_conscious && is_ninja_execute_target(stabbing) && stabbing.stat >= SOFT_CRIT)
 		refund_charge()
 		sword.balloon_alert(user, "execute! dash refunded")
-	if(prob(5) && check_holidays(APRIL_FOOLS))
+	if(dashed && prob(5) && check_holidays(APRIL_FOOLS))
 		user.say("Heh, nothin' personnel kid!", forced = "*teleports behind you**")
+	return TRUE

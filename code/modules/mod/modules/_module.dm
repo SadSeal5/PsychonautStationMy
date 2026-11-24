@@ -114,10 +114,6 @@
 
 /// Called when the module is selected from the TGUI, radial or the action button
 /obj/item/mod/module/proc/on_select(mob/activator)
-	var/datum/antagonist/ninja/ninja_datum = activator?.mind?.has_antag_datum(/datum/antagonist/ninja)
-	if(ninja_datum?.in_setup_phase)
-		balloon_alert(activator, "suit calibrating!")
-		return
 	if(!mod.wearer && !(allow_flags & MODULE_ALLOW_UNWORN)) //No wearer and cannot be used unworn
 		balloon_alert(activator, "not equipped!")
 		return
@@ -203,7 +199,7 @@
 			used_signal = null
 	SEND_SIGNAL(src, COMSIG_MODULE_DEACTIVATED, mod.wearer)
 	SEND_SIGNAL(mod, COMSIG_MOD_MODULE_DEACTIVATED, src)
-	on_deactivation(activator, display_message = TRUE, deleting = FALSE)
+	on_deactivation(activator, display_message, deleting)
 	update_clothing_slots()
 	return TRUE
 

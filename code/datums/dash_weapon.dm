@@ -22,6 +22,14 @@
 	var/phasein = /obj/effect/temp_visual/dir_setting/ninja/phase
 	/// What effect should we play when we phase out (at the source turf)
 	var/phaseout = /obj/effect/temp_visual/dir_setting/ninja/phase/out
+	/// Active stoppable recharge timers.
+	var/list/pending_charge_timers = list()
+
+/datum/action/innate/dash/Destroy()
+	for(var/timer_id in pending_charge_timers)
+		deltimer(timer_id)
+	pending_charge_timers.Cut()
+	return ..()
 
 /datum/action/innate/dash/IsAvailable(feedback = FALSE)
 	. = ..()
@@ -47,7 +55,7 @@
 
 	var/turf/current_turf = get_turf(user)
 	var/turf/target_turf = get_turf(target)
-	if(!(target in view(user.client.view, user)))
+	if(!(target in view(user.client?.view || world.view, user)))
 		user.balloon_alert(user, "out of view!")
 		return FALSE
 	if(target_turf.is_blocked_turf_ignore_climbable())
@@ -66,7 +74,7 @@
 	spot_one.Beam(spot_two, beam_effect, time = beam_length)
 	playsound(target_turf, dash_sound, 25, TRUE)
 	current_charges--
-	addtimer(CALLBACK(src, PROC_REF(charge)), charge_rate)
+	pending_charge_timers += addtimer(CALLBACK(src, PROC_REF(charge)), charge_rate, TIMER_STOPPABLE)
 	owner?.update_mob_action_buttons()
 	SEND_SIGNAL(src, COMSIG_DASH_ACTION_DASHED)
 
@@ -74,6 +82,8 @@
 
 /// Callback for [/proc/teleport] to increment our charges after  use.
 /datum/action/innate/dash/proc/charge()
+	if(length(pending_charge_timers))
+		pending_charge_timers.Cut(1, 2)
 	current_charges = clamp(current_charges + 1, 0, max_charges)
 	SEND_SIGNAL(src, COMSIG_DASH_ACTION_CHARGED)
 
@@ -88,3 +98,14 @@
 		return
 	owner.update_mob_action_buttons()
 	dashing_item.balloon_alert(owner, "[current_charges]/[max_charges] dash charges")
+
+/// Cancels the newest pending recharge timer and refunds 1 dash charge.
+/datum/action/innate/dash/proc/refund_charge()
+	if(length(pending_charge_timers))
+		var/timer_id = pending_charge_timers[length(pending_charge_timers)]
+		pending_charge_timers.Cut(length(pending_charge_timers))
+		deltimer(timer_id)
+	if(current_charges < max_charges)
+		current_charges = min(current_charges + 1, max_charges)
+		SEND_SIGNAL(src, COMSIG_DASH_ACTION_CHARGED)
+		owner?.update_mob_action_buttons()

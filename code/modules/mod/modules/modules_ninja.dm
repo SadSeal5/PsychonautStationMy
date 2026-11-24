@@ -1,5 +1,21 @@
 //Ninja modules for MODsuits
 
+/// Breaks any active optical stealth or holographic decoy cloak on the ninja.
+/proc/ninja_break_cloak(mob/living/user)
+	if(!istype(user))
+		return
+	var/obj/item/mod/control/suit = user.get_item_by_slot(ITEM_SLOT_BACK)
+	if(!istype(suit))
+		suit = locate(/obj/item/mod/control) in user.contents
+	if(!istype(suit))
+		return
+	var/obj/item/mod/module/stealth/stealth_mod = locate() in suit.modules
+	if(stealth_mod?.active)
+		stealth_mod.unstealth(user)
+	var/obj/item/mod/module/hologram_decoy/ninja/decoy_mod = locate() in suit.modules
+	if(decoy_mod?.stealth_timer)
+		decoy_mod.end_stealth(decoy_mod.stealth_wearer_ref)
+
 ///Cloaking - Lowers the user's visibility, can be interrupted by being touched or attacked.
 /obj/item/mod/module/stealth
 	name = "\improper MOD prototype cloaking module"
@@ -25,6 +41,7 @@
 		RegisterSignal(mod.wearer, COMSIG_LIVING_MOB_BUMP, PROC_REF(unstealth))
 	RegisterSignal(mod.wearer, COMSIG_LIVING_UNARMED_ATTACK, PROC_REF(on_unarmed_attack))
 	RegisterSignal(mod.wearer, COMSIG_ATOM_BULLET_ACT, PROC_REF(on_bullet_act))
+	RegisterSignal(mod.wearer, COMSIG_MOB_THROW, PROC_REF(on_throw_unstealth))
 	RegisterSignals(mod.wearer, list(COMSIG_MOB_ITEM_ATTACK, COMSIG_ATOM_ATTACKBY, COMSIG_ATOM_ATTACK_HAND, COMSIG_ATOM_HITBY, COMSIG_ATOM_HULK_ATTACK, COMSIG_ATOM_ATTACK_PAW, COMSIG_CARBON_CUFF_ATTEMPTED), PROC_REF(unstealth))
 	animate(mod.wearer, alpha = stealth_alpha, time = 1.5 SECONDS)
 	drain_power(use_energy_cost)
@@ -32,8 +49,10 @@
 /obj/item/mod/module/stealth/on_deactivation(mob/activator, display_message = TRUE, deleting = FALSE)
 	if(bumpoff)
 		UnregisterSignal(mod.wearer, COMSIG_LIVING_MOB_BUMP)
-	UnregisterSignal(mod.wearer, list(COMSIG_LIVING_UNARMED_ATTACK, COMSIG_MOB_ITEM_ATTACK, COMSIG_ATOM_ATTACKBY, COMSIG_ATOM_ATTACK_HAND, COMSIG_ATOM_BULLET_ACT, COMSIG_ATOM_HITBY, COMSIG_ATOM_HULK_ATTACK, COMSIG_ATOM_ATTACK_PAW, COMSIG_CARBON_CUFF_ATTEMPTED))
+	UnregisterSignal(mod.wearer, list(COMSIG_LIVING_UNARMED_ATTACK, COMSIG_MOB_ITEM_ATTACK, COMSIG_ATOM_ATTACKBY, COMSIG_ATOM_ATTACK_HAND, COMSIG_ATOM_BULLET_ACT, COMSIG_ATOM_HITBY, COMSIG_ATOM_HULK_ATTACK, COMSIG_ATOM_ATTACK_PAW, COMSIG_CARBON_CUFF_ATTEMPTED, COMSIG_MOB_THROW))
 	animate(mod.wearer, alpha = 255, time = 1.5 SECONDS)
+	if(!deleting)
+		start_cooldown()
 
 /obj/item/mod/module/stealth/proc/unstealth(datum/source)
 	SIGNAL_HANDLER
@@ -42,6 +61,12 @@
 	do_sparks(2, TRUE, src)
 	drain_power(use_energy_cost)
 	deactivate()
+
+/obj/item/mod/module/stealth/proc/on_throw_unstealth(mob/living/source, atom/target)
+	SIGNAL_HANDLER
+
+	if(istype(source.get_active_held_item(), /obj/item/throwing_star))
+		unstealth(source)
 
 /obj/item/mod/module/stealth/proc/on_unarmed_attack(datum/source, atom/target)
 	SIGNAL_HANDLER
@@ -125,16 +150,74 @@
 		While these lack the intense bleeding edge of conventional throwing stars, \
 		they have been set to electrify fleeing targets; and branded with the Spider Clan symbol."
 	icon_state = "dispenser_ninja"
-	dispense_type = /obj/item/throwing_star/stamina/ninja
+	dispense_type = /obj/item/throwing_star/ninja/stamina
 	cooldown_time = 0.5 SECONDS
+	/// Maximum simultaneously active spawned projectiles allowed.
+	var/max_active_projectiles = 2
+	/// Weakrefs to currently active spawned projectiles.
+	var/list/datum/weakref/active_projectiles = list()
+
+/obj/item/mod/module/dispenser/ninja/Destroy()
+	active_projectiles.Cut()
+	return ..()
+
+/obj/item/mod/module/dispenser/ninja/proc/prune_active_projectiles()
+	for(var/datum/weakref/projectile_ref as anything in active_projectiles)
+		var/atom/projectile = projectile_ref.resolve()
+		if(!projectile || QDELETED(projectile))
+			active_projectiles -= projectile_ref
+
+/obj/item/mod/module/dispenser/ninja/proc/on_projectile_qdeleted(datum/source)
+	SIGNAL_HANDLER
+	for(var/datum/weakref/projectile_ref as anything in active_projectiles)
+		var/atom/projectile = projectile_ref.resolve()
+		if(!projectile || projectile == source)
+			active_projectiles -= projectile_ref
 
 /obj/item/mod/module/dispenser/ninja/used(mob/activator)
 	if(!mod?.wearer?.get_empty_held_indexes())
 		balloon_alert(activator, "hands full!")
 		return FALSE
+	prune_active_projectiles()
+	if(length(active_projectiles) >= max_active_projectiles)
+		balloon_alert(activator, "max active reached!")
+		return FALSE
 	return ..()
 
-/obj/item/throwing_star/stamina/ninja
+/obj/item/mod/module/dispenser/ninja/on_use(mob/activator)
+	var/obj/item/dispensed = ..()
+	if(!dispensed)
+		return FALSE
+	active_projectiles += WEAKREF(dispensed)
+	RegisterSignal(dispensed, COMSIG_QDELETING, PROC_REF(on_projectile_qdeleted))
+	return dispensed
+
+/obj/item/throwing_star/ninja
+	abstract_type = /obj/item/throwing_star/ninja
+	item_flags = DROPDEL
+	custom_materials = null
+	resistance_flags = FIRE_PROOF | ACID_PROOF | UNACIDABLE
+
+/obj/item/throwing_star/ninja/Initialize(mapload)
+	. = ..()
+	ADD_TRAIT(src, TRAIT_UNCATCHABLE, INNATE_TRAIT)
+
+/obj/item/throwing_star/ninja/on_thrown(mob/living/carbon/user, atom/target)
+	item_flags &= ~DROPDEL
+	return ..()
+
+/obj/item/throwing_star/ninja/throw_impact(atom/hit_atom, datum/thrownthing/throwingdatum)
+	. = ..()
+	item_flags |= DROPDEL
+	var/impact_blocked = (. || QDELETED(hit_atom))
+	on_ninja_impact(hit_atom, throwingdatum, impact_blocked)
+	if(!QDELETED(src) && isturf(loc))
+		qdel(src)
+
+/obj/item/throwing_star/ninja/proc/on_ninja_impact(atom/hit_atom, datum/thrownthing/throwingdatum, impact_blocked)
+	return
+
+/obj/item/throwing_star/ninja/stamina
 	name = "energy throwing star"
 	desc = "An evolution of the traditional steel shuriken, commonly used by Spider Clan initiates. \
 		When thrown or embedded, its internal energy emitter releases an electromagnetic pulse."
@@ -142,36 +225,15 @@
 	force = 8
 	throwforce = 12
 	armour_penetration = 75
-	item_flags = DROPDEL
 	embed_type = /datum/embedding/throwing_star/stamina/energy
-	custom_materials = null
-	resistance_flags = FIRE_PROOF | ACID_PROOF | UNACIDABLE
 
-/obj/item/throwing_star/stamina/ninja/Initialize(mapload)
-	. = ..()
-	ADD_TRAIT(src, TRAIT_UNCATCHABLE, INNATE_TRAIT)
-
-/obj/item/throwing_star/stamina/ninja/on_thrown(mob/living/carbon/user, atom/target)
-	item_flags &= ~DROPDEL // Throwing = dropping = dropdel, not ideal. Remove it before that happens
-	return ..()
-
-/obj/item/throwing_star/stamina/ninja/throw_impact(atom/hit_atom, datum/thrownthing/throwingdatum)
-	. = ..()
-	item_flags |= DROPDEL // Just in case, re-apply drop del now
-	if(istype(hit_atom, /mob/living/basic/illusion/ninja_decoy))
-		var/mob/living/basic/illusion/ninja_decoy/decoy = hit_atom
-		var/mob/living/thrower = throwingdatum?.get_thrower()
-		if(isliving(thrower) && decoy.is_allied_mob(thrower))
-			if(isturf(loc))
-				qdel(src)
-			return
-	hit_atom.emp_act(EMP_HEAVY)
+/obj/item/throwing_star/ninja/stamina/on_ninja_impact(atom/hit_atom, datum/thrownthing/throwingdatum, impact_blocked)
+	if(!QDELETED(hit_atom))
+		hit_atom.emp_act(EMP_HEAVY)
 	new /obj/effect/temp_visual/emp/pulse(get_turf(src))
 	new /obj/effect/temp_visual/emp(get_turf(hit_atom))
 	playsound(src, 'sound/effects/empulse.ogg', 60, TRUE, MEDIUM_RANGE_SOUND_EXTRARANGE)
 	visible_message("[src] emits an electromagnetic pulse upon impact!")
-	if(isturf(loc)) // if we didn't embed in anything, go away
-		qdel(src)
 
 /datum/embedding/throwing_star/stamina/energy
 	COOLDOWN_DECLARE(emp_cd)
@@ -197,50 +259,45 @@
 		tethered to monomolecular micro-cables. When thrown, the kunai drags struck adversaries directly to the user with a stunning shock, \
 		or anchors into walls and structures to haul the wearer rapidly forward."
 	icon_state = "dispenser_kunai"
-	dispense_type = /obj/item/throwing_star/kunai/ninja
+	dispense_type = /obj/item/throwing_star/ninja/kunai
 	cooldown_time = 7 SECONDS
+	max_active_projectiles = 1
 
-/obj/item/throwing_star/kunai/ninja
+/obj/item/throwing_star/ninja/kunai
 	name = "grappling kunai"
 	desc = "A forged titanium-alloy kunai threaded with a high-tensile Spider Clan nanite cable. \
 		When thrown, it embeds violently, dragging living targets or reeling its thrower forward to solid walls."
 	icon = 'icons/obj/weapons/thrown.dmi'
 	icon_state = "kunai_ninja"
-	inhand_icon_state = "kunai"
+	inhand_icon_state = "edagger"
+	lefthand_file = 'icons/mob/inhands/weapons/swords_lefthand.dmi'
+	righthand_file = 'icons/mob/inhands/weapons/swords_righthand.dmi'
 	force = 8
 	throwforce = 12
 	throw_speed = 1
 	armour_penetration = 75
-	item_flags = DROPDEL
-	custom_materials = null
-	resistance_flags = FIRE_PROOF | ACID_PROOF | UNACIDABLE
 	/// Reference to the thrower mob
 	var/datum/weakref/thrower_ref
 	/// Visual tether cable beam connecting thrower to kunai
 	var/datum/beam/tether_beam
 
-/obj/item/throwing_star/kunai/ninja/Initialize(mapload)
-	. = ..()
-	ADD_TRAIT(src, TRAIT_UNCATCHABLE, INNATE_TRAIT)
-
-/obj/item/throwing_star/kunai/ninja/Destroy()
+/obj/item/throwing_star/ninja/kunai/Destroy()
 	QDEL_NULL(tether_beam)
 	return ..()
 
-/obj/item/throwing_star/kunai/ninja/safe_throw_at(atom/target, range, speed, atom/thrower, spin = FALSE, diagonals_first = FALSE, datum/callback/callback, force = MOVE_FORCE_STRONG, gentle = FALSE)
+/obj/item/throwing_star/ninja/kunai/safe_throw_at(atom/target, range, speed, atom/thrower, spin = FALSE, diagonals_first = FALSE, datum/callback/callback, force = MOVE_FORCE_STRONG, gentle = FALSE)
 	return ..(target, range, speed, thrower, FALSE, diagonals_first, callback, force, gentle)
 
-/obj/item/throwing_star/kunai/ninja/throw_at(atom/target, range, speed, mob/thrower, spin = FALSE, diagonals_first = FALSE, datum/callback/callback, force, gentle = FALSE, quickstart = TRUE, throw_type_path = /datum/thrownthing)
+/obj/item/throwing_star/ninja/kunai/throw_at(atom/target, range, speed, mob/thrower, spin = FALSE, diagonals_first = FALSE, datum/callback/callback, force, gentle = FALSE, quickstart = TRUE, throw_type_path = /datum/thrownthing)
 	return ..(target, range, speed, thrower, FALSE, diagonals_first, callback, force, gentle, quickstart, throw_type_path)
 
-/obj/item/throwing_star/kunai/ninja/ranged_interact_with_atom(atom/target, mob/living/user, list/modifiers)
+/obj/item/throwing_star/ninja/kunai/ranged_interact_with_atom(atom/target, mob/living/user, list/modifiers)
 	if(!target || target == user)
 		return NONE
 	user.throw_item(target)
 	return ITEM_INTERACT_SUCCESS
 
-/obj/item/throwing_star/kunai/ninja/on_thrown(mob/living/carbon/user, atom/target)
-	item_flags &= ~DROPDEL
+/obj/item/throwing_star/ninja/kunai/on_thrown(mob/living/carbon/user, atom/target)
 	. = ..()
 	if(!.)
 		return FALSE
@@ -258,39 +315,32 @@
 	if(!QDELETED(ninja))
 		ninja.set_resting(FALSE)
 
-/obj/item/throwing_star/kunai/ninja/throw_impact(atom/hit_atom, datum/thrownthing/throwingdatum)
-	. = ..()
-	item_flags |= DROPDEL
+/obj/item/throwing_star/ninja/kunai/on_ninja_impact(atom/hit_atom, datum/thrownthing/throwingdatum, impact_blocked)
 	QDEL_NULL(tether_beam)
 	transform = null
 	icon_state = "kunai_ninja"
+	if(impact_blocked)
+		return
 	var/mob/living/thrower = thrower_ref?.resolve()
-	if(istype(hit_atom, /mob/living/basic/illusion/ninja_decoy))
-		var/mob/living/basic/illusion/ninja_decoy/decoy = hit_atom
-		var/mob/living/actual_thrower = thrower || throwingdatum?.get_thrower()
-		if(isliving(actual_thrower) && decoy.is_allied_mob(actual_thrower))
-			if(isturf(loc))
-				qdel(src)
-			return
 	if(isliving(hit_atom))
 		var/mob/living/victim = hit_atom
 		playsound(src, 'sound/items/weapons/pierce.ogg', 60, TRUE)
 		victim.apply_damage(10, STAMINA)
 		victim.Knockdown(2.5 SECONDS)
 		do_sparks(2, TRUE, victim)
-		if(thrower && thrower != victim && get_dist(thrower, victim) > 1 && !victim.anchored && !victim.buckled && victim.move_resist < MOVE_FORCE_OVERPOWERING && isturf(victim.loc))
+		if(thrower && thrower != victim && thrower.z == victim.z && get_dist(thrower, victim) > 1 && !victim.anchored && !victim.buckled && victim.move_resist < MOVE_FORCE_OVERPOWERING && isturf(victim.loc))
 			victim.visible_message(span_danger("[thrower] snags [victim] with [src] and yanks [victim.p_them()] close!"), span_userdanger("[thrower] hooks you with [src] and yanks you across the room!"))
 			playsound(victim, 'sound/items/fulton/fultext_deploy.ogg', 50, TRUE)
 			var/datum/beam/pull_beam = thrower.Beam(victim, icon_state = "ninja_cable", maxdistance = 15, time = 3 SECONDS)
-			victim.throw_at(target = thrower, range = get_dist(victim, thrower), speed = 1.5, thrower = thrower, spin = FALSE, gentle = TRUE, callback = CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(qdel), pull_beam))
+			if(!victim.throw_at(target = thrower, range = get_dist(victim, thrower), speed = 1.5, thrower = thrower, spin = FALSE, gentle = TRUE, callback = CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(qdel), pull_beam)))
+				qdel(pull_beam)
 	else if(hit_atom.density || istype(hit_atom, /turf/closed) || isstructure(hit_atom) || ismachinery(hit_atom))
-		if(thrower && isturf(thrower.loc) && !thrower.buckled && get_dist(thrower, hit_atom) > 1)
+		if(thrower && thrower.z == hit_atom.z && isturf(thrower.loc) && !thrower.buckled && get_dist(thrower, hit_atom) > 1)
 			thrower.visible_message(span_danger("[thrower] grapples onto [hit_atom] and zips forward!"), span_notice("You hook [hit_atom] with [src] and haul yourself forward!"))
 			playsound(thrower, 'sound/items/fulton/fultext_deploy.ogg', 50, TRUE)
 			var/datum/beam/zip_beam = thrower.Beam(hit_atom, icon_state = "ninja_cable", maxdistance = 15, time = 3 SECONDS)
-			thrower.throw_at(target = get_turf(hit_atom), range = get_dist(thrower, hit_atom), speed = 2, thrower = thrower, spin = FALSE, gentle = TRUE, callback = CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(ninja_kunai_smooth_landing), thrower, zip_beam))
-	if(isturf(loc))
-		qdel(src)
+			if(!thrower.throw_at(target = get_turf(hit_atom), range = get_dist(thrower, hit_atom), speed = 2, thrower = thrower, spin = FALSE, gentle = TRUE, callback = CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(ninja_kunai_smooth_landing), thrower, zip_beam)))
+				qdel(zip_beam)
 
 //Paralytic Venom Dart Dispenser - Dispenses paralytic venom darts.
 /obj/item/mod/module/dispenser/ninja/venom
@@ -299,11 +349,11 @@
 		tipped with fast-acting paralytic agents. Designed to silently cripple targets' stamina, \
 		coordination, and speech without triggering electromagnetic signatures."
 	icon_state = "dispenser_venom"
-	dispense_type = /obj/item/throwing_star/venom/ninja
+	dispense_type = /obj/item/throwing_star/ninja/venom
 	cooldown_time = 3.5 SECONDS
 	use_energy_cost = DEFAULT_CHARGE_DRAIN * 2
 
-/obj/item/throwing_star/venom/ninja
+/obj/item/throwing_star/ninja/venom
 	name = "paralytic venom dart"
 	desc = "A sleek purple-emerald Spider Clan dart tipped with a fast-acting paralytic neurotoxin. \
 		Inflicts heavy stamina trauma, disorients, and briefly mutes victims on impact."
@@ -311,29 +361,11 @@
 	force = 6
 	throwforce = 8
 	armour_penetration = 60
-	item_flags = DROPDEL
-	custom_materials = null
-	resistance_flags = FIRE_PROOF | ACID_PROOF | UNACIDABLE
 	embed_type = /datum/embedding/throwing_star/venom/ninja
 
-/obj/item/throwing_star/venom/ninja/Initialize(mapload)
-	. = ..()
-	ADD_TRAIT(src, TRAIT_UNCATCHABLE, INNATE_TRAIT)
-
-/obj/item/throwing_star/venom/ninja/on_thrown(mob/living/carbon/user, atom/target)
-	item_flags &= ~DROPDEL
-	return ..()
-
-/obj/item/throwing_star/venom/ninja/throw_impact(atom/hit_atom, datum/thrownthing/throwingdatum)
-	. = ..()
-	item_flags |= DROPDEL
-	if(istype(hit_atom, /mob/living/basic/illusion/ninja_decoy))
-		var/mob/living/basic/illusion/ninja_decoy/decoy = hit_atom
-		var/mob/living/thrower = throwingdatum?.get_thrower()
-		if(isliving(thrower) && decoy.is_allied_mob(thrower))
-			if(isturf(loc))
-				qdel(src)
-			return
+/obj/item/throwing_star/ninja/venom/on_ninja_impact(atom/hit_atom, datum/thrownthing/throwingdatum, impact_blocked)
+	if(impact_blocked)
+		return
 	if(isliving(hit_atom))
 		var/mob/living/victim = hit_atom
 		victim.apply_damage(22, STAMINA)
@@ -341,8 +373,6 @@
 		victim.apply_status_effect(/datum/status_effect/silenced, 2.5 SECONDS)
 		playsound(victim, 'sound/items/weapons/pierce.ogg', 50, TRUE)
 		new /obj/effect/temp_visual/heal(get_turf(victim), "#7c3aed")
-	if(isturf(loc))
-		qdel(src)
 
 /datum/embedding/throwing_star/venom/ninja
 	pain_mult = 2
@@ -422,7 +452,7 @@
 		target.wanted_status = WANTED_ARREST
 	update_all_security_huds()
 
-	var/datum/antagonist/ninja/ninja_antag = ninja.mind.has_antag_datum(/datum/antagonist/ninja)
+	var/datum/antagonist/ninja/ninja_antag = ninja.mind?.has_antag_datum(/datum/antagonist/ninja)
 	if(!ninja_antag)
 		return
 	var/datum/objective/security_scramble/objective = locate() in ninja_antag.objectives
@@ -546,7 +576,7 @@
 		return
 	overload_source_code_hdd()
 	to_chat(ninja, span_notice("Sabotage complete. Storage device overloaded."))
-	var/datum/antagonist/ninja/ninja_antag = ninja.mind.has_antag_datum(/datum/antagonist/ninja)
+	var/datum/antagonist/ninja/ninja_antag = ninja.mind?.has_antag_datum(/datum/antagonist/ninja)
 	if(!ninja_antag)
 		return
 	var/datum/objective/research_secrets/objective = locate() in ninja_antag.objectives
@@ -565,7 +595,7 @@
 		return
 	stored_research.adjust_all_points(-INFINITY)
 	to_chat(ninja, span_notice("Sabotage complete. Research notes corrupted."))
-	var/datum/antagonist/ninja/ninja_antag = ninja.mind.has_antag_datum(/datum/antagonist/ninja)
+	var/datum/antagonist/ninja/ninja_antag = ninja.mind?.has_antag_datum(/datum/antagonist/ninja)
 	if(!ninja_antag)
 		return
 	var/datum/objective/research_secrets/objective = locate() in ninja_antag.objectives
@@ -587,7 +617,7 @@
 		return
 
 	hacking_module.communication_console_hack_success = TRUE
-	var/datum/antagonist/ninja/ninja_antag = ninja.mind.has_antag_datum(/datum/antagonist/ninja)
+	var/datum/antagonist/ninja/ninja_antag = ninja.mind?.has_antag_datum(/datum/antagonist/ninja)
 	if(!ninja_antag)
 		return
 	var/datum/objective/terror_message/objective = locate() in ninja_antag.objectives
@@ -601,7 +631,7 @@
 	if(!operating && density && hasPower() && !(obj_flags & EMAGGED) && hacking_module.mod.subtract_charge(DEFAULT_CHARGE_DRAIN * 5))
 		INVOKE_ASYNC(src, TYPE_PROC_REF(/atom, emag_act))
 		hacking_module.door_hack_counter++
-		var/datum/antagonist/ninja/ninja_antag = ninja.mind.has_antag_datum(/datum/antagonist/ninja)
+		var/datum/antagonist/ninja/ninja_antag = ninja.mind?.has_antag_datum(/datum/antagonist/ninja)
 		if(!ninja_antag)
 			return NONE
 		var/datum/objective/door_jack/objective = locate() in ninja_antag.objectives
@@ -698,7 +728,7 @@
 	replace_law_set(/datum/ai_laws/ninja_override)
 	model.transform_to(pick(/obj/item/robot_model/syndicate, /obj/item/robot_model/syndicate_medical, /obj/item/robot_model/saboteur))
 
-	var/datum/antagonist/ninja/ninja_antag = ninja.mind.has_antag_datum(/datum/antagonist/ninja)
+	var/datum/antagonist/ninja/ninja_antag = ninja.mind?.has_antag_datum(/datum/antagonist/ninja)
 	if(!ninja_antag)
 		return
 	var/datum/objective/cyborg_hijack/objective = locate() in ninja_antag.objectives
@@ -881,8 +911,6 @@
 	required_slots = list(ITEM_SLOT_GLOVES, ITEM_SLOT_BACK|ITEM_SLOT_BELT)
 	/// The item linked to the module that will get recalled.
 	var/obj/item/linked_weapon
-	/// The accepted typepath we can link to.
-	var/accepted_type = /obj/item/energy_katana
 	/// Allowed weapon types for weapon recall.
 	var/list/allowed_weapon_types = list(/obj/item/energy_katana, /obj/item/plasma_kusarigama, /obj/item/nanite_daggers)
 
@@ -896,7 +924,7 @@
 	if(!linked_weapon)
 		var/obj/item/weapon_to_link
 		for(var/obj/item/held in mod.wearer.held_items)
-			if(is_type_in_list(held, list(/obj/item/energy_katana, /obj/item/plasma_kusarigama, /obj/item/nanite_daggers)))
+			if(is_type_in_list(held, allowed_weapon_types))
 				weapon_to_link = held
 				break
 		if(!weapon_to_link)
@@ -959,7 +987,7 @@
 /obj/item/mod/module/weapon_recall/proc/catch_weapon(obj/item/source, atom/hit_atom, datum/thrownthing/thrownthing)
 	SIGNAL_HANDLER
 
-	if(!mod)
+	if(!mod?.wearer)
 		return
 	if(hit_atom != mod.wearer)
 		return
@@ -1050,8 +1078,10 @@
 	. = ..()
 	if(!.)
 		return
-	if(IS_SPACE_NINJA(mod.wearer) && isliving(target))
+	var/is_cloaked = HAS_TRAIT(mod.wearer, TRAIT_SILENT_FOOTSTEPS)
+	if(IS_SPACE_NINJA(mod.wearer) && isliving(target) && !is_cloaked)
 		mod.wearer.say("Get over here!", forced = type)
+	ninja_break_cloak(mod.wearer)
 	var/obj/projectile/net = new /obj/projectile/energy_net(mod.wearer.loc, src)
 	net.aim_projectile(target, mod.wearer)
 	net.firer = mod.wearer
@@ -1166,6 +1196,14 @@
 	var/stealth_timer
 	var/datum/weakref/stealth_wearer_ref
 
+/obj/item/mod/module/hologram_decoy/ninja/on_part_deactivation(deleting = FALSE)
+	end_stealth(stealth_wearer_ref)
+	return ..()
+
+/obj/item/mod/module/hologram_decoy/ninja/on_unequip()
+	end_stealth(stealth_wearer_ref)
+	return ..()
+
 /obj/item/mod/module/hologram_decoy/ninja/on_uninstall(deleting = FALSE)
 	end_stealth(stealth_wearer_ref)
 	return ..()
@@ -1192,9 +1230,9 @@
 	stealth_wearer_ref = WEAKREF(ninja)
 	RegisterSignal(ninja, COMSIG_LIVING_UNARMED_ATTACK, PROC_REF(on_decoy_unarmed_attack))
 	RegisterSignal(ninja, COMSIG_ATOM_BULLET_ACT, PROC_REF(on_decoy_bullet_act))
+	RegisterSignal(ninja, COMSIG_MOB_THROW, PROC_REF(on_decoy_throw))
 	RegisterSignals(ninja, list(COMSIG_MOB_ITEM_ATTACK, COMSIG_ATOM_ATTACKBY, COMSIG_ATOM_ATTACK_HAND, COMSIG_ATOM_HITBY, COMSIG_ATOM_HULK_ATTACK, COMSIG_ATOM_ATTACK_PAW, COMSIG_CARBON_CUFF_ATTEMPTED, COMSIG_MOB_FIRED_GUN), PROC_REF(on_decoy_stealth_break))
 	animate(ninja, alpha = 25, time = 0.5 SECONDS)
-	ninja.alpha = 25
 	ADD_TRAIT(ninja, TRAIT_SILENT_FOOTSTEPS, REF(src))
 	to_chat(ninja, span_notice("You engage optical camouflage as a holographic decoy deploys!"))
 	stealth_timer = addtimer(CALLBACK(src, PROC_REF(end_stealth), WEAKREF(ninja)), 2.5 SECONDS, TIMER_STOPPABLE)
@@ -1203,6 +1241,12 @@
 	SIGNAL_HANDLER
 
 	end_stealth(stealth_wearer_ref)
+
+/obj/item/mod/module/hologram_decoy/ninja/proc/on_decoy_throw(mob/living/source, atom/target)
+	SIGNAL_HANDLER
+
+	if(istype(source.get_active_held_item(), /obj/item/throwing_star))
+		end_stealth(stealth_wearer_ref)
 
 /obj/item/mod/module/hologram_decoy/ninja/proc/on_decoy_unarmed_attack(datum/source, atom/target)
 	SIGNAL_HANDLER
@@ -1226,15 +1270,13 @@
 	stealth_wearer_ref = null
 	if(!ninja || QDELETED(ninja))
 		return
-	UnregisterSignal(ninja, list(COMSIG_LIVING_UNARMED_ATTACK, COMSIG_ATOM_BULLET_ACT, COMSIG_MOB_ITEM_ATTACK, COMSIG_ATOM_ATTACKBY, COMSIG_ATOM_ATTACK_HAND, COMSIG_ATOM_HITBY, COMSIG_ATOM_HULK_ATTACK, COMSIG_ATOM_ATTACK_PAW, COMSIG_CARBON_CUFF_ATTEMPTED, COMSIG_MOB_FIRED_GUN))
+	UnregisterSignal(ninja, list(COMSIG_LIVING_UNARMED_ATTACK, COMSIG_ATOM_BULLET_ACT, COMSIG_MOB_THROW, COMSIG_MOB_ITEM_ATTACK, COMSIG_ATOM_ATTACKBY, COMSIG_ATOM_ATTACK_HAND, COMSIG_ATOM_HITBY, COMSIG_ATOM_HULK_ATTACK, COMSIG_ATOM_ATTACK_PAW, COMSIG_CARBON_CUFF_ATTEMPTED, COMSIG_MOB_FIRED_GUN))
 	REMOVE_TRAIT(ninja, TRAIT_SILENT_FOOTSTEPS, REF(src))
 	var/obj/item/mod/module/stealth/stealth_mod = locate() in mod?.modules
 	if(stealth_mod?.active)
 		animate(ninja, alpha = stealth_mod.stealth_alpha, time = 0.5 SECONDS)
-		ninja.alpha = stealth_mod.stealth_alpha
 	else
 		animate(ninja, alpha = initial(ninja.alpha), time = 0.5 SECONDS)
-		ninja.alpha = initial(ninja.alpha)
 
 /mob/living/basic/illusion/ninja_decoy
 	name = "holographic decoy"
@@ -1269,12 +1311,15 @@
 			return COMSIG_HIT_PREVENTED
 	return NONE
 
+/mob/living/basic/illusion/ninja_decoy/CanAllowThrough(atom/movable/mover, border_dir)
+	if(mover.throwing && istype(mover, /obj/item/throwing_star))
+		var/mob/living/thrower = mover.throwing.get_thrower()
+		if(isliving(thrower) && is_allied_mob(thrower))
+			return TRUE
+	return ..()
+
 /mob/living/basic/illusion/ninja_decoy/proc/on_hitby(datum/source, atom/movable/hitting_atom, skipcatch, hitpush, blocked, datum/thrownthing/throwingdatum)
 	SIGNAL_HANDLER
-	if(istype(hitting_atom, /obj/item/throwing_star))
-		var/mob/living/thrower = throwingdatum?.get_thrower()
-		if(isliving(thrower) && is_allied_mob(thrower))
-			return
 	INVOKE_ASYNC(src, PROC_REF(detonate))
 
 /mob/living/basic/illusion/ninja_decoy/on_damage_taken(mob/living/source)
@@ -1341,7 +1386,13 @@
 		do_sparks(5, TRUE, epicenter)
 		new /obj/effect/temp_visual/emp/pulse(epicenter)
 		new /obj/effect/dummy/lighting_obj(epicenter, 4, 3, COLOR_WHITE, 1)
-		empulse(epicenter, heavy_range = 0, light_range = 2, emp_source = src)
+		for(var/atom/target in range(2, epicenter))
+			if(isliving(target) && is_allied_mob(target))
+				continue
+			var/mob/living/holder = get(target, /mob/living)
+			if(holder && is_allied_mob(holder))
+				continue
+			target.emp_act(EMP_LIGHT)
 		for(var/mob/living/victim in viewers(3, epicenter))
 			if(is_allied_mob(victim))
 				continue
@@ -1353,7 +1404,7 @@
 	qdel(src)
 
 ///Shadow Smoke Shroud - Deploys disorienting smoke, extinguishes the wearer, and resets stealth cloak cooldown.
-/obj/item/mod/module/nanite_smoke/ninja
+/obj/item/mod/module/nanite_smoke
 	name = "\improper MOD shadow smoke shroud module"
 	desc = "A tactical Spider Clan concealment unit that vents a dense cloud of disorienting nanite-laced smoke \
 		while purging external flames and instantaneously resetting the suit's optical cloak capacitor."
@@ -1366,28 +1417,26 @@
 	incompatible_modules = list(/obj/item/mod/module/energy_net, /obj/item/mod/module/hologram_decoy, /obj/item/mod/module/nanite_smoke)
 	required_slots = list(ITEM_SLOT_GLOVES)
 
-/obj/item/mod/module/nanite_smoke/ninja/on_use(mob/activator)
+/obj/item/mod/module/nanite_smoke/on_use(mob/activator)
 	var/mob/living/wearer = mod?.wearer
 	if(!istype(wearer))
 		return
 	if(!drain_power(use_energy_cost))
 		return
 	var/turf/origin = get_turf(wearer)
+	var/list/smoke_targets = view(3, origin)
 	playsound(origin, 'sound/effects/smoke.ogg', 60, TRUE)
-	do_smoke(3, src, origin, smoke_type = /datum/effect_system/fluid_spread/smoke/bad)
+	do_smoke(3, src, origin, smoke_type = /datum/effect_system/fluid_spread/smoke, effect_type = /obj/effect/particle_effect/fluid/smoke)
 	wearer.extinguish_mob()
-	for(var/mob/living/victim in range(3, origin))
-		if(victim == wearer || istype(victim, /mob/living/basic/illusion/ninja_decoy) || (victim.mind && IS_SPACE_NINJA(victim)) || victim.has_faction(ROLE_NINJA))
+	for(var/mob/living/carbon/victim in smoke_targets)
+		if(victim == wearer || (victim.mind && IS_SPACE_NINJA(victim)) || victim.has_faction(ROLE_NINJA))
 			continue
-		if(iscarbon(victim))
-			var/mob/living/carbon/carbon_victim = victim
-			if(carbon_victim.internal != null || carbon_victim.has_smoke_protection())
-				continue
+		if(victim.internal != null || victim.has_smoke_protection())
+			continue
 		victim.adjust_confusion(2 SECONDS)
 		victim.adjust_eye_blur(3 SECONDS)
 	var/obj/item/mod/module/stealth/stealth_mod = locate() in mod?.modules
 	if(stealth_mod)
-		COOLDOWN_RESET(stealth_mod, cooldown_timer)
 		stealth_mod.start_cooldown(0)
 		stealth_mod.update_clothing_slots()
 		balloon_alert(wearer, "smoke shroud deployed! cloak reset")
@@ -1466,10 +1515,13 @@
 	return TRUE
 
 /obj/item/mod/module/adrenaline_boost/proc/boost_aftereffects(mob/affected_mob)
-	if(!affected_mob)
+	if(QDELETED(affected_mob))
 		return
 	reagents.trans_to(affected_mob, reagents.total_volume)
 	to_chat(affected_mob, span_danger("You are beginning to feel the after-effect of the injection."))
+
+/obj/item/mod/module/nanite_repair
+	abstract_type = /obj/item/mod/module/nanite_repair
 
 ///Nanite Cellular Repair Matrix - Rapidly regenerates heavy brute and burn damage using nanite charges.
 /obj/item/mod/module/nanite_repair/ninja
@@ -1579,7 +1631,7 @@
 		to_chat(owner, span_notice("Nanite cellular repair complete."))
 
 ///Neural Reflex Overdrive - Surges movement speed, attack speed, stamina recovery, and damage-slowdown immunity.
-/obj/item/mod/module/reflex_overdrive/ninja
+/obj/item/mod/module/reflex_overdrive
 	name = "\improper MOD neural reflex overdrive module"
 	desc = "A crimson-gold Spider Clan synaptic accelerator that floods the operative's nervous system \
 		with kinetic charge, purging fatigue, accelerating movement and strikes, and overriding injury slowdown."
@@ -1592,20 +1644,20 @@
 	incompatible_modules = list(/obj/item/mod/module/adrenaline_boost, /obj/item/mod/module/nanite_repair, /obj/item/mod/module/reflex_overdrive)
 	required_slots = list(ITEM_SLOT_BACK|ITEM_SLOT_BELT)
 
-/obj/item/mod/module/reflex_overdrive/ninja/used(mob/activator)
+/obj/item/mod/module/reflex_overdrive/used(mob/activator)
 	if(!mod?.wearer || mod.wearer.stat == DEAD)
 		balloon_alert(activator, "wearer is dead!")
 		return FALSE
 	return ..()
 
-/obj/item/mod/module/reflex_overdrive/ninja/on_use(mob/activator)
+/obj/item/mod/module/reflex_overdrive/on_use(mob/activator)
 	var/mob/living/wearer = mod?.wearer
 	if(!istype(wearer))
 		return
 	if(!drain_power(use_energy_cost))
 		return
 	playsound(wearer, 'sound/items/hypospray.ogg', 50, TRUE)
-	wearer.adjust_stamina_loss(-35)
+	wearer.adjust_stamina_loss(-25)
 	wearer.apply_status_effect(/datum/status_effect/speed_boost/ninja_overdrive)
 	balloon_alert(wearer, "neural overdrive!")
 
@@ -1615,6 +1667,12 @@
 	tick_interval = 1 SECONDS
 	move_datum = /datum/movespeed_modifier/ninja_overdrive
 	action_datum = /datum/actionspeed_modifier/ninja_overdrive
+	silent_creation = TRUE
+
+/datum/status_effect/speed_boost/ninja_overdrive/on_creation(mob/living/new_owner, set_duration)
+	if(isnum(set_duration))
+		duration = set_duration
+	return ..()
 
 /datum/status_effect/speed_boost/ninja_overdrive/on_apply()
 	. = ..()
@@ -1625,22 +1683,27 @@
 	if(owner.stat == DEAD)
 		qdel(src)
 		return
-	owner.adjust_stamina_loss(-4 * seconds_between_ticks)
+	owner.adjust_stamina_loss(-3 * seconds_between_ticks)
 
-/datum/status_effect/speed_boost/ninja_overdrive/be_replaced()
+/datum/status_effect/speed_boost/ninja_overdrive/proc/cleanup_modifiers()
+	if(!owner)
+		return
 	owner.remove_movespeed_mod_immunities(type, /datum/movespeed_modifier/damage_slowdown)
 	if(move_datum)
 		owner.remove_movespeed_modifier(move_datum, update = TRUE)
 	if(action_datum)
 		owner.remove_actionspeed_modifier(action_datum, update = TRUE)
+
+/datum/status_effect/speed_boost/ninja_overdrive/be_replaced()
+	cleanup_modifiers()
 	return ..()
 
 /datum/status_effect/speed_boost/ninja_overdrive/on_remove()
-	owner.remove_movespeed_mod_immunities(type, /datum/movespeed_modifier/damage_slowdown)
+	cleanup_modifiers()
 	return ..()
 
 /datum/movespeed_modifier/ninja_overdrive
-	multiplicative_slowdown = -1.2
+	multiplicative_slowdown = -0.8
 
 /datum/actionspeed_modifier/ninja_overdrive
-	multiplicative_slowdown = -0.25
+	multiplicative_slowdown = -0.15

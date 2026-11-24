@@ -71,8 +71,11 @@
 			if(obstacle.density && !HAS_TRAIT(obstacle, TRAIT_CLIMBABLE))
 				balloon_alert(user, "blocked by obstacle!")
 				return ITEM_INTERACT_BLOCKING
+	var/lash_dir = get_dir(user_turf, target_turf)
+	var/ns_dir = lash_dir & (NORTH|SOUTH)
+	var/ew_dir = lash_dir & (EAST|WEST)
 	for(var/obj/obstacle in user_turf)
-		if(obstacle.density && (obstacle.flags_1 & ON_BORDER_1) && obstacle.dir == get_dir(user_turf, target_turf))
+		if(obstacle.density && (obstacle.flags_1 & ON_BORDER_1) && ((ns_dir && obstacle.dir == ns_dir) || (ew_dir && obstacle.dir == ew_dir)))
 			balloon_alert(user, "blocked by obstacle!")
 			return ITEM_INTERACT_BLOCKING
 
@@ -81,6 +84,7 @@
 		return ITEM_INTERACT_BLOCKING
 
 	COOLDOWN_START(src, trip_timer, trip_cooldown)
+	ninja_break_cloak(user)
 	user.Beam(interacting_with, icon_state = "ninja_cable", maxdistance = 5, time = 0.5 SECONDS)
 	playsound(interacting_with, 'sound/items/weapons/whip.ogg', 50, TRUE)
 
@@ -100,8 +104,7 @@
 
 	var/reeled_in = FALSE
 	if(was_lying && !target.anchored && !target.buckled && target.move_resist < MOVE_FORCE_OVERPOWERING && isturf(target.loc) && get_dist(user, target) > 2)
-		target.throw_at(target = get_turf(user), range = min(2, get_dist(target, user) - 1), speed = 1.5, thrower = user, spin = FALSE, gentle = TRUE)
-		reeled_in = TRUE
+		reeled_in = target.throw_at(target = get_turf(user), range = min(2, get_dist(target, user) - 1), speed = 1.5, thrower = user, spin = FALSE, gentle = TRUE)
 
 	if(disarmed_item && reeled_in)
 		target.visible_message(span_danger("[user]'s kusarigama chain rips [disarmed_item] from [target]'s grip and drags [target.p_them()] closer!"), span_userdanger("[user]'s kusarigama chain rips [disarmed_item] out of your hands and drags you closer!"))
@@ -114,6 +117,6 @@
 		balloon_alert(user, "reeled in!")
 	else
 		target.visible_message(span_danger("[user]'s kusarigama chain sweeps [target]'s legs out, slamming them to the ground!"), span_userdanger("[user]'s kusarigama sweeps your legs out!"))
-		balloon_alert(user, "tripped & disarmed!")
+		balloon_alert(user, "tripped!")
 
 	return ITEM_INTERACT_SUCCESS

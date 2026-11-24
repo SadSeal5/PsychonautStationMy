@@ -16,7 +16,7 @@
 	icon_angle = 35
 	lefthand_file = 'icons/mob/inhands/weapons/swords_lefthand.dmi'
 	righthand_file = 'icons/mob/inhands/weapons/swords_righthand.dmi'
-	force = 16
+	force = 12
 	throwforce = 20
 	block_chance = 25
 	armour_penetration = 60
@@ -52,24 +52,28 @@
 	. = ..()
 	if(. || HAS_TRAIT(user, TRAIT_PACIFISM) || HAS_TRAIT(user, TRAIT_CANT_ATTACK))
 		return
-	if(!isliving(target_mob) || QDELETED(target_mob))
+	if(!isliving(target_mob) || QDELETED(target_mob) || target_mob.stat == DEAD)
 		return
 
 	var/bonus_damage = 0
-	if(check_behind(user, target_mob) && !HAS_TRAIT(target_mob, TRAIT_BACKSTAB_IMMUNE))
-		bonus_damage = 16
+	var/is_backstab = check_behind(user, target_mob) && !HAS_TRAIT(target_mob, TRAIT_BACKSTAB_IMMUNE)
+	if(is_backstab)
+		bonus_damage = 12
+
+	if(target_mob.check_block(src, 12 + bonus_damage, "\the [src]", MELEE_ATTACK, armour_penetration, damtype))
+		return
+
+	if(is_backstab)
 		target_mob.apply_status_effect(/datum/status_effect/silenced, 3 SECONDS)
 		to_chat(user, span_danger("Backstab! [target_mob] is silenced!"))
 		balloon_alert(user, "backstab!")
 
 	var/armor_block = target_mob.run_armor_check(user.zone_selected, MELEE, armour_penetration = armour_penetration)
-	target_mob.apply_damage(16 + bonus_damage, BRUTE, def_zone = user.zone_selected, blocked = armor_block, sharpness = SHARP_EDGED)
+	target_mob.apply_damage(12 + bonus_damage, BRUTE, def_zone = user.zone_selected, blocked = armor_block, sharpness = SHARP_EDGED)
 	playsound(target_mob, 'sound/items/weapons/bladeslice.ogg', 50, TRUE)
-	log_combat(user, target_mob, "struck with off-hand nanite dagger", src, addition = "(DAMAGE: [16 + bonus_damage])")
+	log_combat(user, target_mob, "struck with off-hand nanite dagger", src, addition = "(DAMAGE: [12 + bonus_damage])")
 
 /obj/item/nanite_daggers/attack_secondary(mob/living/victim, mob/living/user, list/modifiers, list/attack_modifiers)
-	if(HAS_TRAIT(user, TRAIT_PACIFISM) || HAS_TRAIT(user, TRAIT_CANT_ATTACK))
-		return SECONDARY_ATTACK_CANCEL_ATTACK_CHAIN
 	ranged_interact_with_atom_secondary(victim, user, modifiers)
 	return SECONDARY_ATTACK_CANCEL_ATTACK_CHAIN
 
@@ -78,7 +82,7 @@
 		return NONE
 	if(HAS_TRAIT(user, TRAIT_PACIFISM) || HAS_TRAIT(user, TRAIT_CANT_ATTACK))
 		return ITEM_INTERACT_BLOCKING
-	if(user.incapacitated || user.buckled || HAS_TRAIT(user, TRAIT_HANDS_BLOCKED))
+	if(user.incapacitated || user.pulledby || user.buckled || HAS_TRAIT(user, TRAIT_IMMOBILIZED) || HAS_TRAIT(user, TRAIT_HANDS_BLOCKED))
 		return ITEM_INTERACT_BLOCKING
 	if(!isturf(user.loc))
 		balloon_alert(user, "cannot step from inside!")
@@ -108,19 +112,21 @@
 		return ITEM_INTERACT_BLOCKING
 
 	var/mob/living/victim = interacting_with
-	var/was_cloaked = (user.alpha < 100)
+	var/was_cloaked = HAS_TRAIT(user, TRAIT_SILENT_FOOTSTEPS)
 	var/was_conscious = (victim.stat == STABLE)
 
 	var/turf/old_loc = get_turf(user)
+	if(!do_teleport(user, behind, no_effects = TRUE))
+		balloon_alert(user, "step blocked!")
+		return ITEM_INTERACT_BLOCKING
 	new /obj/effect/temp_visual/dir_setting/ninja/shadow(old_loc, user.dir)
-	user.forceMove(behind)
 	new /obj/effect/temp_visual/dir_setting/ninja/shadow(behind, user.dir)
 	user.setDir(get_dir(user, victim))
 
 	melee_attack_chain(user, victim)
 
 	charges--
-	if(!QDELETED(victim) && was_conscious && victim.stat >= SOFT_CRIT)
+	if(was_conscious && is_ninja_execute_target(victim) && victim.stat >= SOFT_CRIT)
 		charges = min(charges + 1, max_charges)
 		if(charge_timer)
 			deltimer(charge_timer)

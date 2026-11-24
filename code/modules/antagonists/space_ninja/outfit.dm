@@ -20,12 +20,12 @@
 	if(!istype(mod))
 		return
 	var/obj/item/mod/module/dna_lock/reinforced/lock = locate(/obj/item/mod/module/dna_lock/reinforced) in mod.modules
-	lock.dna = ninja.dna.unique_enzymes
+	lock?.dna = ninja.dna?.unique_enzymes
 	var/obj/item/mod/module/weapon_recall/recall = locate(/obj/item/mod/module/weapon_recall) in mod.modules
 	if(recall)
 		var/obj/item/weapon
 		for(var/obj/item/check_item in ninja.get_all_contents())
-			if(is_type_in_list(check_item, list(/obj/item/energy_katana, /obj/item/plasma_kusarigama, /obj/item/nanite_daggers)))
+			if(is_type_in_list(check_item, recall.allowed_weapon_types))
 				weapon = check_item
 				break
 		if(weapon)

@@ -77,6 +77,7 @@
 			return FALSE
 		balloon_alert(user, "already deployed!")
 		playsound(src, 'sound/machines/scanner/scanbuzz.ogg', 25, TRUE, SILENCED_SOUND_EXTRARANGE)
+		return FALSE
 	if(part_datum.can_overslot)
 		var/obj/item/overslot = wearer.get_item_by_slot(part.slot_flags)
 		if(isclothing(overslot))
@@ -178,10 +179,6 @@
 
 /// Starts the activation sequence, where parts of the suit activate one by one until the whole suit is on.
 /obj/item/mod/control/proc/toggle_activate(mob/user, force_deactivate = FALSE)
-	var/datum/antagonist/ninja/ninja_datum = user?.mind?.has_antag_datum(/datum/antagonist/ninja)
-	if(ninja_datum?.in_setup_phase)
-		balloon_alert(user, "suit calibrating!")
-		return FALSE
 	if(!wearer)
 		if(!force_deactivate)
 			balloon_alert(user, "not equipped!")
