@@ -1,4 +1,6 @@
 // MARK: Effects
+
+/// Temporary red spark tile highlighting the Glare cone.
 /obj/effect/temp_visual/shadowling/glare_cone_tile
 	name = "glare cone"
 	anchored = TRUE
@@ -16,18 +18,23 @@
 	QDEL_IN(src, 0.6 SECONDS)
 	return .
 
-// MARK: Movespeed modifier
+// MARK: Movespeed Modifier
+
+/// Temporary slow applied to targets hit by Glare.
 /datum/movespeed_modifier/shadowling/glare_slow
 	multiplicative_slowdown = 1.35
 	priority = 20
 	movetypes = GROUND
 
 // MARK: Ability
+
+/// Innate cone attack stunning, stamina-damaging, blinding, silencing, and knocking down enemies.
 /datum/action/cooldown/shadowling/glare
 	name = "Glare"
 	desc = "A terrifying gaze in your facing direction that stuns and disorients enemies."
 	button_icon_state = "shadow_glare"
 	cooldown_time = 15 SECONDS
+	role_flags = SL_INNATE | SL_LESSER | SL_ASCENDED
 	required_thralls = 0
 	max_range = 3
 	requires_dark_user = FALSE
@@ -37,25 +44,21 @@
 	var/const/baton_stamina = 70
 	var/const/knock_delay = 0.6 SECONDS
 	var/const/knock_time = 4 SECONDS
-	var/const/dizzy_time = 2
 
-/datum/action/cooldown/shadowling/glare/CollectTargets(mob/living/carbon/human/H, atom/explicit)
+/// Collects non-hive human targets inside the Glare front cone within `max_range`.
+/datum/action/cooldown/shadowling/glare/collect_targets(mob/living/carbon/human/H, atom/explicit)
 	var/list/targets = list()
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
 	for(var/mob/living/carbon/human/T in view(max_range, H))
 		if(T == H)
 			continue
 		if(!in_front_cone(H, T, fov_degree))
 			continue
-		if(hive)
-			if(T in hive.lings)
-				continue
-			if(T in hive.thralls)
-				continue
+		if(is_hive_ally(T))
+			continue
 		targets += T
 	return targets
 
-/datum/action/cooldown/shadowling/glare/ValidateTarget(mob/living/carbon/human/H, atom/target)
+/datum/action/cooldown/shadowling/glare/validate_target(mob/living/carbon/human/H, atom/target)
 	var/mob/living/carbon/human/T = target
 	if(!istype(T))
 		return FALSE
@@ -66,7 +69,7 @@
 		return FALSE
 	return TRUE
 
-/datum/action/cooldown/shadowling/glare/DoEffectOnTargets(mob/living/carbon/human/H, list/targets)
+/datum/action/cooldown/shadowling/glare/do_effect_on_targets(mob/living/carbon/human/H, list/targets)
 	if(!istype(H))
 		return FALSE
 	play_glare_fx(H)
@@ -79,9 +82,10 @@
 		if(get_dist(H, T) > max_range)
 			continue
 		apply_glare_primary(T)
-		addtimer(CALLBACK(src, PROC_REF(apply_glare_knock), T), knock_delay)
+		addtimer(CALLBACK(T, TYPE_PROC_REF(/mob/living, Knockdown), knock_time), knock_delay)
 	return TRUE
 
+/// Applies stun, stamina loss, temp blindness, blur, silence, slow, and screen shake to [T].
 /datum/action/cooldown/shadowling/glare/proc/apply_glare_primary(mob/living/carbon/human/T)
 	if(!istype(T))
 		return
@@ -90,59 +94,26 @@
 	T.set_temp_blindness(2 SECONDS)
 	T.adjust_eye_blur(4 SECONDS)
 	T.adjust_silence(4 SECONDS)
-	apply_slow(T, 5 SECONDS)
-	apply_shake(T, 8, 0.6 SECONDS)
+	apply_timed_slow(T, /datum/movespeed_modifier/shadowling/glare_slow, 5 SECONDS)
+	apply_shake(T, 2, 0.6 SECONDS)
 
-/datum/action/cooldown/shadowling/glare/proc/apply_glare_knock(mob/living/carbon/human/T)
-	if(!istype(T))
-		return
-	if(QDELETED(T))
-		return
-	T.Knockdown(knock_time)
-
+/// Emits red light flash, cone tile visuals, and ghost shriek sound from [H].
 /datum/action/cooldown/shadowling/glare/proc/play_glare_fx(mob/living/carbon/human/H)
 	if(!istype(H))
 		return
 	H.set_light(2, 0.6, "#ff2a2a")
-	addtimer(CALLBACK(src, PROC_REF(stop_glare_fx), H), 0.6 SECONDS)
+	addtimer(CALLBACK(H, TYPE_PROC_REF(/atom, set_light), 0), 0.6 SECONDS)
 	show_cone_fx(H)
 	playsound(H, 'sound/effects/ghost2.ogg', 50, vary = TRUE, ignore_walls = FALSE)
 
-/datum/action/cooldown/shadowling/glare/proc/stop_glare_fx(mob/living/carbon/human/H)
-	if(!istype(H))
-		return
-	H.set_light(0)
-
-/datum/action/cooldown/shadowling/glare/proc/apply_slow(mob/living/L, duration)
-	if(!istype(L))
-		return
-	L.add_movespeed_modifier(/datum/movespeed_modifier/shadowling/glare_slow)
-	addtimer(CALLBACK(src, PROC_REF(_remove_slow), L), duration, TIMER_UNIQUE | TIMER_OVERRIDE)
-
-/datum/action/cooldown/shadowling/glare/proc/_remove_slow(mob/living/L)
-	if(!istype(L))
-		return
-	L.remove_movespeed_modifier(/datum/movespeed_modifier/shadowling/glare_slow)
-
+/// Applies dizziness and camera shake to [L].
 /datum/action/cooldown/shadowling/glare/proc/apply_shake(mob/living/L, strength, dur)
 	if(!istype(L))
 		return
 	L.adjust_dizzy(dur)
-	shake_camera(L, duration = dur, strength = 2)
+	shake_camera(L, duration = dur, strength = strength)
 
-/datum/action/cooldown/shadowling/glare/proc/collect_cone_turfs(mob/living/carbon/human/H, range_tiles, fov_deg)
-	var/list/turfs_in_cone = list()
-	if(!istype(H))
-		return turfs_in_cone
-	var/turf/origin = get_turf(H)
-	if(!origin)
-		return turfs_in_cone
-	for(var/turf/T in range(range_tiles, origin))
-		if(!in_front_cone(H, T, fov_deg))
-			continue
-		turfs_in_cone += T
-	return turfs_in_cone
-
+/// Spawns temporary red spark markers across every turf in the Glare cone.
 /datum/action/cooldown/shadowling/glare/proc/show_cone_fx(mob/living/carbon/human/H)
 	if(!istype(H))
 		return

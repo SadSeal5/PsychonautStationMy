@@ -1,4 +1,6 @@
 // MARK: Effects
+
+/// Fading purple spark pulse spawned during Hatch and Ascension ticks.
 /obj/effect/temp_visual/shadowling/hatch_pulse
 	name = "shadow pulse"
 	anchored = TRUE
@@ -17,6 +19,8 @@
 	return .
 
 // MARK: Structures
+
+/// Indestructible visual cocoon covering a Shadowling or thrall during transformation.
 /obj/structure/shadowling_cocoon
 	name = "shadow cocoon"
 	desc = "A pulsating cocoon of living shadows."
@@ -39,6 +43,8 @@
 	QDEL_IN(src, 3 MINUTES)
 
 // MARK: Ability
+
+/// Unhatched Shadowling ritual that strips disguises, builds protective walls, and transforms the caster into `/datum/species/shadow/shadowling`.
 /datum/action/cooldown/shadowling/hatch
 	name = "Hatch"
 	desc = "Shed your mortal guise and reveal your true shadow form. Requires darkness."
@@ -49,23 +55,39 @@
 	max_range = 0
 	channel_time = 0
 
+	/// Number of channel stages required to hatch.
 	var/steps = 3
+	/// Duration of each channel stage.
 	var/step_time = 10 SECONDS
 
 	var/static/sfx_start = 'sound/effects/splat.ogg'
 	var/static/sfx_end = 'sound/effects/ghost.ogg'
 	var/static/list/sfx_tick = list('sound/items/weapons/slice.ogg', 'sound/items/weapons/slash.ogg', 'sound/items/weapons/slashmiss.ogg')
 
+	/// Cocoon visual spawned over the caster while hatching.
 	var/obj/structure/shadowling_cocoon/cover
 	var/prev_alpha
+	/// Temporary resin walls spawned around the hatch site.
 	var/list/walls
+	/// Re-entrancy lock preventing concurrent hatch channels.
+	var/channeling = FALSE
+	/// Caster currently channeling Hatch, cleared when the ritual ends or aborts.
+	var/mob/living/carbon/human/channel_caster
+
+/datum/action/cooldown/shadowling/hatch/Remove(mob/remove_from)
+	if(channeling)
+		fail_ritual(channel_caster || remove_from)
+	return ..()
 
 /datum/action/cooldown/shadowling/hatch/Destroy()
+	if(channeling)
+		fail_ritual(channel_caster || owner)
 	cleanup(walls)
 	walls = null
 	detach_cover()
 	return ..()
 
+/// Surrounds [center] with temporary indestructible umbral resin walls on open turfs.
 /datum/action/cooldown/shadowling/hatch/proc/build_ring_walls(turf/center)
 	var/list/walls = list()
 	if(!istype(center))
@@ -81,6 +103,7 @@
 		walls += W
 	return walls
 
+/// Deletes all temporary objects tracked in [to_clean].
 /datum/action/cooldown/shadowling/hatch/proc/cleanup(list/to_clean)
 	if(!islist(to_clean))
 		return
@@ -88,6 +111,7 @@
 		if(!QDELETED(A))
 			qdel(A)
 
+/// Spawns a hatch pulse visual and plays a tick sound at [H]'s turf.
 /datum/action/cooldown/shadowling/hatch/proc/play_tick_fx(mob/living/carbon/human/H)
 	var/turf/T = get_turf(H)
 	if(!T)
@@ -95,21 +119,39 @@
 	new /obj/effect/temp_visual/shadowling/hatch_pulse(T)
 	playsound(T, pick(sfx_tick), 35, TRUE, -1)
 
+/// Places the visual shadow cocoon at the owner's turf if not already spawned.
 /datum/action/cooldown/shadowling/hatch/proc/attach_cover()
 	if(cover)
 		return
 	cover = new /obj/structure/shadowling_cocoon(get_turf(owner))
 
+/// Deletes the visual shadow cocoon if present.
 /datum/action/cooldown/shadowling/hatch/proc/detach_cover()
 	if(!cover)
 		return
 	qdel(cover)
 	cover = null
 
-/datum/action/cooldown/shadowling/hatch/DoEffect(mob/living/carbon/human/H, atom/_)
-	if(!istype(H))
+/// Tears down cocoon cover, temporary walls, and restores alpha when hatching aborts.
+/datum/action/cooldown/shadowling/hatch/proc/fail_ritual(mob/living/carbon/human/H, reason)
+	channeling = FALSE
+	channel_caster = null
+	if(reason && !QDELETED(H))
+		to_chat(H, span_warning(reason))
+	detach_cover()
+	cleanup(walls)
+	walls = null
+	if(!QDELETED(H) && !isnull(prev_alpha))
+		H.alpha = prev_alpha
+	return FALSE
+
+/// Encases [H] in a dark cocoon ring, channels the hatch stages, and swaps to `/datum/species/shadow/shadowling`.
+/datum/action/cooldown/shadowling/hatch/do_effect(mob/living/carbon/human/H, atom/_)
+	if(!istype(H) || channeling)
 		return FALSE
-	if(istype(H.dna?.species, /datum/species/shadow/shadowling))
+	if(!is_valid_caster(H))
+		return FALSE
+	if(isshadowling(H) || isshadowling_ascended(H))
 		return FALSE
 
 	var/turf/start = get_turf(H)
@@ -119,6 +161,8 @@
 		to_chat(H, span_warning("Light prevents hatching."))
 		return FALSE
 
+	channeling = TRUE
+	channel_caster = H
 	StartCooldown()
 	walls = build_ring_walls(start)
 
@@ -133,27 +177,15 @@
 	H.drop_all_held_items()
 
 	for(var/i in 1 to steps)
-		if(QDELETED(H) || H.stat == DEAD)
-			detach_cover()
-			cleanup(walls)
-			if(!QDELETED(H))
-				H.alpha = prev_alpha
-			return FALSE
+		if(!is_valid_caster(H))
+			return fail_ritual(H)
 
 		var/turf/cur = get_turf(H)
 		if(!cur || cur != anchor_turf || get_area(H) != anchor_area)
-			to_chat(H, span_warning("You broke free of the cocoon — hatching interrupted."))
-			detach_cover()
-			cleanup(walls)
-			H.alpha = prev_alpha
-			return FALSE
+			return fail_ritual(H, "You broke free of the cocoon — hatching interrupted.")
 
 		if(cur.get_lumcount() >= SHADOWLING_DIM_THRESHOLD)
-			to_chat(H, span_warning("Light dispels the darkness — hatching aborted."))
-			detach_cover()
-			cleanup(walls)
-			H.alpha = prev_alpha
-			return FALSE
+			return fail_ritual(H, "Light dispels the darkness — hatching aborted.")
 
 		play_tick_fx(H)
 
@@ -163,42 +195,41 @@
 			to_chat(H, span_notice("The shadows solidify as the transformation nears completion..."))
 
 		if(!do_after(H, step_time, H))
-			to_chat(H, span_warning("You broke free of the cocoon — hatching interrupted."))
-			detach_cover()
-			cleanup(walls)
-			H.alpha = prev_alpha
-			return FALSE
+			return fail_ritual(H, "You broke free of the cocoon — hatching interrupted.")
+		if(!is_valid_caster(H))
+			return fail_ritual(H)
 
-	if(QDELETED(H))
-		detach_cover()
-		cleanup(walls)
-		return FALSE
+	if(!is_valid_caster(H))
+		return fail_ritual(H)
 
 	var/turf/final_turf = get_turf(H)
 	if(!final_turf || final_turf.get_lumcount() >= SHADOWLING_DIM_THRESHOLD)
-		to_chat(H, span_warning("Bright light disrupts the darkness — hatching aborted."))
-		detach_cover()
-		cleanup(walls)
-		H.alpha = prev_alpha
-		return FALSE
+		return fail_ritual(H, "Bright light disrupts the darkness — hatching aborted.")
+
+	var/datum/antagonist/shadowling/ling_datum = get_shadowling_antag_of(H)
+	var/datum/team/shadow_hive/hive = ling_datum?.get_hive()
+	if(!ling_datum || !hive || QDELETED(hive))
+		return fail_ritual(H, "Hive connection severed — hatching aborted.")
 
 	H.shadowling_strip_quirks()
 	H.reset_robotic_limbs()
+	if(!ling_datum.original_species)
+		ling_datum.original_species = H.dna?.species
 	H.set_species(/datum/species/shadow/shadowling)
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
 	hive.sync_after_event(H)
 	H.refresh_eye_overlays()
 	playsound(start, sfx_end, 70, TRUE)
 	new /obj/effect/temp_visual/shadowling/hatch_pulse(start)
 	to_chat(H, span_boldnotice("You shed your disguise and emerge as a true Shadow!"))
 
-	var/datum/action/cooldown/shadowling/toggle_night_vision/nightvision = hive.shadowling_grant_nightvision(H)
-	nightvision.DoEffect(H)
+	var/datum/action/cooldown/shadowling/toggle_night_vision/nightvision = hive.grant_night_vision(H)
+	nightvision?.do_effect(H)
 
+	channeling = FALSE
+	channel_caster = null
 	detach_cover()
 	cleanup(walls)
+	walls = null
 	H.alpha = prev_alpha
-	if(!QDELETED(src))
-		src.Remove(H)
-		qdel(src)
+	remove_after_use()
 	return TRUE

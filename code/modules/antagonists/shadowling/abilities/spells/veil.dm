@@ -1,4 +1,6 @@
 // MARK: Effects
+
+/// Expanding violet wave visual emitted when Shadow Veil extinguishes nearby lights.
 /obj/effect/temp_visual/circle_wave/shadow_veil
 	color = "#5a3a7e"
 	max_alpha = 200
@@ -6,14 +8,14 @@
 	amount_to_scale = 6
 
 // MARK: Ability
+
+/// Innate Shadowling ability extinguishing nearby lights and APCs on left-click, or emitting healing/blinding shadow smoke on right-click (at 50% thralls).
 /datum/action/cooldown/shadowling/veil
 	name = "Shadow Veil"
 	desc = "Harness umbral darkness. Left-Click to extinguish lights and disable APCs nearby (Veil). Right-Click to emit a cloud of shadow smoke that heals allies and blinds enemies (Smoke)."
 	button_icon_state = "shadow_veil"
 	cooldown_time = 25 SECONDS
-	min_req = 1
-	max_req = 10
-	required_thralls = 0
+	role_flags = SL_INNATE | SL_ASCENDED
 	var/dark_square_radius = 4
 	var/shroom_square_radius = 2
 	var/blind_duration = 3 SECONDS
@@ -24,6 +26,7 @@
 	var/smoke_stun_chance = 25
 	var/smoke_stun_time = 2 SECONDS
 	var/static/sfx_emp = 'sound/effects/empulse.ogg'
+	/// Tracks whether right-click Shadow Smoke mode was triggered.
 	var/secondary_mode = FALSE
 
 /datum/action/cooldown/shadowling/veil/Trigger(mob/clicker, trigger_flags, atom/target)
@@ -43,14 +46,15 @@
 		return do_smoke(H)
 	return do_veil(H)
 
+/// Unleashes a smoke cloud on right-click once the hive reaches 50% of ascension thralls (or when ascended/debug).
 /datum/action/cooldown/shadowling/veil/proc/do_smoke(mob/living/carbon/human/H)
-	var/datum/antagonist/shadowling/antag_datum = H?.mind?.has_antag_datum(/datum/antagonist/shadowling)
+	var/datum/antagonist/shadowling/antag_datum = get_shadowling_antag_of(H)
 	var/ascended = (antag_datum?.is_ascended || isshadowling_ascended(H))
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
+	var/datum/team/shadow_hive/hive = get_hive()
 	var/thrall_count = hive ? hive.count_max_thralls() : 0
-	var/req_thralls = hive ? ceil(hive.get_ascension_thralls_needed() * 0.5) : 8
+	var/req_thralls = hive ? hive.get_required_thralls_for(/datum/action/cooldown/shadowling/veil, 50) : 8
 
-	if(!ascended && !GLOB.shadowling_debug_mode && (thrall_count < req_thralls))
+	if(!ascended && !hive?.debug_mode && (thrall_count < req_thralls))
 		H.balloon_alert(H, "smoke requires 50% thralls ([thrall_count]/[req_thralls])")
 		return FALSE
 
@@ -59,13 +63,14 @@
 		return FALSE
 
 	playsound(T, 'sound/effects/smoke.ogg', 50, TRUE, -3)
-	shadow_spawn_smoke(T, H, smoke_radius, smoke_ticks, heal_amount, smoke_blind_time, smoke_stun_chance, smoke_stun_time)
+	hive?.spawn_smoke(T, H, smoke_radius, smoke_ticks, heal_amount, smoke_blind_time, smoke_stun_chance, smoke_stun_time)
 	to_chat(H, span_notice("You exhale a surging shroud of shadow smoke!"))
 	button_icon_state = "shadow_smoke"
 	build_all_button_icons(UPDATE_BUTTON_ICON, force = TRUE)
 	StartCooldown()
 	return TRUE
 
+/// Extinguishes lights, destroys glowshrooms, drains shaded APCs, weakens shaded mortals, and damages synthetics.
 /datum/action/cooldown/shadowling/veil/proc/do_veil(mob/living/carbon/human/H)
 	var/turf/center = get_turf(H)
 	if(!center)
@@ -89,12 +94,7 @@
 	StartCooldown()
 	return TRUE
 
-/datum/action/cooldown/shadowling/veil/proc/_is_dark(atom/A)
-	var/turf/T = get_turf(A)
-	if(!T)
-		return FALSE
-	return (T.get_lumcount() < SHADOWLING_DIM_THRESHOLD)
-
+/// Disables lights and light-emitting items across all objects and mobs in [turfs].
 /datum/action/cooldown/shadowling/veil/proc/disable_lights_in_area(list/turfs)
 	if(!islist(turfs))
 		return
@@ -104,6 +104,7 @@
 		for(var/mob/living/L in T)
 			disable_lights_on_mob(L)
 
+/// Turns off flares, glowsticks, lanternfruit, and sabotages wall lights on [A].
 /datum/action/cooldown/shadowling/veil/proc/try_disable_light(atom/movable/A)
 	if(!A)
 		return
@@ -123,9 +124,10 @@
 		var/obj/machinery/light/L = A
 		L.on_saboteur(src, 30 SECONDS)
 
+/// Drains APC cell charge on shaded turfs within [turfs].
 /datum/action/cooldown/shadowling/veil/proc/break_apcs_in_dark(list/turfs)
 	for(var/turf/T in turfs)
-		if(!_is_dark(T))
+		if(!is_dark(T))
 			continue
 		for(var/obj/machinery/power/apc/A in T)
 			if(QDELETED(A) || !A.cell)
@@ -138,20 +140,21 @@
 	for(var/obj/item/I in L.contents)
 		try_disable_light(I)
 
-/datum/action/cooldown/shadowling/veil/proc/weaken_shaded_mobs(list/turfs, duration)
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
+/// Blinds, staggers, and deals stamina damage to non-hive humans standing on dark turfs.
+/datum/action/cooldown/shadowling/veil/proc/weaken_shaded_mobs(list/turfs, duration = 3 SECONDS)
 	for(var/turf/T in turfs)
-		if(!_is_dark(T))
+		if(!is_dark(T))
 			continue
 		for(var/mob/living/carbon/human/M in T)
 			if(!M || M.stat == DEAD)
 				continue
-			if(hive && ((M in hive.lings) || (M in hive.thralls)))
+			if(is_hive_ally(M))
 				continue
-			M.set_temp_blindness(3 SECONDS)
+			M.set_temp_blindness(duration)
 			M.adjust_staggered(5 SECONDS)
 			M.adjust_stamina_loss(50)
 
+/// Deletes all glowshroom structures within [turfs].
 /datum/action/cooldown/shadowling/veil/proc/replace_glowshrooms(list/turfs)
 	if(!islist(turfs))
 		return
@@ -159,6 +162,7 @@
 		for(var/obj/structure/glowshroom/G in T)
 			qdel(G)
 
+/// Flashes and damages mechs, silicons, and bots within [turfs].
 /datum/action/cooldown/shadowling/veil/proc/damage_synthetics(list/turfs)
 	if(!islist(turfs))
 		return

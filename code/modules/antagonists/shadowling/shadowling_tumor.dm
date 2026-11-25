@@ -1,4 +1,6 @@
-//MARK: Operation datum
+// MARK: Surgery
+
+/// Neurosurgery step extracting a parasitic thrall tumor using a lit flashlight.
 /datum/surgery_operation/organ/shadow_thrall_tumor
 	name = "Shadow Thrall Tumor Extraction"
 	rnd_name = "Neurosurgery (Shadow Thrall Tumor Extraction)"
@@ -28,42 +30,53 @@
 	organ.mob_remove(organ.owner, special = FALSE, movement_flags = NO_ID_TRANSFER)
 	qdel(organ)
 
-// MARK: Shadows Thrall Organs
+// MARK: Organs
+
+/// Shadowling mutant brain organ replacing standard brains on transformation.
 /obj/item/organ/brain/shadow/shadowling
 	name = "shadowling swarm brain"
 	desc = "A writhing mass of shadowy matter binding its host to the Hive."
 	slot = ORGAN_SLOT_BRAIN
 
+/// Parasitic non-vital brain-slot organ binding a crewmember as a Shadow Thrall.
 /obj/item/organ/brain/shadow/tumor_thrall
 	name = "shadow thrall tumor"
 	desc = "A parasitic hive node that enmeshes the host's mind."
 	slot = ORGAN_SLOT_BRAIN_THRALL
+	/// Set TRUE once extracted so re-insertion will not re-enthrall a host.
 	var/inert = FALSE
 
 /obj/item/organ/brain/shadow/tumor_thrall/Initialize(mapload)
 	. = ..()
 	organ_flags &= ~ORGAN_VITAL
 
+/// Grants the `shadow_thrall` antagonist datum and examine tell when an active tumor is inserted.
 /obj/item/organ/brain/shadow/tumor_thrall/Insert(mob/living/carbon/receiver, special = FALSE, movement_flags)
 	. = ..()
 	if(!.)
 		return FALSE
 	if(!inert)
-		receiver?.mind?.add_antag_datum(/datum/antagonist/shadow_thrall)
+		if(!(receiver?.mind?.has_antag_datum(/datum/antagonist/shadowling, TRUE)))
+			receiver?.mind?.add_antag_datum(/datum/antagonist/shadow_thrall)
 		RegisterSignal(receiver, COMSIG_ATOM_EXAMINE, PROC_REF(on_holder_examine))
-		to_chat(receiver, span_danger("A freezing whisper permeates your mind... You have been enslaved!"))
+		if(!receiver?.mind)
+			to_chat(receiver, span_danger("A freezing whisper permeates your mind... You have been enslaved!"))
 
+/// Marks the tumor inert, removes the thrall antagonist datum, and unregisters examine cues.
 /obj/item/organ/brain/shadow/tumor_thrall/on_mob_remove(mob/living/carbon/organ_owner, special = FALSE, movement_flags)
 	inert = TRUE
 	name = "inert shadowling swarm tumor"
 	desc = "A withered shadowy tumor, stripped of its brood connection."
-	organ_owner?.mind?.remove_antag_datum(/datum/antagonist/shadow_thrall)
+	var/had_mind = !!organ_owner?.mind
+	if(!special)
+		organ_owner?.mind?.remove_antag_datum(/datum/antagonist/shadow_thrall)
 	UnregisterSignal(organ_owner, COMSIG_ATOM_EXAMINE)
-	if(organ_owner)
+	if(organ_owner && !had_mind)
 		to_chat(organ_owner, span_notice("The binding cold recedes from your mind. You are yourself once more!"))
 
 	. = ..()
 
+/// Appends a close-range unmasked examine cue revealing thralldom.
 /obj/item/organ/brain/shadow/tumor_thrall/proc/on_holder_examine(datum/source, mob/user, list/examine_list)
 	SIGNAL_HANDLER
 	var/mob/living/carbon/human/H = source

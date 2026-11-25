@@ -1,13 +1,17 @@
+// MARK: Ability
+
+/// Innate Shadowling ability initiating or participating in the hive leader election.
 /datum/action/cooldown/shadowling/election
 	name = "Elect Hive Leader"
 	desc = "Initiate an election for the Shadowling hive leader. The winner will be granted Engine Sabotage."
 	button_icon_state = "shadow_vote"
 	cooldown_time = 0 SECONDS
+	role_flags = SL_INNATE
 
 /datum/action/cooldown/shadowling/election/IsAvailable(feedback = FALSE)
 	if(!..())
 		return FALSE
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
+	var/datum/team/shadow_hive/hive = GLOB.shadowling_hive
 	if(!hive)
 		return FALSE
 	if(hive.is_shadowling_vote_finished)
@@ -16,8 +20,8 @@
 		return FALSE
 	return TRUE
 
-/datum/action/cooldown/shadowling/election/DoEffect(mob/living/carbon/human/H, atom/_)
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
+/datum/action/cooldown/shadowling/election/do_effect(mob/living/carbon/human/H, atom/_)
+	var/datum/team/shadow_hive/hive = GLOB.shadowling_hive
 	if(!hive)
 		return FALSE
 	if(hive.is_shadowling_vote_finished)
@@ -32,11 +36,19 @@
 	vote.start()
 	return TRUE
 
+// MARK: Election Datum
+
+/// Timed ballot manager selecting the Shadowling hive leader and granting Engine Sabotage.
 /datum/shadow_vote
+	/// Hive team hosting this election.
 	var/datum/team/shadow_hive/hive
+	/// Voting window duration before automatic finalization.
 	var/duration = 30 SECONDS
+	/// Whether ballot collection is currently open.
 	var/active = FALSE
+	/// Eligible living Shadowlings on the ballot.
 	var/list/candidates = list()
+	/// Map of voter mob -> chosen candidate mob.
 	var/list/votes = list()
 
 /datum/shadow_vote/New(datum/team/shadow_hive/_hive, dur = 30 SECONDS)
@@ -46,6 +58,7 @@
 	if(hive)
 		hive.shadowling_vote = src
 
+/// Gathers living Shadowling candidates, prompts voters, and schedules finalization.
 /datum/shadow_vote/proc/start()
 	if(active)
 		return
@@ -76,6 +89,7 @@
 
 	addtimer(CALLBACK(src, PROC_REF(finalize)), duration, TIMER_STOPPABLE)
 
+/// Prompts [voter] with a TGUI list of living candidates and records their vote.
 /datum/shadow_vote/proc/prompt_one(mob/living/carbon/human/voter)
 	if(!active)
 		return
@@ -86,7 +100,7 @@
 
 	var/list/choices = list()
 	for(var/mob/living/carbon/human/C in candidates)
-		choices["[C.real_name] (\ref[C])"] = C
+		choices["[C.real_name] ([REF(C)])"] = C
 
 	var/ans = tgui_input_list(voter, "Choose the hive leader:", "Hive Vote", choices)
 	if(!active)
@@ -99,6 +113,7 @@
 			A.Remove(voter)
 			qdel(A)
 
+/// Tallies votes, assigns `hive.leader`, grants Engine Sabotage, and cleans up election actions.
 /datum/shadow_vote/proc/finalize()
 	if(!active)
 		return
@@ -150,16 +165,13 @@
 
 	qdel(src)
 
+/// Removes remaining election actions from every Shadowling and thrall in the hive.
 /datum/shadow_vote/proc/remove_vote_action_from_all()
 	if(!hive)
 		return
-	var/list/all_members = hive.lings + hive.thralls
-	for(var/mob/living/carbon/human/M in all_members)
+	for(var/mob/living/carbon/human/M as anything in hive.get_all_members())
 		if(QDELETED(M))
 			continue
-		var/list/actions_to_remove = list()
-		for(var/datum/action/cooldown/shadowling/election/A in M.actions)
-			actions_to_remove += A
-		for(var/datum/action/A in actions_to_remove)
+		for(var/datum/action/cooldown/shadowling/election/A in M.actions.Copy())
 			A.Remove(M)
 			qdel(A)

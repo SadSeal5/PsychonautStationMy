@@ -1,26 +1,26 @@
-// MARK: Global procedure
-/proc/shadow_spawn_smoke(turf/where, mob/living/holder, r = 4, ticks = 6, heal = 10, blind = 5 SECONDS, schance = 25, stun = 2 SECONDS)
-	if(!istype(where))
-		return
-	var/datum/effect_system/fluid_spread/smoke/shadow/shadow_smoke = new(where, r, null, holder, ticks, heal, blind, schance, stun)
-	shadow_smoke.start()
-
 // MARK: Effects
+
+/// Shadow smoke cloud particle that heals hive members and blinds or stuns non-allies.
 /obj/effect/particle_effect/fluid/smoke/shadow
 	name = "shadow smoke"
 	opacity = FALSE
 	lifetime = 10 SECONDS
 	color = "#000000"
 	alpha = 220
+	/// Healing amount applied per tick to hive members in the smoke.
 	var/heal_amount = 10
+	/// Temporary blindness duration applied per tick to non-hive mortals.
 	var/blind_time = 5 SECONDS
+	/// Percent chance per tick to briefly stun non-hive mortals.
 	var/stun_chance = 25
+	/// Stun duration applied when [stun_chance] triggers.
 	var/stun_time = 2 SECONDS
 
+/// Heals Shadowlings/thralls or blinds/stuns non-hive mobs inside the shadow smoke cloud.
 /obj/effect/particle_effect/fluid/smoke/shadow/smoke_mob(mob/living/carbon/smoker, seconds_per_tick)
 	if(!..())
 		return FALSE
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
+	var/datum/team/shadow_hive/hive = GLOB.shadowling_hive
 	var/is_ally = FALSE
 	if(hive)
 		is_ally = (smoker in hive.lings) || (smoker in hive.thralls)
@@ -41,9 +41,12 @@
 			smoker.Stun(stun_time)
 	return TRUE
 
+/// Fluid spread system propagating shadow smoke nodes across adjacent open turfs.
 /datum/effect_system/fluid_spread/smoke/shadow
 	effect_type = /obj/effect/particle_effect/fluid/smoke/shadow
+	/// BFS spread radius in turfs.
 	var/smoke_range = 4
+	/// Number of seconds the smoke cloud persists at its origin.
 	var/smoke_ticks = 6
 	var/heal_amount = 10
 	var/blind_time = 5 SECONDS
@@ -59,6 +62,7 @@
 	stun_chance = schance
 	stun_time = stun
 
+/// Propagates shadow smoke nodes outward across atmos-adjacent open turfs up to `smoke_range`.
 /datum/effect_system/fluid_spread/smoke/shadow/start(log = FALSE)
 	var/turf/center = location || get_turf(holder)
 	if(!center)
@@ -86,11 +90,3 @@
 			if(isnull(visited[N]))
 				visited[N] = dist + 1
 				queue += N
-
-// MARK: Deprecated Ability
-/// Shadow Smoke has been merged into Shadow Veil.
-/// Left-click triggers Shadow Veil, Right-click triggers Shadow Smoke.
-/datum/action/cooldown/shadowling/shadow_smoke
-	name = "Shadow Smoke (Merged)"
-	desc = "Shadow Smoke has been merged into Shadow Veil. Use Shadow Veil with Right-Click to emit smoke."
-	button_icon_state = "shadow_smoke"

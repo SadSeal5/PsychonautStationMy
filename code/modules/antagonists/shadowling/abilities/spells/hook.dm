@@ -1,4 +1,6 @@
-// MARK: Hook projectile
+// MARK: Hook Projectile
+
+/// Shadow hand projectile fired by Shadow Roots secondary mode to pull hit mobs or items toward the caster.
 /obj/projectile/magic/shadow_hand_sl
 	name = "shadow hand"
 	icon = 'icons/mob/antagonists/shadowling/shadowling_objects.dmi'
@@ -9,9 +11,12 @@
 	range = 8
 	speed = 0.8
 
+	/// Prevents duplicate throw/on_hit processing for a single projectile.
 	var/hit_committed = FALSE
+	/// Visual chain beam linking the firer to the flying shadow hand.
 	var/datum/beam/chain
 
+/// Fires the shadow hand projectile and attaches the visual chain beam to the firer.
 /obj/projectile/magic/shadow_hand_sl/fire(setAngle)
 	if(firer)
 		chain = firer.Beam(
@@ -24,6 +29,7 @@
 		)
 	return ..()
 
+/// Scans entered turfs for eligible living mobs or unanchored items to pull.
 /obj/projectile/magic/shadow_hand_sl/Moved(atom/oldloc, dir, forced = FALSE, list/old_locs, momentum_change = FALSE)
 	. = ..()
 	if(hit_committed)
@@ -51,6 +57,7 @@
 
 	return .
 
+/// Returns TRUE if [L] is alive, unanchored, not throwing, and not the firer.
 /obj/projectile/magic/shadow_hand_sl/proc/_eligible_mob(mob/living/L)
 	if(!istype(L))
 		return FALSE
@@ -64,6 +71,7 @@
 		return FALSE
 	return TRUE
 
+/// Returns TRUE if [I] is an unanchored item resting directly on a turf.
 /obj/projectile/magic/shadow_hand_sl/proc/_eligible_item(obj/item/I)
 	if(!istype(I))
 		return FALSE
@@ -73,6 +81,7 @@
 		return FALSE
 	return TRUE
 
+/// Pulls the struck movable target back toward [firer] upon impact.
 /obj/projectile/magic/shadow_hand_sl/on_hit(atom/movable/target, blocked = 0, pierce_hit)
 	. = ..()
 	if(hit_committed)
@@ -133,11 +142,3 @@
 		qdel(chain)
 	chain = null
 	return ..()
-
-// MARK: Deprecated Ability
-/// Shadow Hook has been merged into Shadow Roots.
-/// Left-click triggers Shadow Roots, Right-click triggers Shadow Hook.
-/datum/action/cooldown/shadowling/hook
-	name = "Shadow Hook (Merged)"
-	desc = "Shadow Hook has been merged into Shadow Roots. Use Shadow Roots with Right-Click to launch a hook."
-	button_icon_state = "shadow_hook"

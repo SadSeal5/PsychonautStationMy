@@ -1,4 +1,6 @@
 // MARK: Effects
+
+/// Pulsing ground circle visual displayed beneath a Shadowling channeling Ascension.
 /obj/effect/temp_visual/shadowling/ascend_circle
 	name = "umbral circle"
 	icon = 'icons/mob/antagonists/shadowling/shadowling_objects.dmi'
@@ -25,6 +27,7 @@
 	alpha = alpha_min
 	return .
 
+/// Begins the looping alpha and vertical bobbing pulse animation on the ascension circle.
 /obj/effect/temp_visual/shadowling/ascend_circle/proc/start_pulse()
 	if(is_pulsing)
 		return
@@ -42,6 +45,7 @@
 	_pulse_dir = -_pulse_dir
 	addtimer(CALLBACK(src, PROC_REF(_pulse_step)), pulse_half)
 
+/// Halts pulsing, fades alpha to 0, and schedules deletion of the circle.
 /obj/effect/temp_visual/shadowling/ascend_circle/proc/stop_and_fade(fade_time = 0.3 SECONDS)
 	if(is_pulsing)
 		is_pulsing = FALSE
@@ -60,43 +64,86 @@
 	amount_to_scale = 8
 
 // MARK: Ability
+
+/// Threshold-100% ritual transforming a Shadowling into the Ascended form and triggering the roundender.
 /datum/action/cooldown/shadowling/ascend
 	name = "Ascension"
 	desc = "Tear away your mortal shell to ascend into the ultimate form of the Shadow. Requires darkness."
 	button_icon_state = "shadow_ascend"
 	cooldown_time = 30 SECONDS
+	role_flags = SL_THRESHOLD
 	requires_dark_user = TRUE
 	requires_dark_target = FALSE
 	max_range = 0
 	channel_time = 0
-	required_thralls = 0
 
+	/// Number of timed channel intervals in the Ascension ritual.
 	var/steps = 3
+	/// Duration of each channel interval.
 	var/step_time = 10 SECONDS
 
 	var/static/sfx_tick = 'sound/effects/magic/teleport_diss.ogg'
-	var/static/sfx_end = 'sound/effects/magic/mutate.ogg'
 
 	// Levitation params
+	/// Vertical pixel offset used during the levitation bob animation.
 	var/levitate_offset = 4
+	/// Half-cycle duration of the levitation bob animation.
 	var/levitate_half = 0.5 SECONDS
+	/// World time deadline at which levitation ends.
 	var/levitate_until = 0
 	var/_levitate_base_y = null
 	var/_levitating = FALSE
 
 	min_req = 1
-	max_req = 30
+	max_req = 1000
 	required_thralls = 100
 
-/datum/action/cooldown/shadowling/ascend/DoEffect(mob/living/carbon/human/H, atom/_)
-	if(!istype(H))
+	/// Re-entrancy lock preventing concurrent ascension channels.
+	var/channeling = FALSE
+	/// Caster currently channeling Ascension.
+	var/mob/living/carbon/human/channel_caster
+	/// Hive reference tracked for cleanup if the ability is stripped mid-channel.
+	var/datum/team/shadow_hive/channel_hive
+	/// Active ground circle visual tracked for cleanup on mid-channel abort.
+	var/obj/effect/temp_visual/shadowling/ascend_circle/active_circle
+
+/datum/action/cooldown/shadowling/ascend/Remove(mob/remove_from)
+	if(channeling)
+		fail_ritual(channel_caster || remove_from, channel_hive || GLOB.shadowling_hive, active_circle)
+	return ..()
+
+/datum/action/cooldown/shadowling/ascend/Destroy()
+	if(channeling)
+		fail_ritual(channel_caster || owner, channel_hive || GLOB.shadowling_hive, active_circle)
+	return ..()
+
+/// Cleans up levitation, visual circle, and `hive.is_ascending` if Ascension is interrupted.
+/datum/action/cooldown/shadowling/ascend/proc/fail_ritual(mob/living/carbon/human/H, datum/team/shadow_hive/hive, obj/effect/temp_visual/shadowling/ascend_circle/circle, reason)
+	var/was_channeling = channeling
+	channeling = FALSE
+	channel_caster = null
+	channel_hive = null
+	active_circle = null
+	if(reason && !QDELETED(H))
+		to_chat(H, span_warning(reason))
+	if(was_channeling && hive && !QDELETED(hive))
+		hive.is_ascending = FALSE
+	_end_levitate(QDELETED(H) ? null : H)
+	if(circle && !QDELETED(circle))
+		circle.stop_and_fade()
+	return FALSE
+
+/datum/action/cooldown/shadowling/ascend/do_effect(mob/living/carbon/human/H, atom/_)
+	if(!istype(H) || channeling)
+		return FALSE
+	if(!is_valid_caster(H))
 		return FALSE
 
-	if(istype(H.dna?.species, /datum/species/shadow/shadowling/ascended))
+	if(isshadowling_ascended(H))
 		return FALSE
 
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
-	if(!hive)
+	var/datum/team/shadow_hive/hive = get_hive()
+	if(!hive || QDELETED(hive))
 		return FALSE
 	if(hive.is_ascended)
 		to_chat(H, span_warning("The hive has already ascended!"))
@@ -116,6 +163,9 @@
 		to_chat(H, span_warning("The light disrupts Ascension."))
 		return FALSE
 
+	channeling = TRUE
+	channel_caster = H
+	channel_hive = hive
 	hive.is_ascending = TRUE
 
 	StartCooldown()
@@ -127,32 +177,22 @@
 	_begin_levitate(H, ritual_total)
 
 	var/obj/effect/temp_visual/shadowling/ascend_circle/circle = new(start_turf)
+	active_circle = circle
 	circle.start_pulse()
 
 	for(var/i in 1 to steps)
+		if(!is_valid_caster(H) || QDELETED(hive))
+			return fail_ritual(H, hive, circle)
+
 		if(hive.count_alive_thralls() < hive.get_ascension_thralls_needed())
-			to_chat(H, span_warning("The connection falters as thralls perish — Ascension collapsed!"))
-			hive.is_ascending = FALSE
-			_end_levitate(H)
-			if(circle)
-				circle.stop_and_fade()
-			return FALSE
+			return fail_ritual(H, hive, circle, "The connection falters as thralls perish — Ascension collapsed!")
 
 		var/turf/current_turf = get_turf(H)
 		if(!current_turf)
-			hive.is_ascending = FALSE
-			_end_levitate(H)
-			if(circle)
-				circle.stop_and_fade()
-			return FALSE
+			return fail_ritual(H, hive, circle)
 
 		if(current_turf.get_lumcount() >= SHADOWLING_DIM_THRESHOLD)
-			to_chat(H, span_warning("Bright light scatters the darkness — Ascension aborted."))
-			hive.is_ascending = FALSE
-			_end_levitate(H)
-			if(circle)
-				circle.stop_and_fade()
-			return FALSE
+			return fail_ritual(H, hive, circle, "Bright light scatters the darkness — Ascension aborted.")
 
 		_play_tick_fx(H)
 
@@ -162,40 +202,31 @@
 			to_chat(H, span_notice("The darkness thickens, ultimate power draws near..."))
 
 		if(!do_after(H, step_time, H))
-			to_chat(H, span_warning("Your concentration breaks — Ascension interrupted."))
-			hive.is_ascending = FALSE
-			_end_levitate(H)
-			if(circle)
-				circle.stop_and_fade()
-			return FALSE
+			return fail_ritual(H, hive, circle, "Your concentration breaks — Ascension interrupted.")
+		if(!is_valid_caster(H) || QDELETED(hive))
+			return fail_ritual(H, hive, circle)
 
-	if(QDELETED(H))
-		hive.is_ascending = FALSE
-		_end_levitate(null)
-		if(circle)
-			circle.stop_and_fade()
-		return FALSE
+	if(!is_valid_caster(H) || H.stat == DEAD)
+		return fail_ritual(H, hive, circle)
+
+	var/datum/antagonist/shadowling/AD = get_shadowling_antag_of(H)
+	hive = AD?.get_hive()
+	if(!AD || !hive || QDELETED(hive))
+		return fail_ritual(H, hive, circle, "The hive connection falters — Ascension aborted.")
 
 	var/turf/final_turf = get_turf(H)
 	if(!final_turf || final_turf.get_lumcount() >= SHADOWLING_DIM_THRESHOLD)
-		to_chat(H, span_warning("Bright light pierces the shadows — Ascension aborted."))
-		hive.is_ascending = FALSE
-		_end_levitate(H)
-		if(circle)
-			circle.stop_and_fade()
-		return FALSE
+		return fail_ritual(H, hive, circle, "Bright light pierces the shadows — Ascension aborted.")
 
 	var/old_turf = get_turf(H)
 
 	_pop_burst(H, 1.2 SECONDS)
 
 	H.shadowling_strip_quirks()
+	H.reset_robotic_limbs()
 	H.update_eyes(TRUE)
 
-	if(H.mind)
-		for(var/datum/antagonist/shadowling/AD in H.mind.antag_datums)
-			AD.set_higher(TRUE)
-			break
+	AD.set_higher(TRUE)
 
 	new /obj/effect/temp_visual/shadowling/hatch_pulse(old_turf)
 	new /obj/effect/temp_visual/circle_wave/shadow_shreek_wave/dark/slow(old_turf)
@@ -203,27 +234,23 @@
 	to_chat(H, span_boldnotice("You shatter your mortal shell and ascend into the ultimate form of the Shadow!"))
 	playsound(get_turf(H), 'sound/effects/magic/mutate.ogg', 70, TRUE)
 
-	for(var/datum/action/cooldown/ability in H.actions.Copy())
-		if(!istype(ability, /datum/action/cooldown/shadowling))
-			continue
-		if(istype(ability, /datum/action/cooldown/shadowling/engine_sabotage))
-			continue
-		ability.Remove(H)
-		if(istype(ability, /datum/action/cooldown/shadowling/ascend) || istype(ability, /datum/action/cooldown/shadowling/hatch))
-			qdel(ability)
+	channeling = FALSE
+	channel_caster = null
+	channel_hive = null
+	active_circle = null
 
 	hive.is_ascending = FALSE
 	hive.sync_after_event(H)
 
 	_end_levitate(H)
 
-	if(circle)
+	if(circle && !QDELETED(circle))
 		circle.stop_and_fade()
-	shadowling_begin_roundender(H)
-	if(!QDELETED(src))
-		qdel(src)
+	hive.begin_roundender(H)
+	remove_after_use()
 	return TRUE
 
+/// Starts the caster levitation animation loop for [total_time] deciseconds.
 /datum/action/cooldown/shadowling/ascend/proc/_begin_levitate(mob/living/carbon/human/H, total_time)
 	if(!istype(H))
 		return
@@ -232,6 +259,7 @@
 	levitate_until = world.time + total_time
 	_levitate_up(H)
 
+/// Animates [H] upward during the levitation loop.
 /datum/action/cooldown/shadowling/ascend/proc/_levitate_up(mob/living/carbon/human/H)
 	if(!_levitating)
 		return
@@ -247,6 +275,7 @@
 
 	addtimer(CALLBACK(src, PROC_REF(_levitate_down), H), levitate_half)
 
+/// Animates [H] downward during the levitation loop.
 /datum/action/cooldown/shadowling/ascend/proc/_levitate_down(mob/living/carbon/human/H)
 	if(!_levitating)
 		return
@@ -262,6 +291,7 @@
 
 	addtimer(CALLBACK(src, PROC_REF(_levitate_up), H), levitate_half)
 
+/// Stops levitation and animates [H]'s pixel_y back to baseline.
 /datum/action/cooldown/shadowling/ascend/proc/_end_levitate(mob/living/carbon/human/H)
 	if(!_levitating)
 		return
@@ -271,6 +301,7 @@
 		animate(H)
 		animate(H, pixel_y = _levitate_base_y, time = 0.2 SECONDS, easing = EASE_IN)
 
+/// Plays a brief upward burst animation when Ascension completes.
 /datum/action/cooldown/shadowling/ascend/proc/_pop_burst(mob/living/carbon/human/H, total = 1.2 SECONDS)
 	if(!istype(H))
 		return
@@ -282,6 +313,7 @@
 	animate(time = half - 0.25 SECONDS)
 	animate(H, pixel_y = H.pixel_y, time = 0.45 SECONDS, easing = EASE_IN)
 
+/// Spawns a hatch pulse effect and plays an ascension tick sound at [H].
 /datum/action/cooldown/shadowling/ascend/proc/_play_tick_fx(mob/living/carbon/human/H)
 	var/turf/T = get_turf(H)
 	if(!T)

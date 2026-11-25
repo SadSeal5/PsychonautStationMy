@@ -1,22 +1,31 @@
+// MARK: Status Effects
+
+/// Bodypart-grouped status effect driving Shadowling light burn, dark healing, and deathcoma revival.
 /datum/status_effect/grouped/bodypart_effect/nyxosynthesis/shadowling
 	id = "nyxosynthesis_shadowling"
 	tick_interval = 1 SECONDS
+	/// Tracks whether the dark movespeed bonus is currently applied.
 	var/applied_speed = FALSE
+	/// World time gate throttling repeated light-burn sound effects.
 	var/next_burn_sfx_time = 0
 	var/static/sfx_burn = 'sound/items/weapons/sear.ogg'
+	/// Cumulative ticks spent dead in bright light toward husking and dusting.
 	var/corpse_light_ticks = 0
 
+/// Registers deathcoma stasis handling when nyxosynthesis attaches.
 /datum/status_effect/grouped/bodypart_effect/nyxosynthesis/shadowling/on_apply()
 	. = ..()
 	if(!.)
 		return FALSE
 	RegisterSignal(owner, COMSIG_LIVING_DEATH, PROC_REF(on_owner_death))
 
+/// Places a dying Shadowling into deathcoma stasis so it can regenerate in darkness.
 /datum/status_effect/grouped/bodypart_effect/nyxosynthesis/shadowling/proc/on_owner_death(mob/living/source, gibbed)
 	SIGNAL_HANDLER
 	ADD_TRAIT(owner, TRAIT_DEATHCOMA, SHADOWLING_DEATHCOMA_TRAIT)
 	ADD_TRAIT(owner, TRAIT_STASIS, SHADOWLING_DEATHCOMA_TRAIT)
 
+/// Evaluates turf lighting each second to burn in bright light or heal, regen stamina, and revive in darkness.
 /datum/status_effect/grouped/bodypart_effect/nyxosynthesis/shadowling/tick(seconds_between_ticks)
 	var/turf/T = get_turf(owner)
 	if(!isturf(T))
@@ -94,6 +103,7 @@
 		owner.add_movespeed_modifier(/datum/movespeed_modifier/shadowling/dark)
 		applied_speed = TRUE
 
+/// Revives a dead, non-husked Shadowling once brute and burn damage reach zero.
 /datum/status_effect/grouped/bodypart_effect/nyxosynthesis/shadowling/proc/try_revive()
 	if(!owner || owner.stat != DEAD)
 		return FALSE
@@ -107,6 +117,7 @@
 
 	return TRUE
 
+/// Heals internal organ damage by [heal_amount] while regenerating in darkness.
 /datum/status_effect/grouped/bodypart_effect/nyxosynthesis/shadowling/proc/regenerate_organs(heal_amount)
 	if(!iscarbon(owner) || heal_amount <= 0)
 		return
@@ -118,6 +129,7 @@
 			continue
 		organ.set_organ_damage(max(0, organ.damage - heal_amount))
 
+/// Unregisters death signal and clears the dark movespeed bonus on removal.
 /datum/status_effect/grouped/bodypart_effect/nyxosynthesis/shadowling/on_remove()
 	UnregisterSignal(owner, COMSIG_LIVING_DEATH)
 	if(applied_speed && owner)

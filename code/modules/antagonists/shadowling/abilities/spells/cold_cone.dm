@@ -2,10 +2,11 @@
 #define COLD_WAVE_SLOW_DURATION (10 SECONDS)
 #define COLD_WAVE_TEMP_DROP -260
 #define COLD_WAVE_FROSTOIL_AMOUNT 8
-#define COLD_WAVE_BLIND_DURATION (10 SECONDS)
 #define COLD_WAVE_BURN_DAMAGE 20
 
 // MARK: Effects
+
+/// Directional plume visual spawned by Glacial Wave.
 /obj/effect/temp_visual/dir_setting/shadow_plume
 	icon = 'icons/effects/160x160.dmi'
 	icon_state = "entropic_plume"
@@ -27,10 +28,11 @@
 			pixel_y = -64
 			pixel_x = -128
 
-// MARK: Status effects
+// MARK: Status Effects
+
+/// Blinding frost cloud status effect applied by Glacial Wave.
 /datum/status_effect/cloudstruck/shadow
 	id = "cloudstruck_shadow"
-	var/disable_blind = TRUE
 	var/static/mutable_appearance/mob_overlay_shadow
 
 /datum/status_effect/cloudstruck/shadow/on_creation(mob/living/new_owner, duration = 2 SECONDS)
@@ -49,18 +51,23 @@
 	owner.cure_blind(id)
 	owner.cut_overlay(mob_overlay_shadow)
 
-// MARK: Movespeed modifier
+// MARK: Movespeed Modifier
+
+/// Temporary slow modifier applied to Glacial Wave victims.
 /datum/movespeed_modifier/shadowling/cold_wave
 	multiplicative_slowdown = 1.25
 	priority = 20
 	movetypes = GROUND
 
 // MARK: Ability
+
+/// Cone attack dealing burn, stamina damage, chill, frostoil, and slow to non-hive targets.
 /datum/action/cooldown/shadowling/cold_wave
 	name = "Glacial Wave"
 	desc = "A blast of freezing darkness in a 45° cone over 4 tiles, dealing 30 stamina damage and slowing enemies for 10 seconds."
 	button_icon_state = "shadow_cold"
 	cooldown_time = 40 SECONDS
+	role_flags = SL_THRESHOLD | SL_LESSER | SL_ASCENDED
 	requires_dark_user = FALSE
 	requires_dark_target = FALSE
 	max_range = 4
@@ -72,7 +79,7 @@
 	max_req = 10
 	required_thralls = 30
 
-/datum/action/cooldown/shadowling/cold_wave/DoEffect(mob/living/carbon/human/H, atom/_)
+/datum/action/cooldown/shadowling/cold_wave/do_effect(mob/living/carbon/human/H, atom/_)
 	play_cold_fx(H)
 	var/list/targets = collect_cone_targets(H)
 	if(!length(targets))
@@ -88,7 +95,7 @@
 		var/burn_amt = COLD_WAVE_BURN_DAMAGE
 		T.adjust_fire_loss(burn_amt)
 		T.adjust_stamina_loss(COLD_WAVE_STAMINA_DAMAGE)
-		apply_slow(T, COLD_WAVE_SLOW_DURATION)
+		apply_timed_slow(T, /datum/movespeed_modifier/shadowling/cold_wave, COLD_WAVE_SLOW_DURATION)
 		T.adjust_bodytemperature(temp_drop)
 
 		if(T.reagents)
@@ -98,46 +105,20 @@
 
 	return TRUE
 
-/datum/action/cooldown/shadowling/cold_wave/collect_cone_targets(mob/living/carbon/human/H)
+/// Collects non-hive human targets inside the Glacial Wave cone within `max_range`.
+/datum/action/cooldown/shadowling/cold_wave/proc/collect_cone_targets(mob/living/carbon/human/H)
 	var/list/out = list()
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
 	for(var/mob/living/carbon/human/T in view(max_range, H))
 		if(T == H)
 			continue
 		if(!in_front_cone(H, T, fov_degree))
 			continue
-		if(hive)
-			if(T in hive.lings)
-				continue
-			if(T in hive.thralls)
-				continue
+		if(is_hive_ally(T))
+			continue
 		out += T
 	return out
 
-/datum/action/cooldown/shadowling/cold_wave/proc/collect_cold_cone_turfs(mob/living/carbon/human/H, range_tiles, fov_deg)
-	var/list/turfs_in_cone = list()
-	if(!istype(H))
-		return turfs_in_cone
-	var/turf/origin = get_turf(H)
-	if(!origin)
-		return turfs_in_cone
-	for(var/turf/T in range(range_tiles, origin))
-		if(!in_front_cone(H, T, fov_deg))
-			continue
-		turfs_in_cone += T
-	return turfs_in_cone
-
-/datum/action/cooldown/shadowling/cold_wave/proc/apply_slow(mob/living/L, duration)
-	if(!istype(L))
-		return
-	L.add_movespeed_modifier(/datum/movespeed_modifier/shadowling/cold_wave)
-	addtimer(CALLBACK(src, PROC_REF(_remove_slow), L), duration, TIMER_UNIQUE | TIMER_OVERRIDE)
-
-/datum/action/cooldown/shadowling/cold_wave/proc/_remove_slow(mob/living/L)
-	if(!istype(L))
-		return
-	L.remove_movespeed_modifier(/datum/movespeed_modifier/shadowling/cold_wave)
-
+/// Plays the cold wave sound effect and spawns the directional plume visual.
 /datum/action/cooldown/shadowling/cold_wave/proc/play_cold_fx(mob/living/carbon/human/H)
 	if(!istype(H))
 		return
@@ -151,5 +132,4 @@
 #undef COLD_WAVE_SLOW_DURATION
 #undef COLD_WAVE_TEMP_DROP
 #undef COLD_WAVE_FROSTOIL_AMOUNT
-#undef COLD_WAVE_BLIND_DURATION
 #undef COLD_WAVE_BURN_DAMAGE

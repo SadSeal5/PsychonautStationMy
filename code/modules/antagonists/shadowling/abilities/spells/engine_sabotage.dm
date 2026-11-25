@@ -1,4 +1,6 @@
 // MARK: Ability
+
+/// One-time hive leader ability delaying the emergency shuttle arrival by 10 minutes.
 /datum/action/cooldown/shadowling/engine_sabotage
 	name = "Engine Sabotage"
 	desc = "Call upon the Unified Shadow to disrupt the evacuation shuttle engines, delaying its arrival by 10 minutes."
@@ -9,10 +11,11 @@
 	max_range = 0
 	channel_time = 0
 
+/// Checks whether Engine Sabotage has not yet been used this round.
 /datum/action/cooldown/shadowling/engine_sabotage/IsAvailable(feedback = FALSE)
 	if(!..())
 		return FALSE
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
+	var/datum/team/shadow_hive/hive = GLOB.shadowling_hive
 	if(!hive)
 		return FALSE
 	if(hive.is_shadowling_engine_sabotage_used)
@@ -22,7 +25,7 @@
 	return TRUE
 
 /datum/action/cooldown/shadowling/engine_sabotage/Grant(mob/grantee)
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
+	var/datum/team/shadow_hive/hive = GLOB.shadowling_hive
 	if(!hive)
 		return FALSE
 	if(hive.is_shadowling_engine_sabotage_used)
@@ -30,8 +33,9 @@
 		return FALSE
 	return ..()
 
-/datum/action/cooldown/shadowling/engine_sabotage/DoEffect(mob/living/carbon/human/H, atom/_)
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
+/// Delays the evac shuttle by 10 minutes, marks sabotage used, and removes it from the hive.
+/datum/action/cooldown/shadowling/engine_sabotage/do_effect(mob/living/carbon/human/H, atom/_)
+	var/datum/team/shadow_hive/hive = GLOB.shadowling_hive
 	if(!hive)
 		return FALSE
 	if(hive.is_shadowling_engine_sabotage_used)
@@ -42,18 +46,15 @@
 	hive.is_shadowling_engine_sabotage_used = TRUE
 	to_chat(H, span_boldnotice("You disrupt the power conduits — evacuation is delayed by 10 minutes."))
 	cleanup_from_all_hive(hive)
-	if(!QDELETED(src))
-		Remove(H)
-		qdel(src)
+	remove_after_use()
 	return TRUE
 
+/// Removes all Engine Sabotage actions from every Shadowling and thrall in [hive].
 /datum/action/cooldown/shadowling/engine_sabotage/proc/cleanup_from_all_hive(datum/team/shadow_hive/hive)
 	if(!hive)
 		return
-	for(var/mob/living/carbon/human/M in hive.lings)
+	for(var/mob/living/carbon/human/M as anything in hive.get_all_members())
 		remove_from_mob(M)
-	for(var/mob/living/carbon/human/T in hive.thralls)
-		remove_from_mob(T)
 
 /datum/action/cooldown/shadowling/engine_sabotage/proc/remove_from_mob(mob/living/carbon/human/M)
 	if(!istype(M))

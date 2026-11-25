@@ -1,13 +1,14 @@
+// MARK: Ability
+
+/// Telepathic broadcast ability shared by all Shadowlings, Lesser Shadowlings, and Thralls.
 /datum/action/cooldown/shadowling/commune
 	name = "Commune"
 	desc = "Transmit a telepathic message to all members of the hive."
 	button_icon_state = "shadow_talk"
 	cooldown_time = 0 SECONDS
+	role_flags = SL_INNATE | SL_THRALL | SL_LESSER | SL_ASCENDED
 
-/datum/action/cooldown/shadowling/commune/is_action_active(atom/movable/screen/movable/action_button/_btn)
-	return FALSE
-
-/datum/action/cooldown/shadowling/commune/DoEffect(mob/living/carbon/human/H, atom/_)
+/datum/action/cooldown/shadowling/commune/do_effect(mob/living/carbon/human/H, atom/_)
 	if(!istype(H))
 		return FALSE
 
@@ -35,6 +36,7 @@
 	H.log_talk(text_msg, LOG_SAY, tag = "SHADOW_HIVE")
 	return TRUE
 
+/// Formats and delivers [message] from [sender] to all hive members and dead observers.
 /datum/action/cooldown/shadowling/commune/proc/shadowling_commune_broadcast(mob/living/carbon/human/sender, message)
 	if(!istype(sender))
 		return FALSE
@@ -42,7 +44,7 @@
 	if(!length(message))
 		return FALSE
 
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
+	var/datum/team/shadow_hive/hive = get_hive()
 	if(!hive)
 		return FALSE
 
@@ -81,6 +83,7 @@
 
 	return TRUE
 
+/// Returns the chat role prefix for [H] (`(Thrall)`, `(Lesser Shadowling)`, or `(Shadowling)`).
 /datum/action/cooldown/shadowling/commune/proc/shadowling_commune_role_label(mob/living/carbon/human/H, datum/team/shadow_hive/hive)
 	if(H in hive.thralls)
 		return "(Thrall)"
@@ -94,6 +97,7 @@
 
 	return "(Shadowling)"
 
+/// Returns TRUE if [H]'s name should be bolded in hive telepathy broadcasts.
 /datum/action/cooldown/shadowling/commune/proc/shadowling_commune_bold_name(mob/living/carbon/human/H, datum/team/shadow_hive/hive)
 	if(!(H in hive.lings))
 		return TRUE

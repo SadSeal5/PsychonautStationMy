@@ -7,6 +7,8 @@
 #define SHREEK_LIGHT_BREAK_CHANCE_MIN 20
 
 // MARK: Effects
+
+/// Expanding violet wave spawned on Sonic Shriek activation.
 /obj/effect/temp_visual/circle_wave/shadow_shreek_wave
 	color = "#6e00a8"
 	max_alpha = 200
@@ -14,12 +16,15 @@
 	amount_to_scale = 6
 
 // MARK: Ability
+
+/// Threshold-40% area scream shattering windows, breaking wall lights, damaging synthetics, and disorienting mobs.
 /datum/action/cooldown/shadowling/shreek
 	name = "Sonic Shriek"
 	desc = "Emit a piercing, otherworldly scream that shatters glass, breaks lights within 10 tiles, and disorients mobs within 5 tiles."
 	button_icon_state = "shadow_screech"
 	check_flags = AB_CHECK_CONSCIOUS
 	cooldown_time = 40 SECONDS
+	role_flags = SL_THRESHOLD | SL_LESSER | SL_ASCENDED
 	min_req = 1
 	max_req = 20
 	required_thralls = 40
@@ -28,15 +33,13 @@
 	var/disorient_radius = 10
 	var/static/sfx_activate = 'sound/antagonists/shadowlings/abilities/shreek.ogg'
 
-/datum/action/cooldown/shadowling/shreek/DoEffect(mob/living/carbon/human/H, atom/_)
+/datum/action/cooldown/shadowling/shreek/do_effect(mob/living/carbon/human/H, atom/_)
 	playsound(get_turf(H), sfx_activate, 70, TRUE)
 	new /obj/effect/temp_visual/circle_wave/shadow_shreek_wave(get_turf(H))
 	H.visible_message(
 		span_boldwarning("[H] lets out a terrifying, inhuman shriek!"),
 		span_userdanger("You emit a piercing shriek as darkness erupts around you!")
 	)
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
-
 	var/list_disorient = range(disorient_radius, H)
 	var/list_mobs = range(mob_disorient_radius, H)
 	var/list_knock = range(knock_radius, H)
@@ -46,9 +49,8 @@
 	for(var/mob/living/L in list_mobs)
 		if(L == H)
 			continue
-		if(istype(L, /mob/living/carbon/human) && hive)
-			if((L in hive.lings) || (L in hive.thralls))
-				continue
+		if(ishuman(L) && is_hive_ally(L))
+			continue
 		var/obj/item/organ/ears/ears = L.get_organ_slot(ORGAN_SLOT_EARS)
 		var/dist = get_dist(H, L)
 		if(dist <= knock_radius)
@@ -81,6 +83,7 @@
 	break_wall_lights_with_falloff(H)
 	return TRUE
 
+/// Damages glass structures in [H]'s shriek range with distance falloff.
 /datum/action/cooldown/shadowling/shreek/proc/damage_glass_with_falloff(mob/living/carbon/human/H, obj/structure/W)
 	if(QDELETED(W))
 		return
@@ -88,6 +91,7 @@
 	var/damage = max(10, SHREEK_GLASS_DAMAGE_BASE - SHREEK_GLASS_DAMAGE_FALLOFF * d)
 	W.take_damage(damage, damage_type = BRUTE, damage_flag = MELEE, sound_effect = TRUE)
 
+/// Throws [target] away from [source] up to [range] tiles until blocked.
 /datum/action/cooldown/shadowling/shreek/proc/knockback_away_from(mob/living/source, mob/living/target, range)
 	if(!istype(target) || target.anchored)
 		return
@@ -102,6 +106,7 @@
 		end = next
 	target.throw_at(end, range, 2)
 
+/// Hurls unanchored movable [AM] away from [source] up to [range] tiles.
 /datum/action/cooldown/shadowling/shreek/proc/throw_away_from(mob/living/source, atom/movable/AM, range, speed)
 	if(!istype(AM) || AM.anchored)
 		return
@@ -116,6 +121,7 @@
 		end = next
 	AM.throw_at(end, range, speed)
 
+/// Breaks wall lights within `disorient_radius` with probability decreasing over distance.
 /datum/action/cooldown/shadowling/shreek/proc/break_wall_lights_with_falloff(mob/living/carbon/human/H)
 	for(var/obj/machinery/light/L in range(disorient_radius, H))
 		var/d = clamp(get_dist(H, L), 1, disorient_radius)
@@ -123,6 +129,7 @@
 		if(prob(chance))
 			L.break_light_tube()
 
+/// Deals 100 brute damage to mechs, silicons, and bots within [turfs].
 /datum/action/cooldown/shadowling/shreek/proc/affect_synthetics(list/turfs)
 	if(!islist(turfs))
 		return

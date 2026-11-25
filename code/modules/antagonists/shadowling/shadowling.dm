@@ -1,9 +1,6 @@
-/datum/mood_event/shadowling
-	description = "The cold darkness within whispers of power."
-	mood_change = 12
-	hidden = TRUE
-
 // MARK: Antagonist
+
+/// Core antagonist datum for Shadowlings, managing hive membership, form lifecycle, and admin tools.
 /datum/antagonist/shadowling
 	name = "Shadowling"
 	roundend_category = "Shadowlings"
@@ -15,35 +12,63 @@
 	antag_hud_name = "shadowling"
 	ui_name = "AntagInfoShadowling"
 
+	/// Role identifier within the hive (`SHADOWLING_ROLE_MAIN`, `SHADOWLING_ROLE_LESSER`, or `SHADOWLING_ROLE_THRALL`).
 	var/ling_role = SHADOWLING_ROLE_MAIN
+	/// Whether this antagonist datum represents a Shadow Thrall rather than a Shadowling.
 	var/is_thrall = FALSE
+	/// Whether this Shadowling has achieved Ascension.
 	var/is_ascended = FALSE
 
+	/// Reference to the shared Shadow Hive team datum.
 	var/datum/team/shadow_hive/shadow_team
+	/// The species the mob had before hatching, restored on removal.
+	var/datum/species/original_species
+	/// The max health the mob had before ascending, restored on removal or de-ascension.
+	var/original_max_health
+	/// Rate-limits manual Broodmind sync actions.
+	COOLDOWN_DECLARE(sync_cooldown)
 
 /datum/antagonist/shadowling/can_be_owned(datum/mind/new_owner)
 	if(new_owner?.has_antag_datum(type))
 		return FALSE
 	return ..()
 
+/// Returns a valid Shadow Hive team datum, clearing stale deleted references and recreating the singleton if needed.
+/datum/antagonist/shadowling/proc/get_hive()
+	if(QDELETED(shadow_team))
+		shadow_team = null
+	if(QDELETED(GLOB.shadowling_hive))
+		GLOB.shadowling_hive = new /datum/team/shadow_hive
+	if(!shadow_team)
+		shadow_team = GLOB.shadowling_hive
+	return shadow_team
+
+/// Generates the roundstart preference preview icon using the Shadowling species.
 /datum/antagonist/shadowling/get_preview_icon()
 	var/mob/living/carbon/human/dummy/consistent/dummy = new()
 	dummy.set_species(/datum/species/shadow/shadowling, icon_update = TRUE)
 	return finish_preview_icon(render_preview_outfit(preview_outfit, dummy))
 
+/// Assigns [new_team] or binds to the global `GLOB.shadowling_hive` singleton.
+/datum/antagonist/shadowling/create_team(datum/team/shadow_hive/new_team)
+	if(istype(new_team) && !QDELETED(new_team))
+		shadow_team = new_team
+		return
+	shadow_team = null
+	get_hive()
+
+/// Registers the mind and body in the hive, grants initial abilities, and assigns objectives.
 /datum/antagonist/shadowling/on_gain()
 	if(!owner)
 		return
 
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
-	shadow_team = hive
-	shadow_team.setup_objectives()
-
-	shadow_team.add_member(owner)
+	var/datum/team/shadow_hive/hive = get_hive()
+	hive.setup_objectives()
+	hive.add_member(owner)
 
 	var/mob/living/carbon/human/H = owner.current
 	if(istype(H))
-		shadow_team.join_member(H, ling_role)
+		hive.join_member(H, ling_role)
 		if(!is_thrall)
 			hive.shadowling_grant_hatch(H)
 
@@ -57,30 +82,206 @@
 			O.owner = owner
 		objectives |= thrall_objs
 	else
-		objectives |= shadow_team.get_objectives()
+		objectives |= hive.get_objectives()
 
 	. = ..()
 
 	if(istype(H))
 		add_team_hud(H)
-		shadow_team.sync_after_event(H)
+		hive.sync_after_event(H)
 
+/// Sends the Shadowling role greeting, plays the stinger, and announces objectives.
+/datum/antagonist/shadowling/greet()
+	if(silent || !owner?.current)
+		return
+	play_stinger()
+	if(ling_role == SHADOWLING_ROLE_LESSER)
+		to_chat(owner.current, span_bolddanger("The darkness rewrites your flesh and mind. You are a Lesser Shadowling!"))
+	else
+		to_chat(owner.current, span_bolddanger("You are a Shadowling! Stay in the darkness, enthrall the crew, and ascend."))
 	owner.announce_objectives()
+	antag_memory += "You are a <b>[(ling_role == SHADOWLING_ROLE_LESSER) ? "Lesser Shadowling" : "Shadowling"]</b> of the Shadow Hive.<br>"
 
+/// Notifies the mind when the Shadowling antagonist datum is removed.
+/datum/antagonist/shadowling/farewell()
+	if(silent || !owner?.current)
+		return
+	to_chat(owner.current, span_userdanger("The shadow recedes from your mind. You are no longer a Shadowling!"))
+
+/// Returns the current form, role, and hive thrall progress string for the admin antag panel.
+/datum/antagonist/shadowling/antag_panel_data()
+	var/mob/living/carbon/human/H = owner?.current
+	var/form = "Unhatched"
+	if(is_ascended || (istype(H) && isshadowling_ascended(H)))
+		form = "Ascended"
+	else if(istype(H) && isshadowling(H))
+		form = "Hatched"
+
+	var/role_label = (ling_role == SHADOWLING_ROLE_LESSER) ? "Lesser" : "Master"
+	var/datum/team/shadow_hive/hive = get_hive()
+	var/alive_thralls = hive ? hive.count_alive_thralls() : 0
+	var/needed_thralls = hive ? hive.get_ascension_thralls_needed() : 0
+	return "Form: [form] | Role: [role_label] | Hive Thralls: [alive_thralls]/[needed_thralls]"
+
+/// Returns contextual admin panel commands for managing Shadowling state and hive thralls.
+/datum/antagonist/shadowling/get_admin_commands()
+	. = ..()
+	var/mob/living/carbon/human/H = owner?.current
+	if(!is_thrall)
+		if(istype(H) && !isshadowling(H) && !isshadowling_ascended(H))
+			.["Force Hatch"] = CALLBACK(src, PROC_REF(admin_force_hatch))
+		if(istype(H) && !is_ascended)
+			.["Force Ascend"] = CALLBACK(src, PROC_REF(admin_force_ascend))
+		.["Sync Hive Abilities"] = CALLBACK(src, PROC_REF(admin_sync_hive))
+		if(ling_role != SHADOWLING_ROLE_LESSER && !is_ascended)
+			.["Convert to Lesser Shadowling"] = CALLBACK(src, PROC_REF(admin_convert_lesser))
+		.["Add Thrall (Marked Mob)"] = CALLBACK(src, PROC_REF(admin_add_thrall))
+		.["Remove Thrall"] = CALLBACK(src, PROC_REF(admin_remove_thrall))
+	else
+		.["Sync Hive Abilities"] = CALLBACK(src, PROC_REF(admin_sync_hive))
+		.["Convert to Lesser Shadowling"] = CALLBACK(src, PROC_REF(admin_convert_lesser))
+
+/// Admin command to immediately hatch an unhatched Shadowling.
+/datum/antagonist/shadowling/proc/admin_force_hatch(mob/admin)
+	if(!admin?.client?.holder)
+		return
+	var/mob/living/carbon/human/H = owner?.current
+	if(!istype(H) || is_thrall || isshadowling(H) || isshadowling_ascended(H))
+		to_chat(admin, span_warning("Target must be an unhatched human Shadowling."))
+		return
+	var/datum/team/shadow_hive/hive = get_hive()
+	for(var/datum/action/cooldown/shadowling/hatch/hatch_act in H.actions.Copy())
+		if(hatch_act.channeling)
+			hatch_act.fail_ritual(H)
+	H.shadowling_strip_quirks()
+	H.reset_robotic_limbs()
+	if(!original_species)
+		original_species = H.dna?.species
+	H.set_species(/datum/species/shadow/shadowling)
+	hive.sync_after_event(H)
+	H.refresh_eye_overlays()
+	hive.grant_night_vision(H)
+	to_chat(H, span_boldnotice("You shed your disguise and emerge as a true Shadow!"))
+	message_admins("[key_name_admin(admin)] forced [key_name_admin(H)] to hatch as a Shadowling.")
+	log_admin("[key_name(admin)] forced [key_name(H)] to hatch as a Shadowling.")
+
+/// Admin command to immediately ascend a Shadowling.
+/datum/antagonist/shadowling/proc/admin_force_ascend(mob/admin)
+	if(!admin?.client?.holder)
+		return
+	var/mob/living/carbon/human/H = owner?.current
+	if(!istype(H) || is_thrall || is_ascended)
+		to_chat(admin, span_warning("Target must be a non-ascended human Shadowling."))
+		return
+	var/datum/team/shadow_hive/hive = get_hive()
+	for(var/datum/action/cooldown/shadowling/hatch/hatch_act in H.actions.Copy())
+		if(hatch_act.channeling)
+			hatch_act.fail_ritual(H)
+	for(var/datum/action/cooldown/shadowling/ascend/asc_act in H.actions.Copy())
+		if(asc_act.channeling)
+			asc_act.fail_ritual(H, hive, asc_act.active_circle)
+	if(!original_species && !isshadowling(H) && !isshadowling_ascended(H))
+		original_species = H.dna?.species
+	H.shadowling_strip_quirks()
+	H.reset_robotic_limbs()
+	H.update_eyes(TRUE)
+	set_higher(TRUE)
+	hive.is_ascending = FALSE
+	hive.sync_after_event(H)
+	to_chat(H, span_boldnotice("You shatter your mortal shell and ascend into the ultimate form of the Shadow!"))
+	message_admins("[key_name_admin(admin)] forced [key_name_admin(H)] to ascend as a Shadowling.")
+	log_admin("[key_name(admin)] forced [key_name(H)] to ascend as a Shadowling.")
+	if(tgui_alert(admin, "Trigger the Ascension round-ender / shuttle call?", "Force Ascend", list("Yes", "No")) == "Yes")
+		if(!QDELETED(src) && !QDELETED(H) && !QDELETED(admin) && admin.client?.holder)
+			get_hive().begin_roundender(H)
+
+/// Admin command to synchronize unlocked hive abilities for the member.
+/datum/antagonist/shadowling/proc/admin_sync_hive(mob/admin)
+	if(!admin?.client?.holder)
+		return
+	var/mob/living/carbon/human/H = owner?.current
+	var/datum/team/shadow_hive/hive = get_hive()
+	if(!istype(H) || !hive)
+		return
+	hive.sync_hive(H)
+	message_admins("[key_name_admin(admin)] synced hive abilities for [key_name_admin(H)].")
+	log_admin("[key_name(admin)] synced hive abilities for [key_name(H)].")
+
+/// Admin command to convert a Shadowling or Shadow Thrall into a Lesser Shadowling.
+/datum/antagonist/shadowling/proc/admin_convert_lesser(mob/admin)
+	if(!admin?.client?.holder)
+		return
+	var/mob/living/carbon/human/H = owner?.current
+	if(!istype(H))
+		to_chat(admin, span_warning("Target must be a human mob."))
+		return
+	var/datum/team/shadow_hive/hive = get_hive()
+	if(!hive?.convert_to_lesser(H))
+		return
+	message_admins("[key_name_admin(admin)] converted [key_name_admin(H)] into a Lesser Shadowling.")
+	log_admin("[key_name(admin)] converted [key_name(H)] into a Lesser Shadowling.")
+
+/// Admin command to enthrall the currently marked human into the Shadow Hive.
+/datum/antagonist/shadowling/proc/admin_add_thrall(mob/admin)
+	if(!admin?.client?.holder)
+		return
+	var/mob/living/carbon/human/target = admin.client.holder.marked_datum
+	if(!istype(target) || !target.mind)
+		to_chat(admin, span_warning("You need to mark a human with a mind to do this!"))
+		return
+	if(target.mind.has_antag_datum(/datum/antagonist/shadowling))
+		to_chat(admin, span_warning("[target.real_name] is already part of the Shadow Hive."))
+		return
+	var/obj/item/organ/brain/shadow/tumor_thrall/tumor = new
+	if(!tumor.Insert(target))
+		qdel(tumor)
+		to_chat(admin, span_warning("Failed to insert thrall tumor into [target.real_name]."))
+		return
+	message_admins("[key_name_admin(admin)] enthralled [key_name_admin(target)] via Shadow Hive admin command.")
+	log_admin("[key_name(admin)] enthralled [key_name(target)] via Shadow Hive admin command.")
+
+/// Admin command to free a chosen Shadow Thrall from the hive.
+/datum/antagonist/shadowling/proc/admin_remove_thrall(mob/admin)
+	if(!admin?.client?.holder)
+		return
+	var/datum/team/shadow_hive/hive = get_hive()
+	if(!hive)
+		return
+	hive.sanitize()
+	if(!length(hive.thralls))
+		to_chat(admin, span_warning("There are no thralls in the Shadow Hive."))
+		return
+	var/list/choices = list()
+	for(var/mob/living/carbon/human/T as anything in hive.thralls)
+		choices["[T.real_name] ([REF(T)])"] = T
+	var/picked = tgui_input_list(admin, "Choose a thrall to free:", "Remove Thrall", choices)
+	if(QDELETED(src) || !admin.client?.holder || isnull(picked))
+		return
+	var/mob/living/carbon/human/chosen = choices[picked]
+	if(QDELETED(chosen))
+		return
+	var/obj/item/organ/brain/shadow/tumor_thrall/tumor = chosen.get_organ_slot(ORGAN_SLOT_BRAIN_THRALL)
+	if(istype(tumor))
+		tumor.mob_remove(chosen, special = FALSE)
+		qdel(tumor)
+	else
+		chosen.mind?.remove_antag_datum(/datum/antagonist/shadow_thrall)
+	message_admins("[key_name_admin(admin)] freed thrall [key_name_admin(chosen)].")
+	log_admin("[key_name(admin)] freed thrall [key_name(chosen)].")
+
+/// Leaves the hive, strips Shadowling abilities/stats/species, and calls parent removal.
 /datum/antagonist/shadowling/on_removal()
 	var/mob/living/carbon/human/H = owner?.current
 
-	var/datum/team/shadow_hive/hive = GLOB.shadowling_hive
+	var/datum/team/shadow_hive/hive = get_hive()
 	if(istype(H) && hive)
 		hive.leave_member(H)
 
-	if(shadow_team && owner)
-		shadow_team.remove_member(owner)
+	if(hive && owner)
+		hive.remove_member(owner)
 
 	if(istype(H))
-		for(var/datum/action/cooldown/ability in H.actions.Copy())
-			if(ability.type in typesof(/datum/action/cooldown/shadowling))
-				ability.Remove(H)
+		clear_powers_and_stats(H)
 
 	. = ..()
 
@@ -90,123 +291,128 @@
 	if(current)
 		add_team_hud(current)
 
+/datum/antagonist/shadowling/remove_innate_effects(mob/living/mob_override)
+	. = ..()
+	var/mob/living/current = mob_override || owner?.current
+	if(QDELETED(current))
+		return
+	// Undo the team HUD added in apply_innate_effects(). This is safe to run on body
+	// transfer too, since it only touches the mob we are leaving behind.
+	current.remove_alt_appearance("antag_team_hud_[REF(src)]")
+	QDEL_NULL(team_hud_ref)
+
+/// Undoes everything the antagonist applied to [current], in reverse order of application:
+/// abilities, then max health, then species. Called from on_removal(), so it must never run
+/// during a body transfer.
+/datum/antagonist/shadowling/proc/clear_powers_and_stats(mob/living/current)
+	if(QDELETED(current))
+		return
+
+	// Abilities first: they can reference the species or the ascended max health.
+	for(var/datum/action/cooldown/ability in current.actions.Copy())
+		if(istype(ability, /datum/action/cooldown/shadowling))
+			ability.Remove(current)
+			qdel(ability)
+
+	if(!ishuman(current))
+		return
+
+	revert_shadowling_form(current)
+
+/// Restores the max health and species the mob had before it was transformed.
+/datum/antagonist/shadowling/proc/revert_shadowling_form(mob/living/carbon/human/current)
+	if(!istype(current))
+		return
+	restore_max_health(current)
+	if(original_species && (isshadowling(current) || isshadowling_ascended(current)))
+		current.set_species(original_species)
+	original_species = null
+
+/// Restores the max health the mob had before it ascended.
+/datum/antagonist/shadowling/proc/restore_max_health(mob/living/carbon/human/H)
+	if(!istype(H) || !original_max_health)
+		return
+	H.setMaxHealth(original_max_health)
+	original_max_health = null
+
+/// Moves hive membership, actions, leader status, and transformed Shadowling form onto [new_body].
 /datum/antagonist/shadowling/on_body_transfer(mob/living/old_body, mob/living/new_body)
 	. = ..()
 	if(old_body == new_body)
 		return
 
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
-	if(istype(old_body, /mob/living/carbon/human) && hive)
-		hive.leave_member(old_body)
+	var/datum/team/shadow_hive/hive = get_hive()
+	var/was_transformed = ishuman(old_body) && (isshadowling(old_body) || isshadowling_ascended(old_body))
+	var/was_leader = hive && (old_body == hive.leader)
+	var/had_sabotage = isliving(old_body) && !!(locate(/datum/action/cooldown/shadowling/engine_sabotage) in old_body.actions)
 
-	if(istype(new_body, /mob/living/carbon/human) && hive)
+	if(isliving(old_body))
+		for(var/datum/action/cooldown/ability in old_body.actions.Copy())
+			if(istype(ability, /datum/action/cooldown/shadowling))
+				ability.Remove(old_body)
+				qdel(ability)
+
+	if(ishuman(old_body))
+		hive?.leave_member(old_body)
+		revert_shadowling_form(old_body)
+
+	if(!ishuman(new_body))
+		if(was_leader && hive)
+			hive.leader = null
+		return
+
+	// Only hatched or ascended Shadowlings transfer the Shadowling body across.
+	if(!is_thrall && (was_transformed || is_ascended))
+		transfer_shadowling_form(new_body)
+
+	if(hive)
 		hive.join_member(new_body, ling_role)
-		add_team_hud(new_body)
+		if(was_leader)
+			hive.leader = new_body
+		if(!is_thrall && !was_transformed && !is_ascended)
+			hive.shadowling_grant_hatch(new_body)
+		if(had_sabotage && !is_thrall && !hive.is_shadowling_engine_sabotage_used)
+			var/datum/action/cooldown/shadowling/engine_sabotage/sabotage = new
+			sabotage.Grant(new_body)
 		hive.sync_after_event(new_body)
 
+/// Applies the Shadowling (or ascended) species to [new_body] when a mind changes bodies.
+/datum/antagonist/shadowling/proc/transfer_shadowling_form(mob/living/carbon/human/new_body)
+	if(isshadowling(new_body) || isshadowling_ascended(new_body))
+		return
+	if(!original_species)
+		original_species = new_body.dna?.species
+	if(is_ascended)
+		if(!original_max_health)
+			original_max_health = new_body.maxHealth
+		new_body.set_species(/datum/species/shadow/shadowling/ascended)
+	else
+		new_body.set_species(/datum/species/shadow/shadowling)
+
+/// Marks this Shadowling datum as a Lesser Shadowling.
 /datum/antagonist/shadowling/proc/set_lesser()
 	ling_role = SHADOWLING_ROLE_LESSER
 
+/// Transitions the Shadowling between hatched and ascended states, preserving [original_max_health].
 /datum/antagonist/shadowling/proc/set_higher(state)
 	is_ascended = state
 	var/mob/living/carbon/human/H = owner?.current
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
-	if(istype(H) && hive)
+	var/datum/team/shadow_hive/hive = get_hive()
+	if(!istype(H))
+		return
+	if(state)
+		if(!original_max_health)
+			original_max_health = H.maxHealth
+	else
+		restore_max_health(H)
+	if(hive)
 		hive.shadowling_set_ascended(H, state)
 
-/datum/antagonist/shadow_thrall
-	parent_type = /datum/antagonist/shadowling
-	name = "Shadow Thrall"
-	antagpanel_category = "Shadowlings"
-	antag_hud_name = "shadowling_thrall"
-
-	is_thrall = TRUE
-	ling_role = SHADOWLING_ROLE_THRALL
-
-/datum/antagonist/shadow_thrall/on_gain()
-	. = ..()
-
-	var/mob/living/carbon/H = owner?.current
-	if(istype(H) && !H.get_organ_slot(ORGAN_SLOT_BRAIN_THRALL))
-		var/obj/item/organ/brain/shadow/tumor_thrall/tumor = new
-		tumor.Insert(H)
-
-/datum/antagonist/shadow_thrall/on_body_transfer(mob/living/old_body, mob/living/new_body)
-	. = ..()
-	if(old_body == new_body)
-		return
-
-	var/mob/living/carbon/H = new_body
-	if(istype(H) && !H.get_organ_slot(ORGAN_SLOT_BRAIN_THRALL))
-		var/obj/item/organ/brain/shadow/tumor_thrall/tumor = new
-		tumor.Insert(H)
-
-// MARK: Objectives
-/datum/objective/shadowling/enslave_fraction
-	name = "Subjugate the crew"
-	admin_grantable = TRUE
-	var/percent = 50
-	var/baseline_population = 0
-
-/datum/objective/shadowling/enslave_fraction/New(pct = null)
-	if(isnum(pct))
-		percent = clamp(round(pct), 1, 100)
-	capture_baseline_population()
-	update_explanation_text()
-	return ..()
-
-/datum/objective/shadowling/enslave_fraction/proc/capture_baseline_population()
-	for(var/mob/dead/new_player/player as anything in GLOB.new_player_list)
-		if(player.ready == PLAYER_READY_TO_PLAY)
-			baseline_population++
-	if(!baseline_population)
-		baseline_population = length(get_crewmember_minds())
-	if(baseline_population <= 0)
-		baseline_population = 1
-
-/datum/objective/shadowling/enslave_fraction/proc/required_thralls()
-	return max(1, CEILING((baseline_population * percent) / 100, 1))
-
-/datum/objective/shadowling/enslave_fraction/proc/current_thralls()
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
-	if(!hive)
-		return 0
-	return hive.count_alive_thralls()
-
-/datum/objective/shadowling/enslave_fraction/update_explanation_text()
-	var/need = required_thralls()
-	var/have = current_thralls()
-	explanation_text = "Enslave at least [need] crew members. Currently: [have]/[need]."
-
-/datum/objective/shadowling/enslave_fraction/check_completion()
-	return current_thralls() >= required_thralls()
-
-/datum/objective/shadowling/enslave_fraction/admin_edit(mob/admin)
-	var/new_pct = input(admin, "What percentage of starting crew must be enslaved?", "Shadowling objective", percent) as num|null
-	if(isnum(new_pct))
-		percent = clamp(round(new_pct), 1, 100)
-		update_explanation_text()
-
-		var/datum/team/shadow_hive/hive = get_shadow_hive()
-		hive?.refresh_ascension_thralls_needed()
-
-/datum/objective/shadowling/ascend
-	name = "Achieve Ascension"
-	admin_grantable = TRUE
-
-/datum/objective/shadowling/ascend/update_explanation_text()
-	explanation_text = "Ascend, taking on the ultimate form of the Shadowling."
-
-/datum/objective/shadowling/ascend/check_completion()
-	if(!owner || !owner.current)
-		return FALSE
-	var/mob/living/carbon/human/H = owner.current
-	return istype(H.dna?.species, /datum/species/shadow/shadowling/ascended)
-
+/// Renders the roundend report summary for this Shadowling and hive statistics.
 /datum/antagonist/shadowling/roundend_report()
 	var/list/report = list()
 	if(!owner)
-		CRASH("Antagonist datum without owner")
+		return "[name] (no owner)"
 	report += printplayer(owner)
 	var/objectives_complete = TRUE
 	if(objectives.len)
@@ -215,12 +421,14 @@
 			if(!O.check_completion())
 				objectives_complete = FALSE
 				break
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
+	var/datum/team/shadow_hive/hive = get_hive()
 	if(hive)
 		var/alive_thralls = hive.count_alive_thralls()
 		var/total_lings = 0
 		var/alive_lings = 0
 		for(var/mob/living/carbon/human/L in hive.lings)
+			if(QDELETED(L))
+				continue
 			total_lings++
 			if(L.stat != DEAD)
 				alive_lings++
@@ -232,288 +440,14 @@
 	return report.Join("<br>")
 
 /datum/antagonist/shadowling/get_team()
-	return shadow_team
+	return get_hive()
 
-/datum/antagonist/shadowling/ui_interact(mob/user, datum/tgui/ui)
-	ui = SStgui.try_update_ui(user, src, ui)
-	if(!ui)
-		ui = new(user, src, ui_name, "Shadowling Broodmind")
-		ui.open()
-
-/datum/antagonist/shadowling/ui_data(mob/user)
-	var/list/data = list()
-	var/mob/living/carbon/human/H = ishuman(user) ? user : (owner?.current && ishuman(owner.current) ? owner.current : null)
-	var/datum/team/shadow_hive/hive = shadow_team || get_shadow_hive()
-
-	var/role_text = "Master Shadowling"
-	var/role_code = "master"
-	if(is_ascended || (H && isshadowling_ascended(H)))
-		role_text = "Ascended Shadowling"
-		role_code = "ascended"
-	else if(is_thrall)
-		role_text = "Shadow Thrall"
-		role_code = "thrall"
-	else if(ling_role == SHADOWLING_ROLE_LESSER)
-		role_text = "Lesser Shadowling"
-		role_code = "lesser"
-
-	var/thrall_count = hive ? hive.count_alive_thralls() : 0
-	var/thralls_needed = hive ? hive.get_ascension_thralls_needed() : 0
-
-	data["name"] = H?.real_name || "Unknown"
-	data["role"] = role_text
-	data["role_type"] = role_code
-	data["is_ascended"] = is_ascended || (H && isshadowling_ascended(H))
-	data["is_thrall"] = is_thrall
-	data["is_hatched"] = H && (isshadowling(H) || isshadowling_ascended(H))
-	data["hive_name"] = hive?.name || "The Shadow Brood"
-	data["thrall_count"] = thrall_count
-	data["thralls_needed"] = thralls_needed
-	data["ascension_progress"] = thralls_needed > 0 ? min(100, round((thrall_count / thralls_needed) * 100)) : 0
-	data["is_hive_ascended"] = hive ? hive.is_ascended : FALSE
-	data["leader_name"] = hive?.leader ? hive.leader.real_name : null
-
-	if(hive)
-		hive.update_objective_explanations()
-	if(is_thrall)
-		for(var/datum/objective/O in objectives)
-			O.update_explanation_text()
-
-	data["objectives"] = get_objectives()
-	data["can_change_objective"] = can_assign_self_objectives
-
-	var/list/roster = list()
-	if(hive)
-		hive.sanitize()
-		for(var/mob/living/carbon/human/ling as anything in hive.lings)
-			if(QDELETED(ling))
-				continue
-			var/ling_stat = "Alive"
-			if(istype(ling.loc, /obj/effect/dummy/phased_mob/shadowling) || ling.has_status_effect(/datum/status_effect/shadow/phase))
-				ling_stat = "Phased"
-			else if(ling.stat == DEAD)
-				ling_stat = "Dead"
-			else if(IS_UNCONSCIOUS_OR_CRIT(ling) || ling.health <= 0)
-				ling_stat = "Critical"
-
-			var/m_role = "Master Shadowling"
-			if(isshadowling_ascended(ling))
-				m_role = "Ascended Shadowling"
-			else if(hive.get_ling_role(ling) == SHADOWLING_ROLE_LESSER)
-				m_role = "Lesser Shadowling"
-
-			roster += list(list(
-				"name" = ling.real_name || ling.name,
-				"role" = m_role,
-				"stat" = ling_stat,
-				"is_user" = (ling == H),
-			))
-
-		for(var/mob/living/carbon/human/thrall as anything in hive.thralls)
-			if(QDELETED(thrall))
-				continue
-			var/thrall_stat = "Alive"
-			if(istype(thrall.loc, /obj/effect/dummy/phased_mob/shadowling) || thrall.has_status_effect(/datum/status_effect/shadow/phase))
-				thrall_stat = "Phased"
-			else if(thrall.stat == DEAD)
-				thrall_stat = "Dead"
-			else if(IS_UNCONSCIOUS_OR_CRIT(thrall) || thrall.health <= 0)
-				thrall_stat = "Critical"
-
-			roster += list(list(
-				"name" = thrall.real_name || thrall.name,
-				"role" = "Shadow Thrall",
-				"stat" = thrall_stat,
-				"is_user" = (thrall == H),
-			))
-
-	data["roster"] = roster
-	data["abilities"] = get_abilities_data(H, hive, thrall_count, thralls_needed)
-
-	return data
-
-/datum/antagonist/shadowling/proc/get_abilities_data(mob/living/carbon/human/H, datum/team/shadow_hive/hive, thrall_count, thralls_needed)
-	var/list/innate_types = list(
-		/datum/action/cooldown/shadowling/commune,
-		/datum/action/cooldown/shadowling/toggle_night_vision,
-		/datum/action/cooldown/shadowling/glare,
-		/datum/action/cooldown/shadowling/veil,
-		/datum/action/cooldown/shadowling/enthrall,
-		/datum/action/cooldown/shadowling/recuperation,
-		/datum/action/cooldown/shadowling/election,
-	)
-
-	var/list/threshold_types = list(
-		/datum/action/cooldown/shadowling/shadow_phase = 15,
-		/datum/action/cooldown/shadowling/cold_wave = 30,
-		/datum/action/cooldown/shadowling/shadow_barrier = 30,
-		/datum/action/cooldown/shadowling/shreek = 40,
-		/datum/action/cooldown/shadowling/labyrinth = 60,
-		/datum/action/cooldown/shadowling/ascend = 100,
-	)
-
-	var/list/ascended_types = list(
-		/datum/action/cooldown/shadowling/shadow_strike,
-		/datum/action/cooldown/shadowling/root,
-	)
-
-	var/list/owned_action_types = list()
-	if(H)
-		for(var/datum/action/A in H.actions)
-			for(var/check_path in (innate_types + threshold_types + ascended_types))
-				if(istype(A, check_path))
-					owned_action_types[check_path] = TRUE
-
-	var/list/ability_list = list()
-
-	for(var/path in innate_types)
-		var/datum/action/cooldown/shadowling/sample = path
-		var/ch = round(initial(sample.channel_time) / 10)
-		if(path == /datum/action/cooldown/shadowling/enthrall)
-			ch = 30
-		var/req_dark = initial(sample.requires_dark_user) || initial(sample.requires_dark_target)
-		ability_list += list(list(
-			"name" = initial(sample.name),
-			"desc" = initial(sample.desc),
-			"icon" = initial(sample.button_icon_state),
-			"cooldown" = round(initial(sample.cooldown_time) / 10),
-			"channel" = ch,
-			"required_thralls" = 0,
-			"required_percent" = 0,
-			"unlocked" = !isnull(owned_action_types[path]),
-			"category" = "Innate",
-			"requires_dark" = req_dark,
-		))
-
-	for(var/path in threshold_types)
-		var/datum/action/cooldown/shadowling/sample = path
-		var/pct = threshold_types[path]
-		var/calc_thralls = 0
-		if(thralls_needed > 0)
-			var/count = ceil(thralls_needed * (pct / 100))
-			calc_thralls = clamp(count, initial(sample.min_req), initial(sample.max_req))
-		var/req_dark = initial(sample.requires_dark_user) || initial(sample.requires_dark_target)
-		ability_list += list(list(
-			"name" = initial(sample.name),
-			"desc" = initial(sample.desc),
-			"icon" = initial(sample.button_icon_state),
-			"cooldown" = round(initial(sample.cooldown_time) / 10),
-			"channel" = round(initial(sample.channel_time) / 10),
-			"required_thralls" = calc_thralls,
-			"required_percent" = pct,
-			"unlocked" = !isnull(owned_action_types[path]),
-			"category" = "Threshold",
-			"requires_dark" = req_dark,
-		))
-
-	for(var/path in ascended_types)
-		var/datum/action/cooldown/shadowling/sample = path
-		var/req_dark = initial(sample.requires_dark_user) || initial(sample.requires_dark_target) || (path == /datum/action/cooldown/shadowling/root)
-		ability_list += list(list(
-			"name" = initial(sample.name),
-			"desc" = initial(sample.desc),
-			"icon" = initial(sample.button_icon_state),
-			"cooldown" = round(initial(sample.cooldown_time) / 10),
-			"channel" = round(initial(sample.channel_time) / 10),
-			"required_thralls" = thralls_needed,
-			"required_percent" = 100,
-			"unlocked" = !isnull(owned_action_types[path]),
-			"category" = "Ascended",
-			"requires_dark" = req_dark,
-		))
-
-	return ability_list
-
-/datum/antagonist/shadowling/ui_act(action, list/params, datum/tgui/ui, datum/ui_state/state)
-	. = ..()
-	if(.)
-		return TRUE
-
-	var/mob/living/carbon/human/H = ui.user
-	if(!istype(H))
-		return TRUE
-
-	var/datum/team/shadow_hive/hive = shadow_team || get_shadow_hive()
-
-	switch(action)
-		if("sync")
-			if(hive)
-				hive.sync_hive(H)
-			return TRUE
-		if("commune")
-			for(var/datum/action/cooldown/shadowling/commune/C in H.actions)
-				C.Trigger(H)
-				break
-			return TRUE
-		if("change_objectives")
-			submit_player_objective()
-			return TRUE
-
-/datum/objective/shadow_thrall
-	name = "Thrall Objective"
-	admin_grantable = TRUE
-
-/datum/objective/shadow_thrall/survive
-	name = "Survive"
-	explanation_text = "Survive until the end of the round while remaining a thrall of the Shadow."
-
-/datum/objective/shadow_thrall/survive/check_completion()
-	if(!owner || !owner.current)
-		return FALSE
-	if(owner.current.stat == DEAD)
-		return FALSE
-	return !!owner.has_antag_datum(/datum/antagonist/shadow_thrall, TRUE)
-
-/datum/objective/shadow_thrall/assist_ascension
-	name = "Assist Ascension"
-	explanation_text = "Help the shadowlings ascend: at least one Ascended Shadowling must exist by the end of the round."
-
-/datum/objective/shadow_thrall/assist_ascension/check_completion()
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
-	if(!hive)
-		return FALSE
-	for(var/mob/living/carbon/human/L in hive.lings)
-		if(isshadowling_ascended(L))
-			return TRUE
-	return FALSE
-
-/datum/objective/shadow_thrall/save_shadowlings
-	name = "Save your Masters"
-	explanation_text = "If the shadowlings are dead or missing: rally the thralls, gather your strength, and find and save your Masters."
-
-/datum/objective/shadow_thrall/save_shadowlings/check_completion()
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
-	if(!hive)
-		return FALSE
-	for(var/mob/living/carbon/human/L in hive.lings)
-		if(isshadowling_ascended(L) || (L.stat != DEAD && !QDELETED(L)))
-			return TRUE
-	return FALSE
-
-// MARK: Global shadowling roundender
-/proc/shadowling_begin_roundender(mob/living/carbon/human/ascended=null)
-	if(GLOB.is_shadowling_roundender_started)
-		return
-	GLOB.is_shadowling_roundender_started = TRUE
-
-	send_to_playing_players("<span class='shadowradio_win'><b>THE UNIFIED SHADOW CONSUMES THE STATION!</b></span>")
-	for(var/mob/player as anything in GLOB.player_list)
-		if(player && !isnewplayer(player))
-			SEND_SOUND(player, sound(SHADOWLING_RISEN_MUSIC, volume = 70))
-
-	priority_announce(
-		text = "Caution! Our long-range sensors have detected an unprecedented surge of paranormal activity. Due to imminent station consumption, immediately mobilize all assets and initiate emergency evacuation procedures. Emergency shuttle launch is authorized and irreversible.",
-		title = "[command_name()]: Paranormal Phenomenon Division",
-		sound = SSstation.announcer.get_rand_report_sound(),
-		has_important_message = TRUE,
-	)
-
-	var/datum/hostile_ref = ascended ? ascended : (get_shadow_hive() || "Shadowling Hive")
-	SSshuttle.registerHostileEnvironment(hostile_ref)
-	SSshuttle.lockdown = TRUE
-	SSshuttle.requestEvac(ascended, "Emergency evacuation authorized due to paranormal threat.")
+// MARK: Admin
 
 ADMIN_VERB(toggle_shadowling_debug, R_DEBUG, "Toggle Shadowling Debug", "Toggles Shadowling test mode (mindless/carbon enthrall, fast cast, bypass lighting).", ADMIN_CATEGORY_DEBUG)
-	GLOB.shadowling_debug_mode = !GLOB.shadowling_debug_mode
-	to_chat(usr, span_boldnotice("Shadowling Debug Mode is now [GLOB.shadowling_debug_mode ? "ENABLED" : "DISABLED"]."))
-	message_admins("[ADMIN_LOOKUPFLW(usr)] toggled Shadowling Debug Mode to [GLOB.shadowling_debug_mode ? "ENABLED" : "DISABLED"].")
+	if(QDELETED(GLOB.shadowling_hive))
+		GLOB.shadowling_hive = new /datum/team/shadow_hive
+	var/datum/team/shadow_hive/hive = GLOB.shadowling_hive
+	hive.debug_mode = !hive.debug_mode
+	to_chat(usr, span_boldnotice("Shadowling Debug Mode is now [hive.debug_mode ? "ENABLED" : "DISABLED"]."))
+	message_admins("[ADMIN_LOOKUPFLW(usr)] toggled Shadowling Debug Mode to [hive.debug_mode ? "ENABLED" : "DISABLED"].")

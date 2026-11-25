@@ -259,6 +259,11 @@
 	mood_change = 999 // Makes it bold green and gives the special obj a higher priority. Blood worm hosts are apathetic, so this is otherwise meaningless.
 	hidden = TRUE
 
+/datum/mood_event/shadowling
+	description = "The cold darkness within whispers of power."
+	mood_change = 12
+	hidden = TRUE
+
 /datum/mood_event/family_heirloom
 	description = "My family heirloom is safe with me."
 	mood_change = 1

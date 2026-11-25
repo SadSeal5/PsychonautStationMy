@@ -1,4 +1,6 @@
 // MARK: Effects
+
+/// Indestructible shadow tendril anchor buckling a target in darkness until released or dissolved by light.
 /obj/effect/shadow_bind_anchor
 	name = "writhing shadows"
 	desc = "Tendrils of shadow coil here."
@@ -16,7 +18,9 @@
 	buckle_lying = FALSE
 	buckle_requires_restraints = FALSE
 
+	/// Maximum duration the target stays buckled by shadow roots.
 	var/grapple_time = 10 SECONDS
+	/// Mob that conjured the shadow bind anchor.
 	var/mob/living/caster
 
 /obj/effect/shadow_bind_anchor/attack_hand(mob/user)
@@ -42,6 +46,7 @@
 	unbuckle_all_mobs(force = TRUE)
 	return ..()
 
+/// Allows allies to tear the roots off [buckled_mob] after 3s, while preventing self-unbuckling.
 /obj/effect/shadow_bind_anchor/user_unbuckle_mob(mob/living/buckled_mob, mob/living/user)
 	if(user == buckled_mob)
 		to_chat(user, span_warning("The writhing shadows bind your limbs tightly, preventing you from pulling free!"))
@@ -53,6 +58,7 @@
 		return TRUE
 	return FALSE
 
+/// Dissolves shadow roots if exposed to non-dark light levels or if no mob remains buckled.
 /obj/effect/shadow_bind_anchor/process(seconds_per_tick)
 	if(!isturf(loc))
 		qdel(src)
@@ -70,6 +76,7 @@
 		)
 		release()
 
+/// Buckles [victim] to this anchor and schedules automatic release after `grapple_time`.
 /obj/effect/shadow_bind_anchor/proc/apply_to(mob/living/victim)
 	if(!istype(victim) || QDELETED(victim) || victim.stat == DEAD)
 		qdel(src)
@@ -92,6 +99,7 @@
 	addtimer(CALLBACK(src, PROC_REF(release)), grapple_time, TIMER_STOPPABLE)
 	return TRUE
 
+/// Unbuckles all trapped mobs and queues the anchor for deletion.
 /obj/effect/shadow_bind_anchor/proc/release()
 	if(QDELETED(src))
 		return
@@ -107,43 +115,36 @@
 		qdel(src)
 
 // MARK: Ability
+
+/// Ascended ability with left-click shadow-root snare and right-click shadow-hook pull modes.
 /datum/action/cooldown/shadowling/root
 	name = "Shadow Roots"
 	desc = "Harness the grasping tendrils of the dark. Left-Click an enemy in darkness to ensnare them with shadow roots. Right-Click in any direction to launch a shadow hook and pull targets or objects to you."
 	button_icon_state = "shadow_grasp"
 	check_flags = AB_CHECK_CONSCIOUS
 	cooldown_time = 20 SECONDS
+	role_flags = SL_ASCENDED
 	click_to_activate = TRUE
 	unset_after_click = TRUE
 	requires_dark_user = FALSE
 	requires_dark_target = FALSE
 	channel_time = 0
 	max_range = 8
-	var/targeting = FALSE
+	/// Tracks whether right-click Shadow Hook mode is active.
 	var/secondary_mode = FALSE
 	var/static/sfx_fire = 'sound/effects/splat.ogg'
 	var/static/sfx_hit = 'sound/items/weapons/shove.ogg'
 
-/datum/action/cooldown/shadowling/root/is_action_active(atom/movable/screen/movable/action_button/_btn)
-	return targeting
-
 /datum/action/cooldown/shadowling/root/unset_click_ability(mob/on_who, refund_cooldown)
-	. = ..()
-	targeting = FALSE
 	secondary_mode = FALSE
 	button_icon_state = "shadow_grasp"
-	build_all_button_icons(UPDATE_BUTTON_ICON, force = TRUE)
-	apply_button_overlay()
-
-/datum/action/cooldown/shadowling/root/set_click_ability(mob/on_who, refund_cooldown)
 	. = ..()
-	targeting = TRUE
-	apply_button_overlay()
+	build_all_button_icons(UPDATE_BUTTON_ICON, force = TRUE)
 
 /datum/action/cooldown/shadowling/root/can_use(mob/living/carbon/human/H)
 	if(!..())
 		return FALSE
-	if(istype(H.loc, /obj/effect/dummy/phased_mob/shadowling) || H.has_status_effect(/datum/status_effect/shadow/phase))
+	if(istype(H.loc, /obj/effect/dummy/phased_mob/shadowling))
 		owner.balloon_alert(owner, "ability unavailable while phased")
 		return FALSE
 	return TRUE
@@ -158,6 +159,7 @@
 	build_all_button_icons(UPDATE_BUTTON_ICON, force = TRUE)
 	return ..()
 
+/// Fires a shadow hand hook on right-click or snares a dark human target on left-click.
 /datum/action/cooldown/shadowling/root/InterceptClickOn(mob/living/clicker, params, atom/target)
 	if(!istype(clicker))
 		unset_click_ability(clicker, TRUE)
@@ -213,14 +215,9 @@
 		H.balloon_alert(H, "target is dead")
 		return FALSE
 
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
-	if(hive)
-		if(T in hive.lings)
-			H.balloon_alert(H, "allies cannot be targeted")
-			return FALSE
-		if(T in hive.thralls)
-			H.balloon_alert(H, "allies cannot be targeted")
-			return FALSE
+	if(is_hive_ally(T))
+		H.balloon_alert(H, "allies cannot be targeted")
+		return FALSE
 
 	var/turf/tturf = get_turf(T)
 	if(!tturf || tturf.get_lumcount() >= SHADOWLING_DIM_THRESHOLD)

@@ -1,10 +1,13 @@
 // MARK: Ability
+
+/// Ascended ability usable while phased to materialize beside a target and strike or neck-grab them.
 /datum/action/cooldown/shadowling/shadow_strike
 	name = "Shadow Strike"
 	desc = "Target a mortal while incorporeal. Left-Click to teleport and deliver a devastating strike (25 brute damage). Right-Click to teleport and grab them by the neck."
 	button_icon_state = "shadow_strike"
 	check_flags = AB_CHECK_CONSCIOUS | AB_CHECK_INCAPACITATED
 	cooldown_time = 5 SECONDS
+	role_flags = SL_ASCENDED
 	click_to_activate = TRUE
 	unset_after_click = TRUE
 	requires_dark_user = FALSE
@@ -12,29 +15,23 @@
 	channel_time = 0
 	max_range = 3
 
+	/// Tile range within which neck-grab mode can engage.
 	var/grab_range = 2
+	/// Brute damage dealt by left-click Shadow Strike.
 	var/attack_value = 25
+	/// Grab level escalated to on right-click ambush.
 	var/target_grab_level = GRAB_NECK
 	var/static/sfx_activate = 'sound/effects/magic/demon_attack1.ogg'
-	var/targeting = FALSE
+	/// Tracks whether right-click grab mode was triggered.
 	var/secondary_mode = FALSE
 
-/datum/action/cooldown/shadowling/shadow_strike/is_action_active(atom/movable/screen/movable/action_button/_btn)
-	return targeting
-
 /datum/action/cooldown/shadowling/shadow_strike/unset_click_ability(mob/on_who, refund_cooldown)
-	. = ..()
-	targeting = FALSE
 	secondary_mode = FALSE
 	button_icon_state = "shadow_strike"
-	build_all_button_icons(UPDATE_BUTTON_ICON, force = TRUE)
-	apply_button_overlay()
-
-/datum/action/cooldown/shadowling/shadow_strike/set_click_ability(mob/on_who, refund_cooldown)
 	. = ..()
-	targeting = TRUE
-	apply_button_overlay()
+	build_all_button_icons(UPDATE_BUTTON_ICON, force = TRUE)
 
+/// Requires the Ascended Shadowling to be phased inside a shadow dummy.
 /datum/action/cooldown/shadowling/shadow_strike/can_use(mob/living/carbon/human/H)
 	if(!..())
 		return FALSE
@@ -43,11 +40,10 @@
 		return FALSE
 	if(istype(H.loc, /obj/effect/dummy/phased_mob/shadowling))
 		return TRUE
-	if(H.has_status_effect(/datum/status_effect/shadow/phase))
-		return TRUE
 	owner.balloon_alert(owner, "you must be incorporeal")
 	return FALSE
 
+/// Switches between left-click strike and right-click neck-grab icons based on [trigger_flags].
 /datum/action/cooldown/shadowling/shadow_strike/Trigger(mob/clicker, trigger_flags, atom/target)
 	if(!istype(owner))
 		return FALSE
@@ -58,9 +54,13 @@
 	build_all_button_icons(UPDATE_BUTTON_ICON, force = TRUE)
 	return ..()
 
+/// Materializes adjacent to the clicked non-hive human and executes either a 25-brute strike or neck grab.
 /datum/action/cooldown/shadowling/shadow_strike/InterceptClickOn(mob/living/clicker, params, atom/target)
 	if(!istype(clicker))
-		unset_click_ability(clicker, TRUE)
+		if(ismob(clicker))
+			unset_click_ability(clicker, TRUE)
+		else if(ismob(owner))
+			unset_click_ability(owner, TRUE)
 		return FALSE
 
 	if(!can_use(clicker))
@@ -86,14 +86,9 @@
 		H.balloon_alert(H, "target is dead")
 		return FALSE
 
-	var/datum/team/shadow_hive/hive = get_shadow_hive()
-	if(hive)
-		if(T in hive.lings)
-			H.balloon_alert(H, "allies cannot be targeted")
-			return FALSE
-		if(T in hive.thralls)
-			H.balloon_alert(H, "allies cannot be targeted")
-			return FALSE
+	if(is_hive_ally(T))
+		H.balloon_alert(H, "allies cannot be targeted")
+		return FALSE
 
 	var/list/modifiers = params2list(params)
 	var/is_grab = LAZYACCESS(modifiers, RIGHT_CLICK) ? TRUE : secondary_mode
@@ -115,14 +110,20 @@
 			H.balloon_alert(H, "too far to strike")
 			return FALSE
 
-	var/turf/nearby = pick_adjacent_open_turf(get_turf(T))
-	if(!nearby)
+	var/turf/target_turf = get_turf(T)
+	if(!istype(target_turf))
+		H.balloon_alert(H, "invalid target")
+		return FALSE
+
+	var/list/open_turfs = list()
+	for(var/turf/open_cand in get_adjacent_open_turfs(target_turf))
+		if(!open_cand.density && !open_cand.is_blocked_turf(TRUE))
+			open_turfs += open_cand
+	var/turf/nearby = length(open_turfs) ? pick(open_turfs) : null
+	if(!nearby || !T.Adjacent(nearby))
 		H.balloon_alert(H, "no space near target")
 		return FALSE
-	var/datum/action/cooldown/shadowling/shadow_phase/SP
-	for(var/datum/action/cooldown/shadowling/shadow_phase/X in H.actions)
-		SP = X
-		break
+	var/datum/action/cooldown/shadowling/shadow_phase/SP = locate(/datum/action/cooldown/shadowling/shadow_phase) in H.actions
 	if(SP)
 		SP.materialize_near(H, nearby, FALSE)
 	else
@@ -131,12 +132,9 @@
 			if(istype(nearby))
 				P.forceMove(nearby)
 			P.eject_jaunter(FALSE)
-		else
-			H.remove_status_effect(/datum/status_effect/shadow/phase)
 		H.alpha = 255
 
-	for(var/datum/action/cooldown/shadowling/A in H.actions)
-		A.build_all_button_icons(UPDATE_BUTTON_STATUS, TRUE)
+	refresh_owner_actions(H)
 
 	if(get_dist(H, T) > 1)
 		step_towards(H, T)
